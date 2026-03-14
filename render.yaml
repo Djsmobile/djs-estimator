@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: djs-mobile-mechanic-estimator
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    disk:
+      name: estimator-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: DB_PATH
+        value: /var/data/quotes.db

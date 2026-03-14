@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ's Quotes Admin</title>
+<style>
+:root{--bg:#0b0b0b;--card:#141414;--text:#f2f2f2;--muted:rgba(242,242,242,.75);--border:rgba(255,255,255,.12)}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:1160px;margin:auto;padding:20px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top}a{color:#fff}.small{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>Quotes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Customer</th>
+          <th>Vehicle</th>
+          <th>Phone</th>
+          <th>Created</th>
+          <th>Signed</th>
+          <th>Invoice</th>
+          <th>Links</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.status or '-' }}</td>
+          <td>{{ row.customer_name or '-' }}<br><span class="small">{{ row.customer_email or '' }}</span></td>
+          <td>{{ row.vehicle or '-' }}<br><span class="small">{{ row.vin or '' }}</span></td>
+          <td>{{ row.customer_phone or '-' }}</td>
+          <td>{{ row.created_at or '-' }}</td>
+          <td>{{ row.signed_name or '-' }}<br><span class="small">{{ row.signed_at or '' }}</span></td>
+          <td>{{ row.invoice_number or '-' }}</td>
+          <td>
+            <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
+            {% if row.invoice_number %}<br><a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8">No quotes yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

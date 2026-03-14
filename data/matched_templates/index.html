@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJ's Estimate Builder</title>
+  <style>
+    :root{
+      --bg:#0b0b0b; --card:#141414; --card2:#101010; --text:#f2f2f2;
+      --muted:rgba(242,242,242,.75); --border:rgba(255,255,255,.12);
+      --border2:rgba(255,255,255,.20); --accent:#ffffff; --danger:#7a1f1f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1050px;margin:0 auto;padding:18px 14px 40px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+    h1,h2,h3{margin:0 0 10px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,textarea,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);outline:none}
+    textarea{resize:vertical;min-height:88px}
+    input[type="radio"],input[type="checkbox"]{width:auto;margin-right:6px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}.grow{flex:1 1 260px}.col{flex:0 0 160px}.col-wide{flex:0 0 220px}
+    .section-title{font-weight:900;margin-bottom:10px}
+    .money-input{position:relative}.money-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-weight:700}.money-input input{padding-left:22px}
+    .job{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+    .job:first-child{margin-top:0;padding-top:0;border-top:none}
+    .jobhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .jobtitle{font-size:16px;font-weight:800}.delete-btn{background:var(--danger);border:1px solid rgba(255,120,120,.25)}
+    .tierbox{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03)}
+    .tiers{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}.tiers label{display:flex;align-items:center;color:var(--text);margin:0;cursor:pointer}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+    .ministats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)} .ministats strong{color:var(--text)}
+    .totline{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03);margin-top:8px}
+    .totline.big{font-size:16px;font-weight:900;background:rgba(255,255,255,.06)}
+    .btnrow{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+    button{border:1px solid var(--border2);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:800}
+    button:hover{background:rgba(255,255,255,.1)}
+    .small-note{font-size:12px;color:var(--muted);margin-top:6px}
+    @media(max-width:820px){.grid3{grid-template-columns:1fr}.col,.col-wide{flex:1 1 100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>DJ's Estimate Builder</h1>
+      <div class="small-note">Build the quote, save it, then send the customer review link.</div>
+    </div>
+
+    <form method="POST" action="/save_quote">
+      <div class="card">
+        <div class="section-title">Customer & Vehicle</div>
+        <div class="row">
+          <div class="grow">
+            <label>Customer name</label>
+            <input type="text" name="customer_name" placeholder="John Smith">
+          </div>
+          <div class="grow">
+            <label>Phone</label>
+            <input type="text" name="customer_phone" placeholder="916-555-1234">
+          </div>
+          <div class="grow">
+            <label>Email</label>
+            <input type="email" name="customer_email" placeholder="optional@email.com">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <div class="grow">
+            <label>Vehicle</label>
+            <input type="text" name="vehicle" placeholder="2018 Honda Accord 1.5T">
+          </div>
+          <div class="grow">
+            <label>VIN</label>
+            <input type="text" name="vin" placeholder="Optional VIN">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Estimate Settings</div>
+        <div class="row">
+          <div class="col-wide">
+            <label>Labor rate</label>
+            <div class="money-input"><span>$</span><input type="number" step="0.01" id="labor_rate" name="labor_rate" value="{{ '%.2f'|format(default_labor_rate|default(150.0)|float) }}"></div>
+          </div>
+          <div class="col-wide">
+            <label>Tax rate (%)</label>
+            <input type="number" step="0.01" id="tax_rate" name="tax_rate" value="{{ '%.2f'|format(default_tax_rate|default(7.25)|float) }}">
+          </div>
+          <div class="col-wide">
+            <label>Service call fee</label>
+            <div class="money-input"><span>$</span><input type="number" step="0.01" id="service_fee" name="service_fee" value="{{ '%.2f'|format(default_service_fee|default(0.0)|float) }}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="btnrow">
+          <div>
+            <div class="section-title">Services</div>
+            <div class="small-note">Each service can have labor, three parts choices, and notes.</div>
+          </div>
+          <button type="button" onclick="addService()">+ Add another service</button>
+        </div>
+        <div id="services"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Estimate Totals Preview</div>
+        <div class="totline"><span>Labor</span><strong>$<span id="preview_labor">0.00</span></strong></div>
+        <div class="totline"><span>Selected parts</span><strong>$<span id="preview_parts">0.00</span></strong></div>
+        <div class="totline"><span>Service call fee</span><strong>$<span id="preview_service_fee">0.00</span></strong></div>
+        <div class="totline"><span>Sales tax (parts only)</span><strong>$<span id="preview_tax">0.00</span></strong></div>
+        <div class="totline big"><span>Total</span><strong>$<span id="preview_total">0.00</span></strong></div>
+      </div>
+
+      <div class="card">
+        <button type="submit">Save Quote</button>
+      </div>
+    </form>
+  </div>
+
+<script>
+function money(n){ return (parseFloat(n || 0) || 0).toFixed(2); }
+function numberVal(el){ return parseFloat(el?.value || 0) || 0; }
+
+function jobTemplate(idx){
+  return `
+  <div class="job" data-job="${idx}">
+    <div class="jobhead">
+      <div class="jobtitle">Service #${idx + 1}</div>
+      <button type="button" class="delete-btn" onclick="removeService(this)">Delete</button>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div class="grow">
+        <label>Service / Job description</label>
+        <input type="text" name="job_desc[]" placeholder="Front brake pads and rotors">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div class="col-wide">
+        <label>Labor hours</label>
+        <input type="number" step="0.1" name="job_labor_hrs[]" class="job-labor-hours" value="0">
+      </div>
+      <div class="col-wide">
+        <label>Labor rate</label>
+        <div class="money-input"><span>$</span><input type="number" step="0.01" name="job_labor_rate[]" class="job-labor-rate" value="${money(document.getElementById('labor_rate').value)}"></div>
+      </div>
+      <div class="grow">
+        <label>Line-item notes</label>
+        <textarea name="job_notes[]" placeholder="Extra notes, recommendations, warranty notes, etc."></textarea>
+      </div>
+    </div>
+
+    <div class="tierbox">
+      <label>Default selected parts option for customer</label>
+      <div class="tiers">
+        <label><input type="radio" name="job_part_tier[${idx}]" value="oem"> OEM</label>
+        <label><input type="radio" name="job_part_tier[${idx}]" value="quality" checked> Quality</label>
+        <label><input type="radio" name="job_part_tier[${idx}]" value="economy"> Economy</label>
+      </div>
+
+      <div class="grid3">
+        <div>
+          <label>OEM parts</label>
+          <div class="money-input"><span>$</span><input type="number" step="0.01" name="job_parts_oem[]" class="job-part-price" value="0"></div>
+        </div>
+        <div>
+          <label>Quality parts</label>
+          <div class="money-input"><span>$</span><input type="number" step="0.01" name="job_parts_quality[]" class="job-part-price" value="0"></div>
+        </div>
+        <div>
+          <label>Economy parts</label>
+          <div class="money-input"><span>$</span><input type="number" step="0.01" name="job_parts_economy[]" class="job-part-price" value="0"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ministats">
+      <div>Labor total: <strong>$<span class="job-labor-total">0.00</span></strong></div>
+      <div>Selected parts: <strong>$<span class="job-selected-parts">0.00</span></strong></div>
+      <div>Line total: <strong>$<span class="job-total">0.00</span></strong></div>
+    </div>
+  </div>`;
+}
+
+function refreshJobNumbers(){
+  document.querySelectorAll('#services .job').forEach((job, idx) => {
+    job.dataset.job = idx;
+    const title = job.querySelector('.jobtitle');
+    if (title) title.textContent = `Service #${idx + 1}`;
+    const radios = job.querySelectorAll('input[type="radio"]');
+    radios.forEach(r => {
+      const val = r.value;
+      r.name = `job_part_tier[${idx}]`;
+      if (!job.querySelector(`input[name="job_part_tier[${idx}]\"][value="quality"]:checked`) && val === 'quality' && !job.querySelector('input[type="radio"]:checked')) {
+        r.checked = true;
+      }
+    });
+  });
+}
+
+function selectedPartsForJob(job){
+  const tier = job.querySelector('input[type="radio"]:checked')?.value || 'quality';
+  const oem = numberVal(job.querySelector('input[name="job_parts_oem[]"]'));
+  const quality = numberVal(job.querySelector('input[name="job_parts_quality[]"]'));
+  const economy = numberVal(job.querySelector('input[name="job_parts_economy[]"]'));
+  if (tier === 'oem') return oem;
+  if (tier === 'economy') return economy;
+  return quality;
+}
+
+function recalcJob(job){
+  const laborHours = numberVal(job.querySelector('.job-labor-hours'));
+  const laborRate = numberVal(job.querySelector('.job-labor-rate'));
+  const laborTotal = laborHours * laborRate;
+  const selectedParts = selectedPartsForJob(job);
+  const total = laborTotal + selectedParts;
+  job.querySelector('.job-labor-total').textContent = money(laborTotal);
+  job.querySelector('.job-selected-parts').textContent = money(selectedParts);
+  job.querySelector('.job-total').textContent = money(total);
+}
+
+function recalcPreview(){
+  let labor = 0, parts = 0;
+  document.querySelectorAll('#services .job').forEach(job => {
+    const laborHours = numberVal(job.querySelector('.job-labor-hours'));
+    const laborRate = numberVal(job.querySelector('.job-labor-rate'));
+    labor += laborHours * laborRate;
+    parts += selectedPartsForJob(job);
+    recalcJob(job);
+  });
+  const serviceFee = numberVal(document.getElementById('service_fee'));
+  const taxRate = numberVal(document.getElementById('tax_rate'));
+  const tax = parts * (taxRate / 100);
+  const total = labor + parts + serviceFee + tax;
+  document.getElementById('preview_labor').textContent = money(labor);
+  document.getElementById('preview_parts').textContent = money(parts);
+  document.getElementById('preview_service_fee').textContent = money(serviceFee);
+  document.getElementById('preview_tax').textContent = money(tax);
+  document.getElementById('preview_total').textContent = money(total);
+}
+
+function attachJobListeners(job){
+  job.querySelectorAll('input, textarea').forEach(el => {
+    el.addEventListener('input', recalcPreview);
+    el.addEventListener('change', recalcPreview);
+  });
+}
+
+function addService(){
+  const services = document.getElementById('services');
+  const idx = services.querySelectorAll('.job').length;
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = jobTemplate(idx);
+  const job = wrapper.firstElementChild;
+  services.appendChild(job);
+  attachJobListeners(job);
+  refreshJobNumbers();
+  recalcPreview();
+}
+
+function removeService(button){
+  button.closest('.job')?.remove();
+  refreshJobNumbers();
+  recalcPreview();
+}
+
+document.getElementById('labor_rate').addEventListener('input', () => {
+  document.querySelectorAll('.job-labor-rate').forEach(el => { if (!el.dataset.touched) el.value = money(document.getElementById('labor_rate').value); });
+  recalcPreview();
+});
+document.getElementById('tax_rate').addEventListener('input', recalcPreview);
+document.getElementById('service_fee').addEventListener('input', recalcPreview);
+document.addEventListener('input', e => { if (e.target.classList?.contains('job-labor-rate')) e.target.dataset.touched = '1'; });
+
+addService();
+</script>
+</body>
+</html>

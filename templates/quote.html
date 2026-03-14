@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ's Estimate Review</title>
+<style>
+:root{--bg:#0b0b0b;--card:#141414;--card2:#101010;--text:#f2f2f2;--muted:rgba(242,242,242,.72);--border:rgba(255,255,255,.12);--ok:#173517;--warn:#5a1e1e}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:980px;margin:auto;padding:20px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
+h2,h3{margin-top:0}.meta{color:var(--muted);font-size:14px;line-height:1.5}.job{border-top:1px solid var(--border);margin-top:12px;padding-top:12px}.job:first-child{border-top:none;margin-top:0;padding-top:0}
+.parts{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}.parts label{cursor:pointer;display:flex;align-items:center;margin:0;color:var(--text)}
+.approve{margin-top:10px;display:block}.totals .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)} .totals .row:last-child{border-bottom:none}
+.big{font-size:20px;font-weight:800}.btns{display:flex;gap:10px;flex-wrap:wrap}button,.alink{padding:12px 16px;background:#fff;color:#000;border:none;border-radius:10px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}
+.secondary{background:#2a2a2a;color:#fff}.locked{background:var(--ok)} .err{background:var(--warn)} .small-note{color:var(--muted);font-size:12px;margin-top:6px}
+.sigbox{margin-top:10px}.sigpad{background:#fff;border-radius:10px;border:1px solid #333;touch-action:none;display:block;width:100%;max-width:520px;height:180px}.sigimg{max-width:100%;background:#fff;border-radius:10px;padding:6px;border:1px solid #333}
+@media print{.noprint{display:none!important}body{background:#fff;color:#000}.card{background:#fff;color:#000;border:1px solid #ddd}.meta,.small-note{color:#333}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>DJ's Mobile Mechanic Estimate</h2>
+    <div class="meta">
+      Customer: <strong>{{ quote.customer_name or '-' }}</strong><br>
+      Phone: {{ quote.customer_phone or '-' }}<br>
+      Email: {{ quote.customer_email or '-' }}<br>
+      Vehicle: {{ quote.vehicle or '-' }}<br>
+      VIN: {{ quote.vin or '-' }}<br>
+      Created: {{ quote.created_at }}
+    </div>
+  </div>
+
+  {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+  <div class="card locked">
+    <h3>Estimate Approved</h3>
+    <div class="meta">
+      Signed by <strong>{{ quote.signed_name or 'Customer' }}</strong><br>
+      {{ quote.signed_at or '' }}
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/approve_quote/{{ quote.quote_token }}" id="approvalForm">
+    <div class="card">
+      <h3>Services</h3>
+      {% for job in payload.jobs %}
+      <div class="job customer-job"
+           data-job-index="{{ loop.index0 }}"
+           data-labor-total="{{ '%.2f'|format((job.labor_hours|float) * (quote.labor_rate|float)) }}"
+           data-parts-oem="{{ '%.2f'|format(job.parts_oem|float) }}"
+           data-parts-quality="{{ '%.2f'|format(job.parts_quality|float) }}"
+           data-parts-economy="{{ '%.2f'|format(job.parts_economy|float) }}">
+
+        <strong>{{ job.desc or ('Service ' ~ loop.index) }}</strong>
+        <div class="meta">Labor: {{ '%.1f'|format(job.labor_hours|float) }} hrs @ ${{ '%.2f'|format(quote.labor_rate|float) }}/hr</div>
+
+        {% if job.notes %}
+        <div class="small-note">{{ job.notes }}</div>
+        {% endif %}
+
+        <div class="parts">
+          <label>
+            <input
+              type="radio"
+              name="job_tier_{{ loop.index0 }}"
+              value="oem"
+              {% if approved_map.get(loop.index0) == 'oem' %}checked{% endif %}
+              {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
+            >
+            OEM ${{ '%.2f'|format(job.parts_oem|float) }}
+          </label>
+
+          <label>
+            <input
+              type="radio"
+              name="job_tier_{{ loop.index0 }}"
+              value="quality"
+              {% if approved_map.get(loop.index0) == 'quality' or not approved_map.get(loop.index0) %}checked{% endif %}
+              {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
+            >
+            Quality ${{ '%.2f'|format(job.parts_quality|float) }}
+          </label>
+
+          <label>
+            <input
+              type="radio"
+              name="job_tier_{{ loop.index0 }}"
+              value="economy"
+              {% if approved_map.get(loop.index0) == 'economy' %}checked{% endif %}
+              {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
+            >
+            Economy ${{ '%.2f'|format(job.parts_economy|float) }}
+          </label>
+        </div>
+
+        <div class="meta" style="margin-top:8px;">
+          Selected parts: <strong>$<span class="job-selected-parts">{{ '%.2f'|format(job.parts_quality|float) }}</span></strong>
+          &nbsp;|&nbsp;
+          Job total: <strong>$<span class="job-total">{{ '%.2f'|format((job.labor_hours|float * quote.labor_rate|float) + (job.parts_quality|float)) }}</span></strong>
+        </div>
+
+        <label class="approve">
+          <input
+            type="checkbox"
+            class="approve-toggle"
+            name="approve_job[]"
+            value="{{ loop.index0 }}"
+            {% if loop.index0 in approved_map %}checked{% endif %}
+            {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
+          >
+          Approve this repair
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card totals" id="quoteTotals" data-tax-rate="{{ '%.2f'|format(quote.tax_rate|float) }}" data-service-fee="{{ '%.2f'|format(quote.service_fee|float) }}">
+      <h3>Approved Total</h3>
+      <div class="row"><span>Labor</span><strong>$<span id="tLabor">0.00</span></strong></div>
+      <div class="row"><span>Parts</span><strong>$<span id="tParts">0.00</span></strong></div>
+      <div class="row"><span>Service fee</span><strong>$<span id="tService">{{ '%.2f'|format(quote.service_fee|float) }}</span></strong></div>
+      <div class="row"><span>Tax</span><strong>$<span id="tTax">0.00</span></strong></div>
+      <div class="row big"><span>Total</span><strong>$<span id="tGrand">0.00</span></strong></div>
+    </div>
+
+    {% if quote.status != 'approved' and quote.status != 'invoiced' %}
+    <div class="card">
+      <h3>Approval Signature</h3>
+      <label>Customer name</label>
+      <input type="text" name="signed_name" id="signed_name" placeholder="Type your name to authorize repairs">
+      <div class="sigbox noprint">
+        <canvas id="signaturePad" class="sigpad" width="520" height="180"></canvas>
+        <input type="hidden" name="signature_data" id="signature_data">
+        <div class="btns" style="margin-top:10px;">
+          <button type="button" class="secondary" onclick="clearSignature()">Clear signature</button>
+        </div>
+      </div>
+      <div class="small-note">By submitting, you approve only the checked repairs.</div>
+    </div>
+    {% endif %}
+
+    <div class="card noprint">
+      <div class="btns">
+        {% if quote.status != 'approved' and quote.status != 'invoiced' %}
+        <button type="submit">Submit Approval</button>
+        {% endif %}
+        {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+        <a class="alink" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>
+        {% endif %}
+        <button type="button" class="secondary" onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </div>
+  </form>
+
+  {% if quote.signature_data %}
+  <div class="card">
+    <h3>Saved Signature</h3>
+    <img class="sigimg" src="{{ quote.signature_data }}" alt="Customer signature">
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function money(n){return (parseFloat(n||0)||0).toFixed(2)}
+
+function calcTotals(){
+  let labor=0,parts=0;
+
+  document.querySelectorAll('.customer-job').forEach(job=>{
+    const approved=job.querySelector('.approve-toggle')?.checked;
+    const selected=job.querySelector('input[type="radio"]:checked')?.value || 'quality';
+    const laborTotal=parseFloat(job.dataset.laborTotal||0)||0;
+    const pOEM=parseFloat(job.dataset.partsOem||0)||0;
+    const pQ=parseFloat(job.dataset.partsQuality||0)||0;
+    const pE=parseFloat(job.dataset.partsEconomy||0)||0;
+
+    let p = selected==='oem' ? pOEM : (selected==='economy' ? pE : pQ);
+
+    const partsEl = job.querySelector('.job-selected-parts');
+    const totalEl = job.querySelector('.job-total');
+
+    if (partsEl) partsEl.textContent = money(p);
+    if (totalEl) totalEl.textContent = money(laborTotal + p);
+
+    if (approved){
+      labor += laborTotal;
+      parts += p;
+    }
+  });
+
+  const box=document.getElementById('quoteTotals');
+  const taxRate=parseFloat(box.dataset.taxRate||0)||0;
+  const serviceFee=parseFloat(box.dataset.serviceFee||0)||0;
+  const tax=parts*(taxRate/100);
+  const grand=labor+parts+serviceFee+tax;
+
+  document.getElementById('tLabor').textContent=money(labor);
+  document.getElementById('tParts').textContent=money(parts);
+  document.getElementById('tTax').textContent=money(tax);
+  document.getElementById('tGrand').textContent=money(grand);
+}
+
+document.querySelectorAll('.approve-toggle, input[type="radio"]').forEach(el=>{
+  el.addEventListener('change', calcTotals);
+});
+calcTotals();
+
+const canvas = document.getElementById('signaturePad');
+if (canvas){
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  let drawing = false;
+
+  function point(e){
+    const rect = canvas.getBoundingClientRect();
+    const source = e.touches ? e.touches[0] : e;
+    return {
+      x:(source.clientX-rect.left)*(canvas.width/rect.width),
+      y:(source.clientY-rect.top)*(canvas.height/rect.height)
+    };
+  }
+
+  function start(e){
+    drawing = true;
+    const p = point(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x,p.y);
+    e.preventDefault();
+  }
+
+  function move(e){
+    if(!drawing) return;
+    const p = point(e);
+    ctx.lineTo(p.x,p.y);
+    ctx.stroke();
+    e.preventDefault();
+  }
+
+  function end(){
+    drawing = false;
+    document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+  }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  window.addEventListener('touchend', end);
+}
+
+function clearSignature(){
+  if(!canvas) return;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById('signature_data').value='';
+}
+
+document.getElementById('approvalForm')?.addEventListener('submit', function(e){
+  if (!document.getElementById('signed_name')) return;
+  const anyApproved = [...document.querySelectorAll('.approve-toggle')].some(c => c.checked);
+  if (!anyApproved){
+    alert('Approve at least one repair before submitting.');
+    e.preventDefault();
+    return;
+  }
+  if (!document.getElementById('signed_name').value.trim()){
+    alert('Please enter customer name before submitting.');
+    e.preventDefault();
+    return;
+  }
+});
+</script>
+</body>
+</html>
