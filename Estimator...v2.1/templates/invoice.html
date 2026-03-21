@@ -17,9 +17,6 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:
 .meta{color:var(--muted);font-size:14px;line-height:1.5}
 .btn{padding:12px 16px;background:#fff;color:#000;border:none;border-radius:10px;cursor:pointer;font-weight:700}
 .sigimg{max-width:100%;background:#fff;border-radius:10px;padding:6px;border:1px solid #333}
-.part-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
-.part-table th,.part-table td{text-align:left;padding:8px;border-bottom:1px solid var(--border);vertical-align:top}
-.part-table th{color:var(--muted)}
 @media print{
   .noprint{display:none!important}
   body{background:#fff;color:#000}
@@ -45,65 +42,44 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:
 
   <div class="card">
     <h3>Approved Services</h3>
+    {% set ns = namespace(labor=0.0, parts=0.0) %}
 
     {% for job in payload.jobs %}
       {% if loop.index0 in approved_map %}
         {% set labor_total = (job.labor_hours|float) * (row.labor_rate|float) %}
         {% set selected_tier = approved_map.get(loop.index0, 'quality') %}
-        {% set ns = namespace(parts_selected=0) %}
+
+        {% if selected_tier == 'oem' %}
+          {% set parts_selected = job.parts_oem|float %}
+          {% set parts_label = 'OEM' %}
+        {% elif selected_tier == 'economy' %}
+          {% set parts_selected = job.parts_economy|float %}
+          {% set parts_label = 'Economy' %}
+        {% else %}
+          {% set parts_selected = job.parts_quality|float %}
+          {% set parts_label = 'Quality' %}
+        {% endif %}
+
+        {% set ns.labor = ns.labor + labor_total %}
+        {% set ns.parts = ns.parts + parts_selected %}
 
         <div class="job">
           <strong>{{ job.desc or ('Service ' ~ loop.index) }}</strong>
           <div class="meta">Labor: {{ '%.1f'|format(job.labor_hours|float) }} hrs @ ${{ '%.2f'|format(row.labor_rate|float) }}/hr = ${{ '%.2f'|format(labor_total) }}</div>
-          <div class="meta">Parts tier selected: {{ selected_tier|capitalize }}</div>
-
-          <table class="part-table">
-            <thead>
-              <tr>
-                <th>Part</th>
-                <th>Qty</th>
-                <th>Unit price</th>
-                <th>Line total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for part in job.parts %}
-                {% if selected_tier == 'oem' %}
-                  {% set unit_price = part.oem|float %}
-                {% elif selected_tier == 'economy' %}
-                  {% set unit_price = part.economy|float %}
-                {% else %}
-                  {% set unit_price = part.quality|float %}
-                {% endif %}
-
-                {% set line_total = (part.qty|float) * unit_price %}
-                {% set ns.parts_selected = ns.parts_selected + line_total %}
-
-                <tr>
-                  <td>{{ part.part_desc or '-' }}</td>
-                  <td>{{ '%.2f'|format(part.qty|float) }}</td>
-                  <td>${{ '%.2f'|format(unit_price) }}</td>
-                  <td>${{ '%.2f'|format(line_total) }}</td>
-                </tr>
-              {% endfor %}
-              {% if not job.parts %}
-              <tr><td colspan="4">No parts listed</td></tr>
-              {% endif %}
-            </tbody>
-          </table>
-
-          <div class="meta" style="margin-top:10px;">Parts total: ${{ '%.2f'|format(ns.parts_selected) }}</div>
-          <div class="meta">Job total: ${{ '%.2f'|format(labor_total + ns.parts_selected) }}</div>
+          <div class="meta">Parts ({{ parts_label }}): ${{ '%.2f'|format(parts_selected) }}</div>
           {% if job.notes %}<div class="meta">Notes: {{ job.notes }}</div>{% endif %}
         </div>
       {% endif %}
     {% endfor %}
 
-    <div class="row"><span>Labor</span><strong>${{ '%.2f'|format(approved_totals.labor_total) }}</strong></div>
-    <div class="row"><span>Parts</span><strong>${{ '%.2f'|format(approved_totals.parts_total) }}</strong></div>
+    {% set tax = ns.parts * ((row.tax_rate|float) / 100) %}
+    {% set grand = ns.labor + ns.parts + (row.service_fee|float) + tax %}
+
+    <div class="row"><span>Labor</span><strong>${{ '%.2f'|format(ns.labor) }}</strong></div>
+    <div class="row"><span>Parts</span><strong>${{ '%.2f'|format(ns.parts) }}</strong></div>
     <div class="row"><span>Service fee</span><strong>${{ '%.2f'|format(row.service_fee|float) }}</strong></div>
-    <div class="row"><span>Tax</span><strong>${{ '%.2f'|format(approved_totals.tax_amount) }}</strong></div>
-    <div class="row"><span><strong>Total</strong></span><strong>${{ '%.2f'|format(approved_totals.total) }}</strong></div>
+    <div class="row"><span>Tax</span><strong>${{ '%.2f'|format(tax) }}</strong></div>
+    <div class="row"><span><strong>Total</strong></span><strong>${{ '%.2f'|format(grand) }}</strong></div>
   </div>
 
   {% if row.signature_data %}

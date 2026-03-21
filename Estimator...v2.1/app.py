@@ -14,6 +14,13 @@ os.makedirs(DEFAULT_DATA_DIR, exist_ok=True)
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
 
+db_dir = os.path.dirname(DB_PATH)
+if db_dir:
+    os.makedirs(db_dir, exist_ok=True)
+db_dir = os.path.dirname(DB_PATH)
+if db_dir:
+    os.makedirs(db_dir, exist_ok=True)
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -31,29 +38,6 @@ def add_column_if_missing(conn, table_name, column_name, column_def):
     cols = table_columns(conn, table_name)
     if column_name not in cols:
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
-
-
-def safe_float(value, default=0.0):
-    try:
-        if value is None or value == "":
-            return float(default)
-        return float(value)
-    except (TypeError, ValueError):
-        return float(default)
-
-
-def generate_token():
-    return secrets.token_urlsafe(8)
-
-
-def generate_invoice_number():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT MAX(id) AS max_id FROM invoices")
-    row = cur.fetchone()
-    next_id = (row["max_id"] or 0) + 1
-    conn.close()
-    return f"INV-{1000 + next_id}"
 
 
 def init_db():
@@ -143,6 +127,20 @@ def init_db():
 init_db()
 
 
+def generate_token():
+    return secrets.token_urlsafe(8)
+
+
+def generate_invoice_number():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT MAX(id) AS max_id FROM invoices")
+    row = cur.fetchone()
+    next_id = (row["max_id"] or 0) + 1
+    conn.close()
+    return f"INV-{1000 + next_id}"
+
+
 def find_or_create_customer(conn, name, phone, email):
     name = (name or "").strip()
     phone = (phone or "").strip()
@@ -189,7 +187,7 @@ def find_or_create_vehicle(conn, customer_id, vehicle_text, vin):
     vehicle_text = (vehicle_text or "").strip()
     vin = (vin or "").strip().upper()
 
-    if not vehicle_text or not customer_id:
+    if not vehicle_text:
         return None
 
     cur = conn.cursor()
@@ -228,42 +226,9 @@ def find_or_create_vehicle(conn, customer_id, vehicle_text, vin):
     return cur.lastrowid
 
 
-def normalize_job_parts(job):
-    parts = job.get("parts", [])
-    normalized = []
-
-    if not isinstance(parts, list):
-        return normalized
-
-    for part in parts:
-        if not isinstance(part, dict):
-            continue
-
-        normalized.append({
-            "part_desc": (part.get("part_desc") or "").strip(),
-            "qty": safe_float(part.get("qty", 1), 1),
-            "oem": safe_float(part.get("oem", 0), 0),
-            "quality": safe_float(part.get("quality", 0), 0),
-            "economy": safe_float(part.get("economy", 0), 0),
-        })
-
-    return normalized
-
-
-def get_job_parts_total(job, tier="quality"):
-    tier = (tier or "quality").strip().lower()
-    if tier not in ("oem", "quality", "economy"):
-        tier = "quality"
-
-    total = 0.0
-    for part in normalize_job_parts(job):
-        total += safe_float(part.get("qty", 1), 1) * safe_float(part.get(tier, 0), 0)
-
-    return round(total, 2)
-
-
-def build_quote_totals(quote, payload, approved_map=None):
+def build_quote_totals(quote, payload):
     jobs = payload.get("jobs", [])
+
     labor_rate = safe_float(quote["labor_rate"], 0)
     tax_rate = safe_float(quote["tax_rate"], 0)
     service_fee = safe_float(quote["service_fee"], 0)
@@ -271,17 +236,10 @@ def build_quote_totals(quote, payload, approved_map=None):
     subtotal_labor = 0.0
     subtotal_parts = 0.0
 
-    for idx, job in enumerate(jobs):
-        labor_total = safe_float(job.get("labor_hours", 0), 0) * labor_rate
-        tier = "quality"
-        if approved_map is not None:
-            if idx not in approved_map:
-                continue
-            tier = approved_map[idx]
-
-        parts_total = get_job_parts_total(job, tier)
-        subtotal_labor += labor_total
-        subtotal_parts += parts_total
+    for job in jobs:
+        labor_hours = safe_float(job.get("labor_hours", 0))
+        subtotal_labor += labor_hours * labor_rate
+        subtotal_parts += get_job_parts_total(job, "quality")
 
     subtotal = subtotal_labor + subtotal_parts + service_fee
     tax = subtotal_parts * (tax_rate / 100.0)
@@ -299,7 +257,6 @@ def build_quote_totals(quote, payload, approved_map=None):
         "tax_amount": round(tax, 2),
         "total": round(grand_total, 2),
     }
-
 
 def parse_approved_map(approved_json):
     approved_jobs = json.loads(approved_json) if approved_json else []
@@ -322,7 +279,6 @@ def parse_approved_map(approved_json):
                 idx = int(item)
             except (TypeError, ValueError):
                 continue
-
             approved_map[idx] = "quality"
 
     return approved_jobs, approved_map
@@ -341,8 +297,7 @@ def index():
     customers = cur.fetchall()
 
     cur.execute("""
-        SELECT vehicles.id, vehicles.customer_id, vehicles.vehicle_text, vehicles.vin,
-               customers.name AS customer_name
+        SELECT vehicles.id, vehicles.customer_id, vehicles.vehicle_text, vehicles.vin, customers.name AS customer_name
         FROM vehicles
         LEFT JOIN customers ON customers.id = vehicles.customer_id
         ORDER BY customers.name COLLATE NOCASE ASC, vehicles.vehicle_text COLLATE NOCASE ASC
@@ -361,12 +316,12 @@ def index():
         vehicles=vehicles
     )
 
-
 @app.route("/save_quote", methods=["POST"])
 def save_quote():
     customer_name = request.form.get("customer_name", "").strip()
     customer_phone = request.form.get("customer_phone", "").strip()
     customer_email = request.form.get("customer_email", "").strip()
+
     vehicle = request.form.get("vehicle", "").strip()
     vin = request.form.get("vin", "").strip().upper()
 
@@ -374,15 +329,20 @@ def save_quote():
     tax_rate = safe_float(request.form.get("tax_rate"), 0)
     service_fee = safe_float(request.form.get("service_fee"), 0)
 
-    job_descs = request.form.getlist("job_desc[]")
+    job_desc = request.form.getlist("job_desc[]")
     job_labor_hrs = request.form.getlist("job_labor_hrs[]")
     job_notes = request.form.getlist("job_notes[]")
 
     jobs = []
-    job_count = max(len(job_descs), len(job_labor_hrs), len(job_notes))
 
-    for i in range(job_count):
-        desc = job_descs[i].strip() if i < len(job_descs) else ""
+    max_len = max(
+        len(job_desc),
+        len(job_labor_hrs),
+        len(job_notes),
+    ) if any([job_desc, job_labor_hrs, job_notes]) else 0
+
+    for i in range(max_len):
+        desc = job_desc[i].strip() if i < len(job_desc) else ""
         labor_hours = safe_float(job_labor_hrs[i] if i < len(job_labor_hrs) else 0, 0)
         notes = job_notes[i].strip() if i < len(job_notes) else ""
 
@@ -392,16 +352,16 @@ def save_quote():
         part_qualities = request.form.getlist(f"part_quality_{i}[]")
         part_economies = request.form.getlist(f"part_economy_{i}[]")
 
-        part_count = max(
+        parts = []
+        part_max_len = max(
             len(part_descs),
             len(part_qtys),
             len(part_oems),
             len(part_qualities),
-            len(part_economies)
-        )
+            len(part_economies),
+        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies]) else 0
 
-        parts = []
-        for p in range(part_count):
+        for p in range(part_max_len):
             part_desc = part_descs[p].strip() if p < len(part_descs) else ""
             qty = safe_float(part_qtys[p] if p < len(part_qtys) else 1, 1)
             oem = safe_float(part_oems[p] if p < len(part_oems) else 0, 0)
@@ -492,9 +452,8 @@ def view_quote(token):
         abort(404)
 
     payload = json.loads(quote["payload_json"] or "{}")
-    approved_jobs, approved_map = parse_approved_map(quote["approved_json"])
     totals = build_quote_totals(quote, payload)
-    approved_totals = build_quote_totals(quote, payload, approved_map=approved_map)
+    approved_jobs, approved_map = parse_approved_map(quote["approved_json"])
 
     return render_template(
         "quote.html",
@@ -502,8 +461,7 @@ def view_quote(token):
         payload=payload,
         totals=totals,
         approved_jobs=approved_jobs,
-        approved_map=approved_map,
-        approved_totals=approved_totals
+        approved_map=approved_map
     )
 
 
@@ -551,14 +509,13 @@ def approve_quote(token):
             signature_data = ?,
             signed_name = ?,
             signed_at = ?,
-            status = ?
+            status = 'approved'
         WHERE quote_token = ?
     """, (
         json.dumps(approved_payload),
         signature_data,
         signed_name,
-        datetime.now().isoformat() if approved_payload else None,
-        "approved" if approved_payload else "quote",
+        datetime.now().isoformat(),
         token
     ))
 
@@ -587,9 +544,24 @@ def convert_invoice(token):
         return redirect(url_for("view_invoice", invoice_number=existing_invoice["invoice_number"]))
 
     payload = json.loads(quote["payload_json"] or "{}")
-    _, approved_map = parse_approved_map(quote["approved_json"])
+    approved_jobs, approved_map = parse_approved_map(quote["approved_json"])
 
-    totals = build_quote_totals(quote, payload, approved_map=approved_map)
+    labor_total = 0.0
+    parts_total = 0.0
+    tax_rate = float(quote["tax_rate"] or 0)
+    service_fee = float(quote["service_fee"] or 0)
+
+    for idx, tier in approved_map.items():
+    if idx < 0 or idx >= len(payload.get("jobs", [])):
+        continue
+
+    job = payload["jobs"][idx]
+    labor_total += safe_float(job.get("labor_hours", 0)) * safe_float(quote["labor_rate"], 0)
+    parts_total += get_job_parts_total(job, tier)
+
+    tax_total = parts_total * (tax_rate / 100.0)
+    grand_total = labor_total + parts_total + service_fee + tax_total
+
     invoice_number = generate_invoice_number()
 
     cur.execute("""
@@ -605,7 +577,7 @@ def convert_invoice(token):
         invoice_number,
         quote["id"],
         datetime.now().isoformat(),
-        round(totals["total"], 2),
+        round(grand_total, 2),
         "unpaid"
     ))
 
@@ -644,17 +616,66 @@ def view_invoice(invoice_number):
         abort(404)
 
     payload = json.loads(row["payload_json"] or "{}")
-    _, approved_map = parse_approved_map(row["approved_json"])
-    approved_totals = build_quote_totals(row, payload, approved_map=approved_map)
+    totals = build_quote_totals(row, payload)
+    approved_jobs, approved_map = parse_approved_map(row["approved_json"])
 
     return render_template(
         "invoice.html",
         row=row,
         payload=payload,
-        approved_map=approved_map,
-        approved_totals=approved_totals
+        totals=totals,
+        approved_jobs=approved_jobs,
+        approved_map=approved_map
     )
+def safe_float(value, default=0.0):
+    try:
+        return float(value or default)
+    except (TypeError, ValueError):
+        return default
 
+
+def normalize_job_parts(job):
+    if isinstance(job.get("parts"), list):
+        normalized = []
+        for part in job["parts"]:
+            if not isinstance(part, dict):
+                continue
+            normalized.append({
+                "part_desc": (part.get("part_desc") or "").strip(),
+                "qty": safe_float(part.get("qty", 1), 1),
+                "oem": safe_float(part.get("oem", 0)),
+                "quality": safe_float(part.get("quality", 0)),
+                "economy": safe_float(part.get("economy", 0)),
+            })
+        return normalized
+
+    old_oem = safe_float(job.get("parts_oem", 0))
+    old_quality = safe_float(job.get("parts_quality", 0))
+    old_economy = safe_float(job.get("parts_economy", 0))
+
+    if old_oem or old_quality or old_economy:
+        return [{
+            "part_desc": "Parts",
+            "qty": 1,
+            "oem": old_oem,
+            "quality": old_quality,
+            "economy": old_economy,
+        }]
+
+    return []
+
+
+def get_job_parts_total(job, tier="quality"):
+    tier = (tier or "quality").lower()
+    if tier not in ("oem", "quality", "economy"):
+        tier = "quality"
+
+    total = 0.0
+    for part in normalize_job_parts(job):
+        qty = safe_float(part.get("qty", 1), 1)
+        price = safe_float(part.get(tier, 0))
+        total += qty * price
+    return round(total, 2)
 
 @app.route("/admin", methods=["GET"])
 def admin():
@@ -680,4 +701,4 @@ def admin():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)

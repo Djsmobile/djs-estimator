@@ -17,58 +17,239 @@
       --danger:#7a1f1f;
       --dangerBorder:rgba(255,120,120,.28);
       --accent:rgba(255,255,255,.08);
-      --ok:#173517;
     }
 
     *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:1160px;margin:0 auto;padding:16px 14px 40px}
-    .page-header{margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .page-header h1{margin:0;font-size:24px;font-weight:800;letter-spacing:.3px}
-    .subtle{color:var(--muted);font-size:13px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
-    .section-title{font-weight:900;margin-bottom:10px;font-size:16px}
-    .section-sub{color:var(--muted);font-size:13px;margin-bottom:12px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .wrap{
+      max-width:1080px;
+      margin:0 auto;
+      padding:16px 14px 40px;
+    }
+
+    .page-header{
+      margin-bottom:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .page-header h1{
+      margin:0;
+      font-size:24px;
+      font-weight:800;
+      letter-spacing:.3px;
+    }
+
+    .subtle{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:14px;
+    }
+
+    .section-title{
+      font-weight:900;
+      margin-bottom:10px;
+      font-size:16px;
+    }
+
+    .section-sub{
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:12px;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+    }
+
     .grow{flex:1 1 260px}
     .col{flex:0 0 160px}
     .col-wide{flex:0 0 220px}
-    label{color:var(--muted);font-size:13px;display:block;margin-bottom:6px}
-    input, textarea, select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);outline:none}
-    textarea{resize:vertical;min-height:90px}
-    select{appearance:auto}
-    .money-input{position:relative}
-    .money-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-weight:600;pointer-events:none}
-    .money-input input{padding-left:22px}
-    .divider{height:1px;background:var(--border);margin:12px 0}
-    .btnrow{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-    button{border:1px solid var(--border2);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:700}
-    button:hover{background:rgba(255,255,255,.10)}
-    .primary-btn{background:rgba(255,255,255,.10)}
-    .delete-btn{background:var(--danger);border:1px solid var(--dangerBorder)}
-    .delete-btn:hover{background:#922727}
-    .job{margin-top:12px}
-    .jobhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-    .jobtitle{font-weight:800;font-size:16px}
-    .small-note{color:var(--muted);font-size:12px;margin-top:6px}
-    .tierbox{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03)}
-    .grid3{margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .part-row{display:grid;grid-template-columns:2.2fr .7fr 1fr 1fr 1fr auto;gap:10px;align-items:end;margin-top:10px}
-    .part-wrap{margin-top:10px}
-    .totline{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03);margin-top:8px}
-    .totline.big{font-size:16px;font-weight:900;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.06)}
-    .pill-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-    .pill{background:var(--accent);border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:999px;font-size:12px}
-    .job-summary{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03)}
-    .job-summary .line{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
-    .ghost-btn{background:rgba(255,255,255,.04)}
-    @media(max-width:980px){
+
+    label{
+      color:var(--muted);
+      font-size:13px;
+      display:block;
+      margin-bottom:6px;
+    }
+
+    input, textarea, select{
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid var(--border2);
+      background:var(--card2);
+      color:var(--text);
+      outline:none;
+    }
+
+    textarea{
+      resize:vertical;
+      min-height:90px;
+    }
+
+    select{
+      appearance:auto;
+    }
+
+    .money-input{
+      position:relative;
+    }
+
+    .money-input span{
+      position:absolute;
+      left:10px;
+      top:50%;
+      transform:translateY(-50%);
+      color:#aaa;
+      font-weight:600;
+      pointer-events:none;
+    }
+
+    .money-input input{
+      padding-left:22px;
+    }
+
+    .divider{
+      height:1px;
+      background:var(--border);
+      margin:12px 0;
+    }
+
+    .btnrow{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    button{
+      border:1px solid var(--border2);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+    }
+
+    button:hover{
+      background:rgba(255,255,255,.10);
+    }
+
+    .primary-btn{
+      background:rgba(255,255,255,.10);
+    }
+
+    .delete-btn{
+      background:var(--danger);
+      border:1px solid var(--dangerBorder);
+    }
+
+    .delete-btn:hover{
+      background:#922727;
+    }
+
+    .job{
+      margin-top:12px;
+    }
+
+    .jobhead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .jobtitle{
+      font-weight:800;
+      font-size:16px;
+    }
+
+    .small-note{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:6px;
+    }
+
+    .tierbox{
+      margin-top:10px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:rgba(255,255,255,.03);
+    }
+
+    .grid3{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+    }
+
+    .totline{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px 10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:rgba(255,255,255,.03);
+      margin-top:8px;
+    }
+
+    .totline.big{
+      font-size:16px;
+      font-weight:900;
+      border-color:rgba(255,255,255,.25);
+      background:rgba(255,255,255,.06);
+    }
+
+    .pill-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+
+    .pill{
+      background:var(--accent);
+      border:1px solid var(--border);
+      color:var(--muted);
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+    }
+
+    @media(max-width:840px){
       .grid3{grid-template-columns:1fr}
-      .part-row{grid-template-columns:1fr 1fr}
       .col, .col-wide{flex:1 1 180px}
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="page-header">
@@ -79,6 +260,7 @@
     </div>
 
     <form method="POST" action="/save_quote" onsubmit="return beforeSave();">
+
       <div class="card">
         <div class="section-title">Customer & Vehicle Info</div>
         <div class="section-sub">Pick an existing customer/vehicle or enter a new one manually.</div>
@@ -187,7 +369,7 @@
         <div class="btnrow">
           <div>
             <div class="section-title" style="margin-bottom:4px;">Services</div>
-            <div class="section-sub" style="margin-bottom:0;">Add each job with labor, multiple part lines, pricing tiers, and notes.</div>
+            <div class="section-sub" style="margin-bottom:0;">Add each job with labor, all parts tiers, and line-item notes.</div>
           </div>
 
           <button type="button" id="addServiceBtn">+ Add another service</button>
@@ -234,61 +416,10 @@
       jobs.forEach((job, index) => {
         job.dataset.idx = index;
         const title = job.querySelector(".jobtitle");
-        if(title) title.textContent = `Service #${index + 1}`;
-
-        const partRows = job.querySelectorAll(".part-row");
-        partRows.forEach((row, pIndex) => {
-          row.querySelectorAll("[data-part-name]").forEach(el => {
-            const base = el.dataset.partName;
-            el.name = `${base}_${index}[]`;
-          });
-        });
+        if(title){
+          title.textContent = `Service #${index + 1}`;
+        }
       });
-    }
-
-    function partRowHtml(jobIdx){
-      return `
-        <div class="part-row">
-          <div>
-            <label>Part description</label>
-            <input type="text" data-part-name="part_desc" name="part_desc_${jobIdx}[]" placeholder="Brake pads" />
-          </div>
-
-          <div>
-            <label>Qty</label>
-            <input type="number" data-part-name="part_qty" name="part_qty_${jobIdx}[]" step="0.01" min="0" value="1.00" />
-          </div>
-
-          <div>
-            <label>OEM</label>
-            <div class="money-input">
-              <span>$</span>
-              <input type="number" data-part-name="part_oem" name="part_oem_${jobIdx}[]" step="0.01" min="0" value="0.00" />
-            </div>
-          </div>
-
-          <div>
-            <label>Quality</label>
-            <div class="money-input">
-              <span>$</span>
-              <input type="number" data-part-name="part_quality" name="part_quality_${jobIdx}[]" step="0.01" min="0" value="0.00" data-role="part-quality" />
-            </div>
-          </div>
-
-          <div>
-            <label>Economy</label>
-            <div class="money-input">
-              <span>$</span>
-              <input type="number" data-part-name="part_economy" name="part_economy_${jobIdx}[]" step="0.01" min="0" value="0.00" />
-            </div>
-          </div>
-
-          <div>
-            <label>&nbsp;</label>
-            <button type="button" class="delete-btn" data-action="delete-part">Delete part</button>
-          </div>
-        </div>
-      `;
     }
 
     function jobHtml(idx){
@@ -297,7 +428,7 @@
           <div class="jobhead">
             <div>
               <div class="jobtitle">Service #${idx + 1}</div>
-              <div class="small-note">Customer-facing description, labor time, multiple parts, and notes.</div>
+              <div class="small-note">Customer-facing description, labor time, parts tiers, and your line-item notes.</div>
             </div>
 
             <button type="button" class="delete-btn" data-action="delete-job">Delete service</button>
@@ -316,32 +447,42 @@
           </div>
 
           <div class="tierbox">
-            <div class="btnrow">
-              <div>
-                <label style="margin:0">Parts lines</label>
-                <div class="small-note">Add as many parts as you need for this service.</div>
-              </div>
-              <button type="button" class="ghost-btn" data-action="add-part">+ Add part line</button>
-            </div>
+            <label>Parts pricing</label>
 
-            <div class="part-wrap" data-part-wrap>
-              ${partRowHtml(idx)}
+            <div class="grid3">
+              <div>
+                <label>OEM parts price</label>
+                <div class="money-input">
+                  <span>$</span>
+                  <input type="number" name="job_parts_oem[]" step="0.01" min="0" value="0.00" />
+                </div>
+              </div>
+
+              <div>
+                <label>Quality parts price</label>
+                <div class="money-input">
+                  <span>$</span>
+                  <input type="number" name="job_parts_quality[]" step="0.01" min="0" value="0.00" data-role="parts-quality" />
+                </div>
+              </div>
+
+              <div>
+                <label>Economy parts price</label>
+                <div class="money-input">
+                  <span>$</span>
+                  <input type="number" name="job_parts_economy[]" step="0.01" min="0" value="0.00" />
+                </div>
+              </div>
             </div>
 
             <div class="small-note">
-              Estimate preview uses the <strong style="color:#fff;">Quality</strong> column by default.
+              Quote preview uses the <strong style="color:#fff;">Quality</strong> parts column by default. Customer parts choice can still happen later on the quote page.
             </div>
           </div>
 
           <div style="margin-top:12px;">
             <label>Line-item notes</label>
-            <textarea name="job_notes[]" placeholder="Additional notes, recommendations, warranty notes, or job details..."></textarea>
-          </div>
-
-          <div class="job-summary">
-            <div class="line"><span>Labor total</span><strong>$<span data-role="job-labor-total">0.00</span></strong></div>
-            <div class="line"><span>Quality parts total</span><strong>$<span data-role="job-parts-total">0.00</span></strong></div>
-            <div class="line"><span>Job total</span><strong>$<span data-role="job-grand-total">0.00</span></strong></div>
+            <textarea name="job_notes[]" placeholder="Additional notes, recommended extras, warranty notes, or job details..."></textarea>
           </div>
         </div>
       `;
@@ -350,29 +491,17 @@
     function calcJob(jobEl){
       const hrs = toNum(jobEl.querySelector('[data-role="labor-hrs"]')?.value);
       const laborRate = toNum(document.getElementById("labor_rate")?.value);
-      const labor = hrs * laborRate;
+      const qualityParts = toNum(jobEl.querySelector('[data-role="parts-quality"]')?.value);
 
-      let parts = 0;
-      jobEl.querySelectorAll('[data-role="part-quality"]').forEach(input => {
-        const row = input.closest(".part-row");
-        const qty = toNum(row.querySelector('[name^="part_qty_"]')?.value);
-        const price = toNum(input.value);
-        parts += qty * price;
-      });
-
-      const laborEl = jobEl.querySelector('[data-role="job-labor-total"]');
-      const partsEl = jobEl.querySelector('[data-role="job-parts-total"]');
-      const grandEl = jobEl.querySelector('[data-role="job-grand-total"]');
-
-      if(laborEl) laborEl.textContent = money(labor);
-      if(partsEl) partsEl.textContent = money(parts);
-      if(grandEl) grandEl.textContent = money(labor + parts);
-
-      return { labor, parts };
+      return {
+        labor: hrs * laborRate,
+        parts: qualityParts
+      };
     }
 
     function calcAll(){
       const jobs = document.querySelectorAll("#services .job");
+
       let laborSum = 0;
       let partsSum = 0;
 
@@ -382,8 +511,9 @@
         partsSum += r.parts;
       });
 
-      const taxRate = toNum(document.getElementById("tax_rate")?.value) / 100;
-      const fee = toNum(document.getElementById("service_fee")?.value);
+      const taxRate = toNum(document.getElementById("tax_rate").value) / 100;
+      const fee = toNum(document.getElementById("service_fee").value);
+
       const tax = partsSum * taxRate;
       const grand = laborSum + partsSum + tax + fee;
 
@@ -397,9 +527,11 @@
     function addService(){
       const services = document.getElementById("services");
       const idx = services.querySelectorAll(".job").length;
+
       const wrap = document.createElement("div");
       wrap.innerHTML = jobHtml(idx);
       services.appendChild(wrap.firstElementChild);
+
       renumberJobs();
       calcAll();
     }
@@ -407,45 +539,15 @@
     function deleteService(buttonEl){
       const job = buttonEl.closest(".job");
       if(!job) return;
+
       job.remove();
       renumberJobs();
       calcAll();
 
-      if(document.querySelectorAll("#services .job").length === 0){
+      const remaining = document.querySelectorAll("#services .job");
+      if(remaining.length === 0){
         addService();
       }
-    }
-
-    function addPart(buttonEl){
-      const job = buttonEl.closest(".job");
-      if(!job) return;
-
-      const idx = Number(job.dataset.idx || 0);
-      const wrap = job.querySelector("[data-part-wrap]");
-      const holder = document.createElement("div");
-      holder.innerHTML = partRowHtml(idx);
-      wrap.appendChild(holder.firstElementChild);
-      renumberJobs();
-      calcAll();
-    }
-
-    function deletePart(buttonEl){
-      const row = buttonEl.closest(".part-row");
-      const wrap = buttonEl.closest("[data-part-wrap]");
-      if(!row || !wrap) return;
-
-      row.remove();
-
-      if(wrap.querySelectorAll(".part-row").length === 0){
-        const job = wrap.closest(".job");
-        const idx = Number(job.dataset.idx || 0);
-        const holder = document.createElement("div");
-        holder.innerHTML = partRowHtml(idx);
-        wrap.appendChild(holder.firstElementChild);
-      }
-
-      renumberJobs();
-      calcAll();
     }
 
     function beforeSave(){
@@ -468,6 +570,7 @@
       for(let i = 0; i < vehicleSelect.options.length; i++){
         const vOpt = vehicleSelect.options[i];
         if(!vOpt.value) continue;
+
         if(String(vOpt.dataset.customerId || "") === String(selectedCustomerId)){
           vehicleSelect.selectedIndex = i;
           fillVehicleFromSelect();
@@ -522,24 +625,10 @@
       document.getElementById("services").addEventListener("change", calcAll);
 
       document.getElementById("services").addEventListener("click", (e) => {
-        const deleteJobBtn = e.target.closest('[data-action="delete-job"]');
-        if(deleteJobBtn){
+        const deleteBtn = e.target.closest('[data-action="delete-job"]');
+        if(deleteBtn){
           e.preventDefault();
-          deleteService(deleteJobBtn);
-          return;
-        }
-
-        const addPartBtn = e.target.closest('[data-action="add-part"]');
-        if(addPartBtn){
-          e.preventDefault();
-          addPart(addPartBtn);
-          return;
-        }
-
-        const deletePartBtn = e.target.closest('[data-action="delete-part"]');
-        if(deletePartBtn){
-          e.preventDefault();
-          deletePart(deletePartBtn);
+          deleteService(deleteBtn);
         }
       });
 
