@@ -489,23 +489,33 @@ def save_quote():
     return redirect(url_for("view_quote", token=token))
 
 
-@app.route("/quote/<token>", methods=["GET"])
+@app.route("/quote/<token>")
 def view_quote(token):
-    conn = get_db()
-    cur = conn.cursor()
+    import json
 
-    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
-    quote = cur.fetchone()
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM quotes WHERE token = ?",
+        (token,)
+    ).fetchone()
     conn.close()
 
-    if not quote:
-        abort(404)
+    if row is None:
+        return "Quote not found", 404
 
-    payload = json.loads(quote["payload_json"] or "{}")
-    totals = build_quote_totals(quote, payload)
-    approved_jobs, approved_map = parse_approved_map(quote["approved_json"])
+    quote = dict(row)
 
-    return render_template(
+    # 🔥 THIS IS THE MISSING PIECE
+    jobs = []
+
+    if quote.get("payload_json"):
+        try:
+            data = json.loads(quote["payload_json"])
+            jobs = data.get("jobs", [])
+        except Exception:
+            jobs = []
+
+    return render_template("quote.html", quote=quote, jobs=jobs)
         "quote.html",
         quote=quote,
         payload=payload,
