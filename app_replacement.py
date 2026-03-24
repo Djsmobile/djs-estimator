@@ -491,11 +491,9 @@ def save_quote():
 
 @app.route("/quote/<token>")
 def view_quote(token):
-    import json
-
-    conn = get_db_connection()
+    conn = get_db()
     row = conn.execute(
-        "SELECT * FROM quotes WHERE token = ?",
+        "SELECT * FROM quotes WHERE quote_token = ?",
         (token,)
     ).fetchone()
     conn.close()
@@ -504,84 +502,14 @@ def view_quote(token):
         return "Quote not found", 404
 
     quote = dict(row)
-    jobs = []
-
-    if quote.get("payload_json"):
-        try:
-            data = json.loads(quote["payload_json"])
-            jobs = data.get("jobs", [])
-        except Exception:
-            jobs = []
-
-    return render_template("quote.html", quote=quote, jobs=jobs)
-@app.route("/approve_quote/<token>", methods=["POST"])
-def approve_quote(token):
-    approved_jobs = request.form.getlist("approve_job[]")
-    signature_data = request.form.get("signature_data", "")
-    signed_name = request.form.get("signed_name", "").strip()
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
-    quote = cur.fetchone()
-    if not quote:
-        conn.close()
-        abort(404)
-
     payload = json.loads(quote["payload_json"] or "{}")
     jobs = payload.get("jobs", [])
 
-    approved_payload = []
+    return render_template("quote.html", quote=quote, jobs=jobs)
 
-    for approved_idx in approved_jobs:
-        try:
-            idx = int(approved_idx)
-        except (TypeError, ValueError):
-            continue
 
-        if idx < 0 or idx >= len(jobs):
-            continue
-
-        selected_tier = request.form.get(f"job_tier_{idx}", "quality").strip().lower()
-        if selected_tier not in ("oem", "quality", "economy"):
-            selected_tier = "quality"
-
-        approved_payload.append({
-            "job_index": idx,
-            "tier": selected_tier
-        })
-
-    cur.execute("""
-        UPDATE quotes
-        SET approved_json = ?,
-            signature_data = ?,
-            signed_name = ?,
-            signed_at = ?,
-            status = 'approved'
-        WHERE quote_token = ?
-    """, (
-        json.dumps(approved_payload),
-        signature_data,
-        signed_name,
-        datetime.now().isoformat(),
-        token
-    ))
-
-    conn.commit()
-
-    # 🔥 GET UPDATED QUOTE
-    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
-    updated_quote = cur.fetchone()
-
-    # 🔥 SEND NOTIFICATIONS
-    if updated_quote:
-        send_email_notification(updated_quote)
-        send_sms_notification(updated_quote)
-
-    conn.close()
-
-    return redirect(url_for("view_quote", token=token))
+@app.route("/approve_quote/<token>", methods=["POST"])
+def approve_quote(token):
     approved_jobs = request.form.getlist("approve_job[]")
     signature_data = request.form.get("signature_data", "")
     signed_name = request.form.get("signed_name", "").strip()

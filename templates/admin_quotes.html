@@ -33,23 +33,11 @@ a{color:#fff}
         </tr>
       </thead>
       <tbody>
-        {% for row in rows %}
-        <tr>
-          <td>{{ row.status or '-' }}</td>
-          <td>{{ row.customer_name or '-' }}<br><span class="small">{{ row.customer_email or '' }}</span></td>
-          <td>{{ row.vehicle or '-' }}<br><span class="small">{{ row.vin or '' }}</span></td>
-          <td>{{ row.customer_phone or '-' }}</td>
-          <td>{{ row.created_at or '-' }}</td>
-          <td>{{ row.signed_name or '-' }}<br><span class="small">{{ row.signed_at or '' }}</span></td>
-          <td>{{ row.invoice_number or '-' }}</td>
-          <td>
-           <a href="/quote/{{ row.token }}" target="_blank">Open quote</a>
-            {% if row.invoice_number %}<br><a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>{% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="8">No quotes yet.</td></tr>
-        {% endfor %}
+{% for row in rows %} {{ row.status or '-' }} {{ row.customer_name or '-' }}
+{{ row.customer_email or '' }} {{ row.vehicle or '-' }}
+{{ row.vin or '' }} {{ row.customer_phone or '-' }} {{ row.created_at or '-' }} {{ row.signed_name or '-' }}
+{{ row.signed_at or '' }} {{ row.invoice_number or '-' }} {% if row.quote_token %} Open quote {% else %} No quote link {% endif %} {% if row.invoice_number %}
+Open invoice {% endif %} {% endfor %}
       </tbody>
     </table>
   </div>
