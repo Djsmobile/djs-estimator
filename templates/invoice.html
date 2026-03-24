@@ -243,17 +243,31 @@
         </div>
       </div>
 
-      <div class="meta">
-        <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
-        <div><strong>Email</strong><br>{{ row.customer_email or '-' }}</div>
-        <div><strong>Phone</strong><br>{{ row.customer_phone or '-' }}</div>
-        <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
-        <div><strong>VIN</strong><br>{{ row.vin or '-' }}</div>
-        <div><strong>Invoice Date</strong><br>{{ row.invoice_created_at or row.created_at or '-' }}</div>
-        <div><strong>Signed By</strong><br>{{ row.signed_name or '-' }}</div>
-        <div><strong>Approved At</strong><br>{{ row.signed_at or '-' }}</div>
-      </div>
-    </div>
+ <div class="meta">
+  <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
+  <div><strong>Email</strong><br>{{ row.customer_email or '-' }}</div>
+  <div><strong>Phone</strong><br>{{ row.customer_phone or '-' }}</div>
+  <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
+  <div><strong>VIN</strong><br>{{ row.vin or '-' }}</div>
+  <div><strong>Invoice Date</strong><br>{{ row.invoice_created_at or row.created_at or '-' }}</div>
+  <div><strong>Signed By</strong><br>{{ row.signed_name or '-' }}</div>
+  <div><strong>Approved At</strong><br>{{ row.signed_at or '-' }}</div>
+  <div><strong>Paid At</strong><br>{{ row.paid_at or '-' }}</div>
+</div>
+    <div class="card">
+  <h2>Payment</h2>
+
+  {% if row.payment_status == 'paid' %}
+    <div class="footer-note">This invoice has been marked paid.</div>
+  {% else %}
+    <form method="POST" action="/mark_paid/{{ row.invoice_number }}">
+      <button type="submit"
+              style="appearance:none;border:none;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;background:#22c55e;color:#08130c;">
+        Mark as Paid
+      </button>
+    </form>
+  {% endif %}
+</div>
 
     <div class="card">
       <h2>Approved Services</h2>

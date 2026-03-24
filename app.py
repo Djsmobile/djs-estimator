@@ -694,6 +694,34 @@ def admin():
 
     return render_template("admin_quotes.html", rows=rows)
 
+@app.route("/mark_paid/<invoice_number>", methods=["POST"])
+def mark_paid(invoice_number):
+    conn = get_db()
+    cur = conn.cursor()
 
+    cur.execute(
+        "SELECT * FROM invoices WHERE invoice_number = ?",
+        (invoice_number,)
+    )
+    invoice = cur.fetchone()
+
+    if not invoice:
+        conn.close()
+        abort(404)
+
+    cur.execute("""
+        UPDATE invoices
+        SET payment_status = 'paid',
+            paid_at = ?
+        WHERE invoice_number = ?
+    """, (
+        datetime.now().isoformat(),
+        invoice_number
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("view_invoice", invoice_number=invoice_number))
 if __name__ == "__main__":
     app.run(debug=False)
