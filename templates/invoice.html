@@ -235,34 +235,27 @@
   <div>
     <h1>Invoice {{ row.invoice_number }}</h1>
     <div class="muted">DJ's Mobile Mechanic</div>
-      <svg id="barcode"></svg>
-  </div>
-</div>
-      <div class="card">
-  <h2>Business Info</h2>
-
-  <div class="meta">
-    <div><strong>Business</strong><br>DJ's Mobile Mechanic</div>
-    <div><strong>Phone</strong><br>279-966-4771</div>
-    <div><strong>Email</strong><br>djsmobilemechanic@proton.me</div>
-    <div><strong>Service Area</strong><br>Lincoln, Roseville, Rocklin, Sacramento</div>
-    <div><strong>Website</strong><br>www.djsmobilediag.com
-  </div>
-</div>
-
-        <div>
+      <div>
           {% if row.payment_status == 'paid' %}
             <span class="pill pill-paid">PAID</span>
           {% else %}
             <span class="pill pill-unpaid">UNPAID</span>
           {% endif %}
         </div>
-      </div>
+      <svg id="barcode"></svg>
+  </div>
+</div>
+      <div class="card">
+  <h2>Invoice Details</h2>
 
- <div class="meta">
+  <div class="meta">
+  <div><strong>Business</strong><br>DJ's Mobile Mechanic</div>
+  <div><strong>Business Phone</strong><br>279-966-4771</div>
+  <div><strong>Email</strong><br>djsmobilemechanic@proton.me</div>
+  <div><strong>Website</strong><br>www.djsmobilediag.com</div>
   <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
+  <div><strong>Customer phone</strong><br>{{ row.customer_phone or '-' }}</div>
   <div><strong>Email</strong><br>{{ row.customer_email or '-' }}</div>
-  <div><strong>Phone</strong><br>{{ row.customer_phone or '-' }}</div>
   <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
   <div><strong>VIN</strong><br>{{ row.vin or '-' }}</div>
   <div><strong>Invoice Date</strong><br>{{ row.invoice_created_at or row.created_at or '-' }}</div>
@@ -270,6 +263,10 @@
   <div><strong>Approved At</strong><br>{{ row.signed_at or '-' }}</div>
   <div><strong>Paid At</strong><br>{{ row.paid_at or '-' }}</div>
 </div>
+
+
+      </div>
+
     <div class="card">
   <h2>Payment</h2>
 
