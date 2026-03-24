@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Invoice {{ row.invoice_number }}</title>
@@ -229,10 +230,25 @@
 
     <div class="card">
       <div class="topbar">
-        <div>
-          <h1>Invoice {{ row.invoice_number }}</h1>
-          <div class="muted">DJ's Mobile Mechanic</div>
-        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+  <img src="/static/logo.png" alt="logo" style="height:50px;">
+  <div>
+    <h1>Invoice {{ row.invoice_number }}</h1>
+    <div class="muted">DJ's Mobile Mechanic</div>
+      <svg id="barcode"></svg>
+  </div>
+</div>
+      <div class="card">
+  <h2>Business Info</h2>
+
+  <div class="meta">
+    <div><strong>Business</strong><br>DJ's Mobile Mechanic</div>
+    <div><strong>Phone</strong><br>279-966-4771</div>
+    <div><strong>Email</strong><br>djsmobilemechanic@proton.me</div>
+    <div><strong>Service Area</strong><br>Lincoln, Roseville, Rocklin, Sacramento</div>
+    <div><strong>Website</strong><br>www.djsmobilediag.com
+  </div>
+</div>
 
         <div>
           {% if row.payment_status == 'paid' %}
@@ -373,5 +389,13 @@
     </div>
 
   </div>
+    <script>
+  JsBarcode("#barcode", "{{ row.invoice_number }}", {
+    format: "CODE128",
+    width: 2,
+    height: 40,
+    displayValue: true
+  });
+</script>
 </body>
 </html>
