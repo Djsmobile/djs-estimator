@@ -230,29 +230,38 @@
 
     <div class="card">
       <div class="topbar">
-        <div style="display:flex;align-items:center;gap:14px;">
-  <img src="/static/logo.png" alt="logo" style="height:50px;">
-  <div>
-    <h1>Invoice {{ row.invoice_number }}</h1>
-    <div class="muted">DJ's Mobile Mechanic</div>
-      <div>
-          {% if row.payment_status == 'paid' %}
-            <span class="pill pill-paid">PAID</span>
-          {% else %}
-            <span class="pill pill-unpaid">UNPAID</span>
-          {% endif %}
-        </div>
-      <svg id="barcode"></svg>
+     <div style="text-align:center; margin-bottom:18px;">
+
+  <img src="/static/logo.png" alt="logo" style="height:70px; margin-bottom:10px;">
+
+  <div style="font-size:20px; font-weight:700;">DJ's Mobile Mechanic</div>
+
+  <div class="muted" style="font-size:13px;">
+    279-966-4771 • djsmobilemechanic@proton.me • www.djsmobilediag.com
   </div>
+
+  <div style="margin-top:14px;">
+    <h1 style="margin:0;">Invoice {{ row.invoice_number }}</h1>
+
+    <div style="margin-top:6px;">
+      {% if row.payment_status == 'paid' %}
+        <span class="pill pill-paid">PAID</span>
+      {% else %}
+        <span class="pill pill-unpaid">UNPAID</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <svg id="barcode"></svg>
+  </div>
+
 </div>
       <div class="card">
   <h2>Invoice Details</h2>
 
   <div class="meta">
-  <div><strong>Business</strong><br>DJ's Mobile Mechanic</div>
-  <div><strong>Business Phone</strong><br>279-966-4771</div>
-  <div><strong>Email</strong><br>djsmobilemechanic@proton.me</div>
-  <div><strong>Website</strong><br>www.djsmobilediag.com</div>
+
   <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
   <div><strong>Customer phone</strong><br>{{ row.customer_phone or '-' }}</div>
   <div><strong>Email</strong><br>{{ row.customer_email or '-' }}</div>
