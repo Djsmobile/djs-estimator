@@ -66,11 +66,17 @@
     }
 
     .meta{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-      gap:10px 18px;
-      margin-top:14px;
-    }
+  display:grid;
+  grid-template-columns:repeat(2,minmax(260px,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+
+@media (max-width: 900px){
+  .meta{
+    grid-template-columns:1fr;
+  }
+}
 
     .meta div{
       background:var(--panel-2);
@@ -229,52 +235,56 @@
   <div class="wrap">
 
     <div class="card">
-      <div class="topbar">
-     <div style="text-align:center; margin-bottom:18px;">
+  <div style="text-align:center; margin-bottom:22px;">
+    <img
+      src="/static/logo.png"
+      alt="DJ's Mobile Mechanic logo"
+      style="max-height:120px; width:auto; margin-bottom:12px; filter:drop-shadow(0 6px 18px rgba(0,0,0,.35));"
+    >
 
-  <img src="/static/logo.png" alt="logo" style="height:70px; margin-bottom:10px;">
+    <div style="font-size:30px; font-weight:800; letter-spacing:.3px; margin-bottom:4px;">
+      DJ's Mobile Mechanic
+    </div>
 
-  <div style="font-size:20px; font-weight:700;">DJ's Mobile Mechanic</div>
+    <div class="muted" style="font-size:13px; margin-bottom:16px;">
+      279-966-4771 • djsmobilemechanic@proton.me • www.djsmobilediag.com
+    </div>
 
-  <div class="muted" style="font-size:13px;">
-    279-966-4771 • djsmobilemechanic@proton.me • www.djsmobilediag.com
-  </div>
+    <div style="height:1px; background:var(--line); max-width:760px; margin:0 auto 18px;"></div>
 
-  <div style="margin-top:14px;">
-    <h1 style="margin:0;">Invoice {{ row.invoice_number }}</h1>
+    <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+      <h1 style="margin:0;">Invoice {{ row.invoice_number }}</h1>
 
-    <div style="margin-top:6px;">
       {% if row.payment_status == 'paid' %}
         <span class="pill pill-paid">PAID</span>
       {% else %}
         <span class="pill pill-unpaid">UNPAID</span>
       {% endif %}
     </div>
+
+    <div class="muted" style="font-size:13px; margin-bottom:14px;">
+      Generated {{ row.invoice_created_at or row.created_at or '-' }}
+    </div>
+
+    <div style="display:flex; justify-content:center;">
+      <svg id="barcode"></svg>
+    </div>
   </div>
 
-  <div style="margin-top:14px;">
-    <svg id="barcode"></svg>
-  </div>
-
-</div>
-      <div class="card">
   <h2>Invoice Details</h2>
 
   <div class="meta">
-
-  <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
-  <div><strong>Customer phone</strong><br>{{ row.customer_phone or '-' }}</div>
-  <div><strong>Email</strong><br>{{ row.customer_email or '-' }}</div>
-  <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
-  <div><strong>VIN</strong><br>{{ row.vin or '-' }}</div>
-  <div><strong>Invoice Date</strong><br>{{ row.invoice_created_at or row.created_at or '-' }}</div>
-  <div><strong>Signed By</strong><br>{{ row.signed_name or '-' }}</div>
-  <div><strong>Approved At</strong><br>{{ row.signed_at or '-' }}</div>
-  <div><strong>Paid At</strong><br>{{ row.paid_at or '-' }}</div>
+    <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
+    <div><strong>Customer Phone</strong><br>{{ row.customer_phone or '-' }}</div>
+    <div><strong>Customer Email</strong><br>{{ row.customer_email or '-' }}</div>
+    <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
+    <div><strong>VIN</strong><br>{{ row.vin or '-' }}</div>
+    <div><strong>Invoice Date</strong><br>{{ row.invoice_created_at or row.created_at or '-' }}</div>
+    <div><strong>Signed By</strong><br>{{ row.signed_name or '-' }}</div>
+    <div><strong>Approved At</strong><br>{{ row.signed_at or '-' }}</div>
+    <div><strong>Paid At</strong><br>{{ row.paid_at or '-' }}</div>
+  </div>
 </div>
-
-
-      </div>
 
     <div class="card">
   <h2>Payment</h2>
@@ -399,8 +409,9 @@
   JsBarcode("#barcode", "{{ row.invoice_number }}", {
     format: "CODE128",
     width: 2,
-    height: 40,
-    displayValue: true
+    height: 48,
+    displayValue: true,
+    margin: 0
   });
 </script>
 </body>
