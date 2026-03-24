@@ -43,7 +43,7 @@ a{color:#fff}
           <td>{{ row.signed_name or '-' }}<br><span class="small">{{ row.signed_at or '' }}</span></td>
           <td>{{ row.invoice_number or '-' }}</td>
           <td>
-            <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
+           <a href="/quote/{{ row.token }}" target="_blank">Open quote</a>
             {% if row.invoice_number %}<br><a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>{% endif %}
           </td>
         </tr>

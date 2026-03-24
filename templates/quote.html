@@ -1,276 +1,373 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DJ's Estimate Review</title>
-<style>
-:root{--bg:#0b0b0b;--card:#141414;--card2:#101010;--text:#f2f2f2;--muted:rgba(242,242,242,.72);--border:rgba(255,255,255,.12);--ok:#173517;--warn:#5a1e1e}
-*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-.wrap{max-width:980px;margin:auto;padding:20px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
-h2,h3{margin-top:0}.meta{color:var(--muted);font-size:14px;line-height:1.5}.job{border-top:1px solid var(--border);margin-top:12px;padding-top:12px}.job:first-child{border-top:none;margin-top:0;padding-top:0}
-.parts{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}.parts label{cursor:pointer;display:flex;align-items:center;margin:0;color:var(--text)}
-.approve{margin-top:10px;display:block}.totals .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)} .totals .row:last-child{border-bottom:none}
-.big{font-size:20px;font-weight:800}.btns{display:flex;gap:10px;flex-wrap:wrap}button,.alink{padding:12px 16px;background:#fff;color:#000;border:none;border-radius:10px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}
-.secondary{background:#2a2a2a;color:#fff}.locked{background:var(--ok)} .err{background:var(--warn)} .small-note{color:var(--muted);font-size:12px;margin-top:6px}
-.sigbox{margin-top:10px}.sigpad{background:#fff;border-radius:10px;border:1px solid #333;touch-action:none;display:block;width:100%;max-width:520px;height:180px}.sigimg{max-width:100%;background:#fff;border-radius:10px;padding:6px;border:1px solid #333}
-@media print{.noprint{display:none!important}body{background:#fff;color:#000}.card{background:#fff;color:#000;border:1px solid #ddd}.meta,.small-note{color:#333}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DJ's Estimate Review</title>
+  <style>
+    :root {
+      --bg: #0b0b0d;
+      --panel: #141519;
+      --panel-2: #1b1d22;
+      --text: #f3f4f6;
+      --muted: #a1a1aa;
+      --line: #2c2f36;
+      --accent: #d4af37;
+      --green: #22c55e;
+      --red: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    h2 {
+      font-size: 20px;
+      color: var(--accent);
+    }
+
+    h3 {
+      font-size: 18px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px 18px;
+      margin-top: 14px;
+    }
+
+    .meta div {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .job {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: #111318;
+      color: var(--muted);
+    }
+
+    .approved {
+      color: #052e16;
+      background: #86efac;
+      border-color: #86efac;
+      font-weight: 700;
+    }
+
+    .signed {
+      color: #052e16;
+      background: #bbf7d0;
+      border-color: #bbf7d0;
+      font-weight: 700;
+    }
+
+    .line {
+      height: 1px;
+      background: var(--line);
+      margin: 14px 0;
+    }
+
+    .money {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .parts-box {
+      margin-top: 10px;
+      padding: 12px;
+      background: #111318;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .part-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px dashed #2d3139;
+    }
+
+    .part-line:last-child {
+      border-bottom: none;
+    }
+
+    .summary {
+      display: grid;
+      gap: 8px;
+      max-width: 420px;
+      margin-left: auto;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .summary-row.total {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent);
+      border-bottom: none;
+      padding-top: 12px;
+    }
+
+    .note {
+      white-space: pre-wrap;
+    }
+
+    .empty {
+      padding: 14px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      background: #111318;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 24px; }
+      .wrap { padding: 16px 12px 28px; }
+      .card { padding: 16px; }
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h2>DJ's Mobile Mechanic Estimate</h2>
-    <div class="meta">
-      Customer: <strong>{{ quote.customer_name or '-' }}</strong><br>
-      Phone: {{ quote.customer_phone or '-' }}<br>
-      Email: {{ quote.customer_email or '-' }}<br>
-      Vehicle: {{ quote.vehicle or '-' }}<br>
-      VIN: {{ quote.vin or '-' }}<br>
-      Created: {{ quote.created_at }}
-    </div>
-  </div>
+  <div class="wrap">
 
-  {% if quote.status == 'approved' or quote.status == 'invoiced' %}
-  <div class="card locked">
-    <h3>Estimate Approved</h3>
-    <div class="meta">
-      Signed by <strong>{{ quote.signed_name or 'Customer' }}</strong><br>
-      {{ quote.signed_at or '' }}
-    </div>
-  </div>
-  {% endif %}
-
-  <form method="POST" action="/approve_quote/{{ quote.quote_token }}" id="approvalForm">
     <div class="card">
-      <h3>Services</h3>
-      {% for job in payload.jobs %}
-      <div class="job customer-job"
-           data-job-index="{{ loop.index0 }}"
-           data-labor-total="{{ '%.2f'|format((job.labor_hours|float) * (quote.labor_rate|float)) }}"
-           data-parts-oem="{{ '%.2f'|format(job.parts_oem|float) }}"
-           data-parts-quality="{{ '%.2f'|format(job.parts_quality|float) }}"
-           data-parts-economy="{{ '%.2f'|format(job.parts_economy|float) }}">
+      <h1>DJ's Estimate Review</h1>
+      <div class="muted">Please review the estimate details below.</div>
 
-        <strong>{{ job.desc or ('Service ' ~ loop.index) }}</strong>
-        <div class="meta">Labor: {{ '%.1f'|format(job.labor_hours|float) }} hrs @ ${{ '%.2f'|format(quote.labor_rate|float) }}/hr</div>
-
-        {% if job.notes %}
-        <div class="small-note">{{ job.notes }}</div>
-        {% endif %}
-
-        <div class="parts">
-          <label>
-            <input
-              type="radio"
-              name="job_tier_{{ loop.index0 }}"
-              value="oem"
-              {% if approved_map.get(loop.index0) == 'oem' %}checked{% endif %}
-              {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
-            >
-            OEM ${{ '%.2f'|format(job.parts_oem|float) }}
-          </label>
-
-          <label>
-            <input
-              type="radio"
-              name="job_tier_{{ loop.index0 }}"
-              value="quality"
-              {% if approved_map.get(loop.index0) == 'quality' or not approved_map.get(loop.index0) %}checked{% endif %}
-              {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
-            >
-            Quality ${{ '%.2f'|format(job.parts_quality|float) }}
-          </label>
-
-          <label>
-            <input
-              type="radio"
-              name="job_tier_{{ loop.index0 }}"
-              value="economy"
-              {% if approved_map.get(loop.index0) == 'economy' %}checked{% endif %}
-              {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
-            >
-            Economy ${{ '%.2f'|format(job.parts_economy|float) }}
-          </label>
-        </div>
-
-        <div class="meta" style="margin-top:8px;">
-          Selected parts: <strong>$<span class="job-selected-parts">{{ '%.2f'|format(job.parts_quality|float) }}</span></strong>
-          &nbsp;|&nbsp;
-          Job total: <strong>$<span class="job-total">{{ '%.2f'|format((job.labor_hours|float * quote.labor_rate|float) + (job.parts_quality|float)) }}</span></strong>
-        </div>
-
-        <label class="approve">
-          <input
-            type="checkbox"
-            class="approve-toggle"
-            name="approve_job[]"
-            value="{{ loop.index0 }}"
-            {% if loop.index0 in approved_map %}checked{% endif %}
-            {% if quote.status == 'approved' or quote.status == 'invoiced' %}disabled{% endif %}
-          >
-          Approve this repair
-        </label>
+      <div class="meta">
+        <div><strong>Customer</strong><br>{{ quote.customer_name or quote.signed_name or '-' }}</div>
+        <div><strong>Email</strong><br>{{ quote.customer_email or quote.email or '-' }}</div>
+        <div><strong>Phone</strong><br>{{ quote.phone or '-' }}</div>
+        <div><strong>Vehicle</strong><br>{{ quote.vehicle or '-' }}</div>
+        <div><strong>VIN</strong><br>{{ quote.vin or '-' }}</div>
+        <div><strong>Mileage</strong><br>{{ quote.mileage or '-' }}</div>
+        <div><strong>Status</strong><br>{{ quote.status or '-' }}</div>
+        <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
       </div>
-      {% endfor %}
     </div>
 
-    <div class="card totals" id="quoteTotals" data-tax-rate="{{ '%.2f'|format(quote.tax_rate|float) }}" data-service-fee="{{ '%.2f'|format(quote.service_fee|float) }}">
-      <h3>Approved Total</h3>
-      <div class="row"><span>Labor</span><strong>$<span id="tLabor">0.00</span></strong></div>
-      <div class="row"><span>Parts</span><strong>$<span id="tParts">0.00</span></strong></div>
-      <div class="row"><span>Service fee</span><strong>$<span id="tService">{{ '%.2f'|format(quote.service_fee|float) }}</span></strong></div>
-      <div class="row"><span>Tax</span><strong>$<span id="tTax">0.00</span></strong></div>
-      <div class="row big"><span>Total</span><strong>$<span id="tGrand">0.00</span></strong></div>
-    </div>
-
-    {% if quote.status != 'approved' and quote.status != 'invoiced' %}
+    {% if quote.status == 'approved' or quote.status == 'invoiced' %}
     <div class="card">
-      <h3>Approval Signature</h3>
-      <label>Customer name</label>
-      <input type="text" name="signed_name" id="signed_name" placeholder="Type your name to authorize repairs">
-      <div class="sigbox noprint">
-        <canvas id="signaturePad" class="sigpad" width="520" height="180"></canvas>
-        <input type="hidden" name="signature_data" id="signature_data">
-        <div class="btns" style="margin-top:10px;">
-          <button type="button" class="secondary" onclick="clearSignature()">Clear signature</button>
-        </div>
+      <h2>Estimate Approved</h2>
+      <div class="pill signed">Signed / Approved</div>
+      <div class="meta" style="margin-top:14px;">
+        <div><strong>Signed By</strong><br>{{ quote.signed_name or 'Customer' }}</div>
+        <div><strong>Signed At</strong><br>{{ quote.signed_at or '-' }}</div>
       </div>
-      <div class="small-note">By submitting, you approve only the checked repairs.</div>
     </div>
     {% endif %}
 
-    <div class="card noprint">
-      <div class="btns">
-        {% if quote.status != 'approved' and quote.status != 'invoiced' %}
-        <button type="submit">Submit Approval</button>
-        {% endif %}
-        {% if quote.status == 'approved' or quote.status == 'invoiced' %}
-        <a class="alink" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>
-        {% endif %}
-        <button type="button" class="secondary" onclick="window.print()">Print / Save PDF</button>
+    {% set jobs_list = jobs if jobs is defined else [] %}
+
+    <div class="card">
+      <h2>Services</h2>
+
+      {% if jobs_list and jobs_list|length > 0 %}
+        {% set ns = namespace(labor_total=0.0, parts_total=0.0) %}
+
+        {% for job in jobs_list %}
+          {% set labor_hours = job.get('labor_hours', 0)|float %}
+          {% set labor_rate = job.get('labor_rate', 0)|float %}
+          {% set labor_total = labor_hours * labor_rate %}
+
+          {% set single_oem = job.get('parts_oem', 0)|float %}
+          {% set single_quality = job.get('parts_aftermarket', job.get('parts_quality', 0))|float %}
+          {% set single_economy = job.get('parts_economy', 0)|float %}
+
+          {% set parts_lines = job.get('parts', []) %}
+          {% set parts_ns = namespace(oem_total=single_oem, quality_total=single_quality, economy_total=single_economy) %}
+
+          {% if parts_lines %}
+            {% for part in parts_lines %}
+              {% set parts_ns.oem_total = parts_ns.oem_total + (part.get('oem', part.get('price_oem', 0))|float) %}
+              {% set parts_ns.quality_total = parts_ns.quality_total + (part.get('quality', part.get('aftermarket', part.get('price_quality', part.get('price_aftermarket', 0))))|float) %}
+              {% set parts_ns.economy_total = parts_ns.economy_total + (part.get('economy', part.get('price_economy', 0))|float) %}
+            {% endfor %}
+          {% endif %}
+
+          {% set chosen_parts = parts_ns.quality_total %}
+          {% set job_total = labor_total + chosen_parts %}
+          {% set ns.labor_total = ns.labor_total + labor_total %}
+          {% set ns.parts_total = ns.parts_total + chosen_parts %}
+
+          <div class="job">
+            <div class="job-header">
+              <div>
+                <h3>{{ job.get('title') or job.get('name') or job.get('description') or 'Service Item' }}</h3>
+                {% if job.get('approved') %}
+                  <span class="pill approved">Approved</span>
+                {% endif %}
+              </div>
+              <div class="money">${{ '%.2f'|format(job_total) }}</div>
+            </div>
+
+            {% if job.get('notes') %}
+              <div class="note muted">{{ job.get('notes') }}</div>
+              <div class="line"></div>
+            {% endif %}
+
+            <div class="meta">
+              <div><strong>Labor Hours</strong><br>{{ '%.2f'|format(labor_hours) }}</div>
+              <div><strong>Labor Rate</strong><br>${{ '%.2f'|format(labor_rate) }}/hr</div>
+              <div><strong>Labor Total</strong><br>${{ '%.2f'|format(labor_total) }}</div>
+              <div><strong>Displayed Parts Total</strong><br>${{ '%.2f'|format(chosen_parts) }}</div>
+            </div>
+
+            {% if parts_lines and parts_lines|length > 0 %}
+              <div class="parts-box">
+                <strong>Parts</strong>
+                {% for part in parts_lines %}
+                  <div class="part-line">
+                    <div>{{ part.get('name') or part.get('description') or 'Part' }}</div>
+                    <div class="muted">
+                      OEM ${{ '%.2f'|format(part.get('oem', part.get('price_oem', 0))|float) }}
+                      &nbsp;|&nbsp;
+                      Quality ${{ '%.2f'|format(part.get('quality', part.get('aftermarket', part.get('price_quality', part.get('price_aftermarket', 0))))|float) }}
+                      &nbsp;|&nbsp;
+                      Economy ${{ '%.2f'|format(part.get('economy', part.get('price_economy', 0))|float) }}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="parts-box">
+                <strong>Parts Options Totals</strong>
+                <div class="part-line">
+                  <div>OEM</div>
+                  <div>${{ '%.2f'|format(parts_ns.oem_total) }}</div>
+                </div>
+                <div class="part-line">
+                  <div>Quality / Aftermarket</div>
+                  <div>${{ '%.2f'|format(parts_ns.quality_total) }}</div>
+                </div>
+                <div class="part-line">
+                  <div>Economy</div>
+                  <div>${{ '%.2f'|format(parts_ns.economy_total) }}</div>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        {% set tax_rate = quote.tax_rate|default(0)|float %}
+        {% set service_fee = quote.service_fee|default(0)|float %}
+        {% set tax_amount = ns.parts_total * (tax_rate / 100) %}
+        {% set grand_total = ns.labor_total + ns.parts_total + tax_amount + service_fee %}
+
+        <div class="line"></div>
+
+        <div class="summary">
+          <div class="summary-row">
+            <span>Labor</span>
+            <span>${{ '%.2f'|format(ns.labor_total) }}</span>
+          </div>
+          <div class="summary-row">
+            <span>Parts</span>
+            <span>${{ '%.2f'|format(ns.parts_total) }}</span>
+          </div>
+          <div class="summary-row">
+            <span>Tax{% if tax_rate %} ({{ '%.2f'|format(tax_rate) }}%){% endif %}</span>
+            <span>${{ '%.2f'|format(tax_amount) }}</span>
+          </div>
+          <div class="summary-row">
+            <span>Service Call Fee</span>
+            <span>${{ '%.2f'|format(service_fee) }}</span>
+          </div>
+          <div class="summary-row total">
+            <span>Total</span>
+            <span>${{ '%.2f'|format(grand_total) }}</span>
+          </div>
+        </div>
+      {% else %}
+        <div class="empty">
+          No service line items were available to display on this version of the quote.
+        </div>
+      {% endif %}
+    </div>
+
+    {% if quote.notes %}
+    <div class="card">
+      <h2>Notes</h2>
+      <div class="note">{{ quote.notes }}</div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h2>Important</h2>
+      <div class="footer-note">
+        Parts pricing and final totals may vary based on selected parts quality, availability, and any additional work found during inspection.
       </div>
     </div>
-  </form>
 
-  {% if quote.signature_data %}
-  <div class="card">
-    <h3>Saved Signature</h3>
-    <img class="sigimg" src="{{ quote.signature_data }}" alt="Customer signature">
   </div>
-  {% endif %}
-</div>
-
-<script>
-function money(n){return (parseFloat(n||0)||0).toFixed(2)}
-
-function calcTotals(){
-  let labor=0,parts=0;
-
-  document.querySelectorAll('.customer-job').forEach(job=>{
-    const approved=job.querySelector('.approve-toggle')?.checked;
-    const selected=job.querySelector('input[type="radio"]:checked')?.value || 'quality';
-    const laborTotal=parseFloat(job.dataset.laborTotal||0)||0;
-    const pOEM=parseFloat(job.dataset.partsOem||0)||0;
-    const pQ=parseFloat(job.dataset.partsQuality||0)||0;
-    const pE=parseFloat(job.dataset.partsEconomy||0)||0;
-
-    let p = selected==='oem' ? pOEM : (selected==='economy' ? pE : pQ);
-
-    const partsEl = job.querySelector('.job-selected-parts');
-    const totalEl = job.querySelector('.job-total');
-
-    if (partsEl) partsEl.textContent = money(p);
-    if (totalEl) totalEl.textContent = money(laborTotal + p);
-
-    if (approved){
-      labor += laborTotal;
-      parts += p;
-    }
-  });
-
-  const box=document.getElementById('quoteTotals');
-  const taxRate=parseFloat(box.dataset.taxRate||0)||0;
-  const serviceFee=parseFloat(box.dataset.serviceFee||0)||0;
-  const tax=parts*(taxRate/100);
-  const grand=labor+parts+serviceFee+tax;
-
-  document.getElementById('tLabor').textContent=money(labor);
-  document.getElementById('tParts').textContent=money(parts);
-  document.getElementById('tTax').textContent=money(tax);
-  document.getElementById('tGrand').textContent=money(grand);
-}
-
-document.querySelectorAll('.approve-toggle, input[type="radio"]').forEach(el=>{
-  el.addEventListener('change', calcTotals);
-});
-calcTotals();
-
-const canvas = document.getElementById('signaturePad');
-if (canvas){
-  const ctx = canvas.getContext('2d');
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
-  let drawing = false;
-
-  function point(e){
-    const rect = canvas.getBoundingClientRect();
-    const source = e.touches ? e.touches[0] : e;
-    return {
-      x:(source.clientX-rect.left)*(canvas.width/rect.width),
-      y:(source.clientY-rect.top)*(canvas.height/rect.height)
-    };
-  }
-
-  function start(e){
-    drawing = true;
-    const p = point(e);
-    ctx.beginPath();
-    ctx.moveTo(p.x,p.y);
-    e.preventDefault();
-  }
-
-  function move(e){
-    if(!drawing) return;
-    const p = point(e);
-    ctx.lineTo(p.x,p.y);
-    ctx.stroke();
-    e.preventDefault();
-  }
-
-  function end(){
-    drawing = false;
-    document.getElementById('signature_data').value = canvas.toDataURL('image/png');
-  }
-
-  canvas.addEventListener('mousedown', start);
-  canvas.addEventListener('mousemove', move);
-  window.addEventListener('mouseup', end);
-  canvas.addEventListener('touchstart', start, {passive:false});
-  canvas.addEventListener('touchmove', move, {passive:false});
-  window.addEventListener('touchend', end);
-}
-
-function clearSignature(){
-  if(!canvas) return;
-  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
-  document.getElementById('signature_data').value='';
-}
-
-document.getElementById('approvalForm')?.addEventListener('submit', function(e){
-  if (!document.getElementById('signed_name')) return;
-  const anyApproved = [...document.querySelectorAll('.approve-toggle')].some(c => c.checked);
-  if (!anyApproved){
-    alert('Approve at least one repair before submitting.');
-    e.preventDefault();
-    return;
-  }
-  if (!document.getElementById('signed_name').value.trim()){
-    alert('Please enter customer name before submitting.');
-    e.preventDefault();
-    return;
-  }
-});
-</script>
 </body>
 </html>
