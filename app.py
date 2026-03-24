@@ -504,8 +504,6 @@ def view_quote(token):
         return "Quote not found", 404
 
     quote = dict(row)
-
-    # 🔥 THIS IS THE MISSING PIECE
     jobs = []
 
     if quote.get("payload_json"):
@@ -516,15 +514,6 @@ def view_quote(token):
             jobs = []
 
     return render_template("quote.html", quote=quote, jobs=jobs)
-        "quote.html",
-        quote=quote,
-        payload=payload,
-        totals=totals,
-        approved_jobs=approved_jobs,
-        approved_map=approved_map
-    )
-
-
 @app.route("/approve_quote/<token>", methods=["POST"])
 def approve_quote(token):
     approved_jobs = request.form.getlist("approve_job[]")
