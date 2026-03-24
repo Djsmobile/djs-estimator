@@ -35,7 +35,15 @@ a{color:#fff}
 <tbody>
 {% for row in rows %}
 <tr>
-  <td>{{ row.status or '-' }}</td>
+  <td>
+  {% if row.status == 'approved' %}
+    <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#16351f;color:#86efac;font-weight:700;">APPROVED</span>
+  {% elif row.status == 'invoiced' %}
+    <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#172554;color:#93c5fd;font-weight:700;">INVOICED</span>
+  {% else %}
+    <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#2a2a2a;color:#d4d4d8;font-weight:700;">QUOTE</span>
+  {% endif %}
+</td>
 
   <td>
     {{ row.customer_name or '-' }}<br>
