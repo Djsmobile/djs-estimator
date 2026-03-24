@@ -66,18 +66,26 @@ a{color:#fff}
 
   <td>{{ row.invoice_number or '-' }}</td>
 
-  <td>
-    {% if row.quote_token %}
-      <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
-    {% else %}
-      <span>No quote link</span>
-    {% endif %}
+<td>
+  {% if row.quote_token %}
+    <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
+  {% else %}
+    <span>No quote link</span>
+  {% endif %}
 
-    {% if row.invoice_number %}
-      <br>
-      <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
-    {% endif %}
-  </td>
+  {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
+    <br>
+    <a href="/convert_invoice/{{ row.quote_token }}" target="_blank"
+       style="display:inline-block;margin-top:6px;padding:6px 10px;border-radius:999px;background:#16351f;color:#86efac;font-weight:700;text-decoration:none;border:1px solid rgba(134,239,172,.25);">
+      Convert to invoice
+    </a>
+  {% endif %}
+
+  {% if row.invoice_number %}
+    <br>
+    <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
+  {% endif %}
+</td>
 </tr>
 {% endfor %}
 </tbody>
