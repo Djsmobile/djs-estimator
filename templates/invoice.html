@@ -221,7 +221,7 @@
       .card{padding:16px}
       .parts-head,
       .part-row{
-        grid-template-columns:1fr;
+        grid-template-columns:1fr !important;
       }
       .parts-head{display:none}
       .part-row{
@@ -306,36 +306,59 @@
 
       {% if payload.jobs and payload.jobs|length > 0 %}
         {% for job in payload.jobs %}
-          {% if loop.index0 in approved_map %}
-            {% set tier = approved_map.get(loop.index0, 'quality') %}
+          {% set job_index = loop.index0 %}
+          {% if job_index in approved_map %}
+            {% set approved_item = approved_map.get(job_index, {}) %}
+            {% set selected_parts = approved_item.get('selected_parts', []) %}
             {% set labor_total = (job.labor_hours|default(0)|float) * (row.labor_rate|default(0)|float) %}
-
             {% set ns = namespace(parts_total=0.0) %}
-            {% for part in job.parts %}
-              {% set price = part[tier]|default(0)|float %}
-              {% set qty = part.qty|default(1)|float %}
-              {% set ns.parts_total = ns.parts_total + (qty * price) %}
-            {% endfor %}
 
             <div class="job">
               <div class="job-header">
                 <div>
-                  <h3>{{ job.desc }}</h3>
-                  <div class="muted">Selected parts tier:
-                    {% if tier == 'oem' %}
-                      OEM
-                    {% elif tier == 'economy' %}
-                      Economy
-                    {% else %}
-                      Quality
-                    {% endif %}
-                  </div>
+                  <h3>{{ job.desc or job.description or job.title or 'Service Item' }}</h3>
+                  <div class="muted">Saved customer parts selections</div>
                 </div>
-                <div class="money">${{ "%.2f"|format(labor_total + ns.parts_total) }}</div>
+                <div class="money">
+                  {% if row.invoice_total %}
+                    {% set _ = None %}
+                  {% endif %}
+                  {% set job_ns = namespace(job_total=labor_total) %}
+                  {% if job.parts and job.parts|length > 0 %}
+                    {% for part in job.parts %}
+                      {% set part_index = loop.index0 %}
+                      {% set qty = part.qty|default(1)|float %}
+                      {% set part_sel = namespace(tier='quality') %}
+                      {% for saved_part in selected_parts %}
+                        {% if saved_part.get('part_index') == part_index %}
+                          {% set part_sel.tier = saved_part.get('tier', 'quality') %}
+                        {% endif %}
+                      {% endfor %}
+                      {% set line_price = part[part_sel.tier]|default(0)|float %}
+                      {% set job_ns.job_total = job_ns.job_total + (qty * line_price) %}
+                    {% endfor %}
+                  {% endif %}
+                  ${{ "%.2f"|format(job_ns.job_total) }}
+                </div>
               </div>
 
               {% if job.notes %}
                 <div class="footer-note" style="white-space:pre-wrap;margin-bottom:10px;">{{ job.notes }}</div>
+              {% endif %}
+
+              {% if job.parts and job.parts|length > 0 %}
+                {% for part in job.parts %}
+                  {% set part_index = loop.index0 %}
+                  {% set qty = part.qty|default(1)|float %}
+                  {% set part_sel = namespace(tier='quality') %}
+                  {% for saved_part in selected_parts %}
+                    {% if saved_part.get('part_index') == part_index %}
+                      {% set part_sel.tier = saved_part.get('tier', 'quality') %}
+                    {% endif %}
+                  {% endfor %}
+                  {% set line_price = part[part_sel.tier]|default(0)|float %}
+                  {% set ns.parts_total = ns.parts_total + (qty * line_price) %}
+                {% endfor %}
               {% endif %}
 
               <div class="meta">
@@ -347,19 +370,28 @@
 
               {% if job.parts and job.parts|length > 0 %}
                 <div class="parts-box">
-                  <div class="parts-head">
+                  <div class="parts-head" style="grid-template-columns:2fr .8fr 1fr 1fr;">
                     <div>Part</div>
                     <div>Qty</div>
+                    <div>Selected Tier</div>
                     <div>Selected Price</div>
                   </div>
 
                   {% for part in job.parts %}
-                    {% set price = part[tier]|default(0)|float %}
+                    {% set part_index = loop.index0 %}
                     {% set qty = part.qty|default(1)|float %}
-                    <div class="part-row">
+                    {% set part_sel = namespace(tier='quality') %}
+                    {% for saved_part in selected_parts %}
+                      {% if saved_part.get('part_index') == part_index %}
+                        {% set part_sel.tier = saved_part.get('tier', 'quality') %}
+                      {% endif %}
+                    {% endfor %}
+                    {% set line_price = part[part_sel.tier]|default(0)|float %}
+                    <div class="part-row" style="grid-template-columns:2fr .8fr 1fr 1fr;">
                       <div>{{ part.part_desc or 'Part' }}</div>
                       <div>{{ "%.2f"|format(qty) }}</div>
-                      <div>${{ "%.2f"|format(qty * price) }}</div>
+                      <div>{{ part_sel.tier|upper }}</div>
+                      <div>${{ "%.2f"|format(qty * line_price) }}</div>
                     </div>
                   {% endfor %}
                 </div>
