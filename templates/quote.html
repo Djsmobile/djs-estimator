@@ -198,6 +198,26 @@
       font-size: 13px;
     }
 
+    .selected-tier-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 110px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #3a3f49;
+      background: #111318;
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+
+    .readonly-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     .tier-selector {
       display: flex;
       gap: 10px;
@@ -422,52 +442,17 @@
 
     {% if quote.status == 'approved' or quote.status == 'invoiced' %}
     <div class="card">
-      <h2>Selected Parts Choices</h2>
-      <div class="footer-note">
-        Final parts selections approved by the customer.
-      </div>
-
-      {% if jobs and jobs|length > 0 %}
-        {% for job in jobs %}
-          {% set job_index = loop.index0 %}
-          {% set approved_item = approved_map.get(job_index, {}) %}
-          {% set selected_parts = approved_item.get('selected_parts', []) %}
-          {% set job_parts = job.get('parts', []) %}
-
-          <div class="job">
-            <h3>{{ job.get('desc') or job.get('description') or job.get('title') or 'Service Item' }}</h3>
-
-            {% if job_parts and selected_parts %}
-              <div style="margin-top:10px;">
-                {% for part in job_parts %}
-                  {% set part_index = loop.index0 %}
-                  {% set selected_tier = 'quality' %}
-                  {% for saved_part in selected_parts %}
-                    {% if saved_part.get('part_index') == part_index %}
-                      {% set selected_tier = saved_part.get('tier', 'quality') %}
-                    {% endif %}
-                  {% endfor %}
-                  <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed #2d3139;">
-                    <span>{{ part.get('part_desc') or 'Part' }}</span>
-                    <span style="font-weight:700; color:var(--accent);">{{ selected_tier|upper }}</span>
-                  </div>
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="footer-note">No part selections recorded.</div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      {% endif %}
-    </div>
-
-    <div class="card">
       <h2>Estimate Approved</h2>
       <span class="pill approved-pill">Signed / Approved</span>
 
       <div class="meta">
         <div><strong>Signed By</strong><br>{{ quote.signed_name or 'Customer' }}</div>
         <div><strong>Signed At</strong><br>{{ quote.signed_at or '-' }}</div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <h3 style="margin-bottom:8px;">Saved Parts Selections</h3>
+        <div class="footer-note">These are the parts choices that were approved and are now locked.</div>
       </div>
 
       {% if quote.status == 'invoiced' %}
@@ -552,6 +537,15 @@
                     {% set line_oem = qty * (part.get('oem', 0)|float) %}
                     {% set line_quality = qty * (part.get('quality', 0)|float) %}
                     {% set line_economy = qty * (part.get('economy', 0)|float) %}
+                    {% set part_index = loop.index0 %}
+                    {% set approved_item = approved_map.get(job_index, {}) if approved_map is defined else {} %}
+                    {% set selected_parts = approved_item.get('selected_parts', []) %}
+                    {% set ns = namespace(saved_tier='quality') %}
+                    {% for saved_part in selected_parts %}
+                      {% if saved_part.get('part_index') == part_index %}
+                        {% set ns.saved_tier = saved_part.get('tier', 'quality') %}
+                      {% endif %}
+                    {% endfor %}
                     <div class="part-row detailed-part-row"
                          style="grid-template-columns: 2fr 0.8fr 1fr 1fr 1fr 1.35fr; padding: 12px 0;"
                          data-line-oem="{{ '%.2f'|format(line_oem) }}"
@@ -563,15 +557,19 @@
                       <div>${{ '%.2f'|format(line_quality) }}</div>
                       <div>${{ '%.2f'|format(line_economy) }}</div>
                       <div class="part-line-cell">
-                        <select
-                          class="part-line-choice"
-                          name="part_tier_{{ job_index }}_{{ loop.index0 }}"
-                          aria-label="Choose parts quality for {{ part.get('part_desc') or 'Part' }}"
-                        >
-                          <option value="oem">OEM</option>
-                          <option value="quality" selected>Quality</option>
-                          <option value="economy">Economy</option>
-                        </select>
+                        {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+                          <span class="selected-tier-pill">{{ ns.saved_tier|upper }}</span>
+                        {% else %}
+                          <select
+                            class="part-line-choice"
+                            name="part_tier_{{ job_index }}_{{ part_index }}"
+                            aria-label="Choose parts quality for {{ part.get('part_desc') or 'Part' }}"
+                          >
+                            <option value="oem" {% if ns.saved_tier == 'oem' %}selected{% endif %}>OEM</option>
+                            <option value="quality" {% if ns.saved_tier == 'quality' %}selected{% endif %}>Quality</option>
+                            <option value="economy" {% if ns.saved_tier == 'economy' %}selected{% endif %}>Economy</option>
+                          </select>
+                        {% endif %}
                       </div>
                     </div>
                   {% endfor %}
@@ -586,9 +584,18 @@
                 {% endif %}
 
                 <div class="approve-box">
-                  <input type="checkbox" name="approve_job[]" value="{{ job_index }}" class="approve-job" checked>
-                  <span>Approve this service</span>
+                  {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+                    <input type="checkbox" name="approve_job[]" value="{{ job_index }}" class="approve-job" checked disabled>
+                    <span>Approved service (locked)</span>
+                  {% else %}
+                    <input type="checkbox" name="approve_job[]" value="{{ job_index }}" class="approve-job" checked>
+                    <span>Approve this service</span>
+                  {% endif %}
                 </div>
+
+                {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+                <div class="readonly-note">This approved estimate is locked. Parts selections shown above are the saved customer choices.</div>
+                {% endif %}
 
                 <div class="job-total-box">
                   <div class="job-total-inner">
