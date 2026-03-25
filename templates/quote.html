@@ -155,6 +155,49 @@
       border-bottom: none;
     }
 
+    .part-line-choice {
+      width: 100%;
+      min-width: 150px;
+      background: #0f1115;
+      color: var(--text);
+      border: 1px solid #3a3f49;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.2;
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+    }
+
+    .part-line-choice:hover {
+      border-color: #4b5563;
+      background: #13161c;
+    }
+
+    .part-line-choice:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(212,175,55,.15);
+      background: #151922;
+    }
+
+    .part-line-cell {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .parts-summary-banner {
+      margin-top: 10px;
+      margin-bottom: 6px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #0f1115;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     .tier-selector {
       display: flex;
       gap: 10px;
@@ -181,9 +224,10 @@
     .approve-box {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 10px;
+      margin-top: 16px;
       font-weight: 700;
+      padding-top: 6px;
     }
 
     .approve-box input {
@@ -192,7 +236,7 @@
     }
 
     .job-total-box {
-      margin-top: 12px;
+      margin-top: 18px;
       display: flex;
       justify-content: flex-end;
     }
@@ -324,12 +368,24 @@
     @media (max-width: 820px) {
       .parts-head,
       .part-row {
-        grid-template-columns: 1.5fr 0.8fr 1fr 1fr 1fr;
+        grid-template-columns: 1.25fr 0.75fr 0.9fr 0.9fr 0.9fr 1.1fr;
         font-size: 13px;
+      }
+
+      .part-line-choice {
+        min-width: 128px;
+        padding: 9px 10px;
       }
     }
 
     @media (max-width: 640px) {
+      .part-line-cell {
+        justify-content: stretch;
+      }
+
+      .part-line-choice {
+        min-width: 0;
+      }
       h1 { font-size: 24px; }
       .wrap { padding: 16px 12px 28px; }
       .card { padding: 16px; }
@@ -365,6 +421,46 @@
     </div>
 
     {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+    <div class="card">
+      <h2>Selected Parts Choices</h2>
+      <div class="footer-note">
+        Final parts selections approved by the customer.
+      </div>
+
+      {% if jobs and jobs|length > 0 %}
+        {% for job in jobs %}
+          {% set job_index = loop.index0 %}
+          {% set approved_item = approved_map.get(job_index, {}) %}
+          {% set selected_parts = approved_item.get('selected_parts', []) %}
+          {% set job_parts = job.get('parts', []) %}
+
+          <div class="job">
+            <h3>{{ job.get('desc') or job.get('description') or job.get('title') or 'Service Item' }}</h3>
+
+            {% if job_parts and selected_parts %}
+              <div style="margin-top:10px;">
+                {% for part in job_parts %}
+                  {% set part_index = loop.index0 %}
+                  {% set selected_tier = 'quality' %}
+                  {% for saved_part in selected_parts %}
+                    {% if saved_part.get('part_index') == part_index %}
+                      {% set selected_tier = saved_part.get('tier', 'quality') %}
+                    {% endif %}
+                  {% endfor %}
+                  <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dashed #2d3139;">
+                    <span>{{ part.get('part_desc') or 'Part' }}</span>
+                    <span style="font-weight:700; color:var(--accent);">{{ selected_tier|upper }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="footer-note">No part selections recorded.</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
     <div class="card">
       <h2>Estimate Approved</h2>
       <span class="pill approved-pill">Signed / Approved</span>
@@ -439,22 +535,44 @@
                 <strong>Parts</strong>
 
                 {% if parts and parts|length > 0 %}
-                  <div class="parts-head">
+                  <div class="parts-summary-banner">
+                    Select the parts option you want for each individual parts line below. Your choices update the totals instantly.
+                  </div>
+                  <div class="parts-head" style="grid-template-columns: 2fr 0.8fr 1fr 1fr 1fr 1.35fr; padding-bottom: 10px;">
                     <div>Part</div>
                     <div>Qty</div>
                     <div>OEM</div>
                     <div>Quality</div>
                     <div>Economy</div>
+                    <div>Choose</div>
                   </div>
 
                   {% for part in parts %}
                     {% set qty = part.get('qty', 1)|float %}
-                    <div class="part-row">
+                    {% set line_oem = qty * (part.get('oem', 0)|float) %}
+                    {% set line_quality = qty * (part.get('quality', 0)|float) %}
+                    {% set line_economy = qty * (part.get('economy', 0)|float) %}
+                    <div class="part-row detailed-part-row"
+                         style="grid-template-columns: 2fr 0.8fr 1fr 1fr 1fr 1.35fr; padding: 12px 0;"
+                         data-line-oem="{{ '%.2f'|format(line_oem) }}"
+                         data-line-quality="{{ '%.2f'|format(line_quality) }}"
+                         data-line-economy="{{ '%.2f'|format(line_economy) }}">
                       <div>{{ part.get('part_desc') or 'Part' }}</div>
                       <div>{{ '%.2f'|format(qty) }}</div>
-                      <div>${{ '%.2f'|format(qty * (part.get('oem', 0)|float)) }}</div>
-                      <div>${{ '%.2f'|format(qty * (part.get('quality', 0)|float)) }}</div>
-                      <div>${{ '%.2f'|format(qty * (part.get('economy', 0)|float)) }}</div>
+                      <div>${{ '%.2f'|format(line_oem) }}</div>
+                      <div>${{ '%.2f'|format(line_quality) }}</div>
+                      <div>${{ '%.2f'|format(line_economy) }}</div>
+                      <div class="part-line-cell">
+                        <select
+                          class="part-line-choice"
+                          name="part_tier_{{ job_index }}_{{ loop.index0 }}"
+                          aria-label="Choose parts quality for {{ part.get('part_desc') or 'Part' }}"
+                        >
+                          <option value="oem">OEM</option>
+                          <option value="quality" selected>Quality</option>
+                          <option value="economy">Economy</option>
+                        </select>
+                      </div>
                     </div>
                   {% endfor %}
                 {% else %}
@@ -466,23 +584,6 @@
                     <div>${{ '%.2f'|format(ns.economy_total) }}</div>
                   </div>
                 {% endif %}
-
-                <div class="tier-selector">
-                  <label class="tier-option">
-                    <input type="radio" name="job_tier_{{ job_index }}" value="oem">
-                    OEM (${{ '%.2f'|format(ns.oem_total) }})
-                  </label>
-
-                  <label class="tier-option">
-                    <input type="radio" name="job_tier_{{ job_index }}" value="quality" checked>
-                    Quality (${{ '%.2f'|format(ns.quality_total) }})
-                  </label>
-
-                  <label class="tier-option">
-                    <input type="radio" name="job_tier_{{ job_index }}" value="economy">
-                    Economy (${{ '%.2f'|format(ns.economy_total) }})
-                  </label>
-                </div>
 
                 <div class="approve-box">
                   <input type="checkbox" name="approve_job[]" value="{{ job_index }}" class="approve-job" checked>
@@ -540,6 +641,31 @@
       <div class="card">
         <h2>Approval</h2>
 
+        <div style="margin-top:12px; background:#111318; border:1px solid #2c2f36; border-radius:12px; padding:12px;">
+          <strong>Work Location Disclaimer</strong>
+          <div style="margin-top:6px; font-size:13px; color:#a1a1aa;">
+            Customer is responsible for obtaining permission to perform mobile diagnostic or repair services at the vehicle location.
+            Service is subject to a safe work area, property rules, and environmental compliance.
+            If on-site work is restricted or unsafe, service may need to be rescheduled or moved.
+          </div>
+        </div>
+
+        <div style="margin-top:14px; display:flex; gap:10px; align-items:flex-start; background:#111318; border:1px solid #2c2f36; border-radius:12px; padding:12px;">
+          <input
+            type="checkbox"
+            id="location_permission_confirm"
+            name="location_permission_confirm"
+            value="yes"
+            style="width:18px; height:18px; margin-top:2px; flex:0 0 auto;"
+          >
+          <label for="location_permission_confirm" style="margin:0; cursor:pointer;">
+            <strong>I confirm I have permission for on-site mobile service at this vehicle location.</strong>
+            <div style="margin-top:4px; font-size:13px; color:#a1a1aa;">
+              This includes compliance with property rules and a safe work area for service.
+            </div>
+          </label>
+        </div>
+
         <label for="signed_name"><strong>Printed Name</strong></label>
         <div style="margin-top:8px;">
           <input type="text" id="signed_name" name="signed_name" placeholder="Enter your name">
@@ -583,11 +709,6 @@
         return Number(n || 0).toFixed(2);
       }
 
-      function getSelectedTier(jobEl) {
-        const checked = jobEl.querySelector('input[type="radio"]:checked');
-        return checked ? checked.value : 'quality';
-      }
-
       function isApproved(jobEl) {
         const checkbox = jobEl.querySelector('.approve-job');
         return checkbox ? checkbox.checked : false;
@@ -599,10 +720,32 @@
         return parseFloat(jobEl.dataset.qualityTotal || 0);
       }
 
+      function getSelectedPartsTotal(jobEl) {
+        const partSelects = Array.from(jobEl.querySelectorAll('.part-line-choice'));
+
+        if (partSelects.length > 0) {
+          return partSelects.reduce((sum, selectEl) => {
+            const row = selectEl.closest('.detailed-part-row');
+            if (!row) return sum;
+
+            if (selectEl.value === 'oem') {
+              return sum + parseFloat(row.dataset.lineOem || 0);
+            }
+
+            if (selectEl.value === 'economy') {
+              return sum + parseFloat(row.dataset.lineEconomy || 0);
+            }
+
+            return sum + parseFloat(row.dataset.lineQuality || 0);
+          }, 0);
+        }
+
+        return 0;
+      }
+
       function updateJob(jobEl) {
         const laborTotal = parseFloat(jobEl.dataset.laborTotal || 0);
-        const tier = getSelectedTier(jobEl);
-        const selectedParts = getPartsTotalForTier(jobEl, tier);
+        const selectedParts = getSelectedPartsTotal(jobEl);
         const approved = isApproved(jobEl);
 
         const effectiveLabor = approved ? laborTotal : 0;
@@ -648,7 +791,7 @@
       }
 
       jobs.forEach(jobEl => {
-        jobEl.querySelectorAll('input[type="radio"], .approve-job').forEach(el => {
+        jobEl.querySelectorAll('.approve-job, .part-line-choice').forEach(el => {
           el.addEventListener('change', updateSummary);
         });
       });
@@ -743,10 +886,17 @@
           const approvedAny = Array.from(document.querySelectorAll('.approve-job')).some(cb => cb.checked);
           const signedName = document.getElementById('signed_name');
           const signatureData = document.getElementById('signature_data');
+          const locationPermissionConfirm = document.getElementById('location_permission_confirm');
 
           if (!approvedAny) {
             e.preventDefault();
             alert('Please approve at least one service before submitting.');
+            return;
+          }
+
+          if (locationPermissionConfirm && !locationPermissionConfirm.checked) {
+            e.preventDefault();
+            alert('Please confirm you have permission for on-site mobile service before approving.');
             return;
           }
 

@@ -5,18 +5,22 @@ import secrets
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, abort
 
-app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
-os.makedirs(DEFAULT_DATA_DIR, exist_ok=True)
-
 DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
 
-db_dir = os.path.dirname(DB_PATH)
-if db_dir:
-    os.makedirs(db_dir, exist_ok=True)
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+os.makedirs(TEMPLATES_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+app.secret_key = secrets.token_hex(16)
+
+DEFAULT_LABOR_RATE = 150.00
+DEFAULT_TAX_RATE = 7.25
+DEFAULT_SERVICE_FEE = 0.00
 
 
 def get_db():
@@ -27,7 +31,7 @@ def get_db():
 
 def safe_float(value, default=0.0):
     try:
-        return float(value or default)
+        return float(value if value not in (None, "") else default)
     except (TypeError, ValueError):
         return default
 
@@ -159,11 +163,10 @@ def find_or_create_customer(conn, name, phone, email):
         cur.execute("SELECT * FROM customers WHERE phone = ?", (phone,))
         existing = cur.fetchone()
         if existing:
-            cur.execute("""
-                UPDATE customers
-                SET name = ?, email = ?
-                WHERE id = ?
-            """, (name, email, existing["id"]))
+            cur.execute(
+                "UPDATE customers SET name = ?, email = ? WHERE id = ?",
+                (name, email, existing["id"]),
+            )
             conn.commit()
             return existing["id"]
 
@@ -171,18 +174,17 @@ def find_or_create_customer(conn, name, phone, email):
         cur.execute("SELECT * FROM customers WHERE email = ?", (email,))
         existing = cur.fetchone()
         if existing:
-            cur.execute("""
-                UPDATE customers
-                SET name = ?, phone = ?
-                WHERE id = ?
-            """, (name, phone, existing["id"]))
+            cur.execute(
+                "UPDATE customers SET name = ?, phone = ? WHERE id = ?",
+                (name, phone, existing["id"]),
+            )
             conn.commit()
             return existing["id"]
 
-    cur.execute("""
-        INSERT INTO customers (name, phone, email, created_at)
-        VALUES (?, ?, ?, ?)
-    """, (name, phone, email, datetime.now().isoformat()))
+    cur.execute(
+        "INSERT INTO customers (name, phone, email, created_at) VALUES (?, ?, ?, ?)",
+        (name, phone, email, datetime.now().isoformat()),
+    )
     conn.commit()
     return cur.lastrowid
 
@@ -191,30 +193,29 @@ def find_or_create_vehicle(conn, customer_id, vehicle_text, vin):
     vehicle_text = (vehicle_text or "").strip()
     vin = (vin or "").strip().upper()
 
-    if not vehicle_text:
+    if not vehicle_text or not customer_id:
         return None
 
     cur = conn.cursor()
 
     if vin:
-        cur.execute("""
-            SELECT * FROM vehicles
-            WHERE customer_id = ? AND vin = ?
-        """, (customer_id, vin))
+        cur.execute(
+            "SELECT * FROM vehicles WHERE customer_id = ? AND vin = ?",
+            (customer_id, vin),
+        )
         existing = cur.fetchone()
         if existing:
-            cur.execute("""
-                UPDATE vehicles
-                SET vehicle_text = ?
-                WHERE id = ?
-            """, (vehicle_text, existing["id"]))
+            cur.execute(
+                "UPDATE vehicles SET vehicle_text = ? WHERE id = ?",
+                (vehicle_text, existing["id"]),
+            )
             conn.commit()
             return existing["id"]
 
-    cur.execute("""
-        SELECT * FROM vehicles
-        WHERE customer_id = ? AND vehicle_text = ?
-    """, (customer_id, vehicle_text))
+    cur.execute(
+        "SELECT * FROM vehicles WHERE customer_id = ? AND vehicle_text = ?",
+        (customer_id, vehicle_text),
+    )
     existing = cur.fetchone()
     if existing:
         if vin and not existing["vin"]:
@@ -222,10 +223,10 @@ def find_or_create_vehicle(conn, customer_id, vehicle_text, vin):
             conn.commit()
         return existing["id"]
 
-    cur.execute("""
-        INSERT INTO vehicles (customer_id, vehicle_text, vin, created_at)
-        VALUES (?, ?, ?, ?)
-    """, (customer_id, vehicle_text, vin, datetime.now().isoformat()))
+    cur.execute(
+        "INSERT INTO vehicles (customer_id, vehicle_text, vin, created_at) VALUES (?, ?, ?, ?)",
+        (customer_id, vehicle_text, vin, datetime.now().isoformat()),
+    )
     conn.commit()
     return cur.lastrowid
 
@@ -236,13 +237,15 @@ def normalize_job_parts(job):
         for part in job["parts"]:
             if not isinstance(part, dict):
                 continue
-            normalized.append({
-                "part_desc": (part.get("part_desc") or "").strip(),
-                "qty": safe_float(part.get("qty", 1), 1),
-                "oem": safe_float(part.get("oem", 0)),
-                "quality": safe_float(part.get("quality", 0)),
-                "economy": safe_float(part.get("economy", 0)),
-            })
+            normalized.append(
+                {
+                    "part_desc": (part.get("part_desc") or "").strip(),
+                    "qty": safe_float(part.get("qty", 1), 1),
+                    "oem": safe_float(part.get("oem", 0)),
+                    "quality": safe_float(part.get("quality", 0)),
+                    "economy": safe_float(part.get("economy", 0)),
+                }
+            )
         return normalized
 
     old_oem = safe_float(job.get("parts_oem", 0))
@@ -274,9 +277,83 @@ def get_job_parts_total(job, tier="quality"):
     return round(total, 2)
 
 
-def build_quote_totals(quote, payload):
-    jobs = payload.get("jobs", [])
+def get_job_parts_total_from_selections(job, selected_parts=None, default_tier="quality"):
+    parts = normalize_job_parts(job)
+    if not parts:
+        return 0.0
 
+    selections_map = {}
+    if isinstance(selected_parts, list):
+        for item in selected_parts:
+            if not isinstance(item, dict):
+                continue
+            try:
+                part_index = int(item.get("part_index"))
+            except (TypeError, ValueError):
+                continue
+            tier = (item.get("tier") or default_tier or "quality").strip().lower()
+            if tier not in ("oem", "quality", "economy"):
+                tier = "quality"
+            selections_map[part_index] = tier
+
+    total = 0.0
+    for idx, part in enumerate(parts):
+        qty = safe_float(part.get("qty", 1), 1)
+        tier = selections_map.get(idx, (default_tier or "quality").lower())
+        if tier not in ("oem", "quality", "economy"):
+            tier = "quality"
+        price = safe_float(part.get(tier, 0))
+        total += qty * price
+
+    return round(total, 2)
+
+
+def parse_approved_map(approved_json):
+    raw = json.loads(approved_json) if approved_json else []
+    if isinstance(raw, dict):
+        approved_jobs = raw.get("approved_jobs", [])
+    elif isinstance(raw, list):
+        approved_jobs = raw
+    else:
+        approved_jobs = []
+
+    approved_map = {}
+
+    for item in approved_jobs:
+        if isinstance(item, dict):
+            try:
+                idx = int(item.get("job_index"))
+            except (TypeError, ValueError):
+                continue
+
+            tier = (item.get("tier") or "quality").strip().lower()
+            if tier not in ("oem", "quality", "economy"):
+                tier = "quality"
+
+            selected_parts = item.get("selected_parts")
+            if not isinstance(selected_parts, list):
+                selected_parts = []
+
+            approved_map[idx] = {
+                "tier": tier,
+                "selected_parts": selected_parts,
+            }
+        else:
+            try:
+                idx = int(item)
+            except (TypeError, ValueError):
+                continue
+
+            approved_map[idx] = {
+                "tier": "quality",
+                "selected_parts": [],
+            }
+
+    return approved_jobs, approved_map
+
+
+def build_quote_totals(quote, payload, approved_map=None):
+    jobs = payload.get("jobs", [])
     labor_rate = safe_float(quote["labor_rate"], 0)
     tax_rate = safe_float(quote["tax_rate"], 0)
     service_fee = safe_float(quote["service_fee"], 0)
@@ -284,10 +361,21 @@ def build_quote_totals(quote, payload):
     subtotal_labor = 0.0
     subtotal_parts = 0.0
 
-    for job in jobs:
+    for idx, job in enumerate(jobs):
         labor_hours = safe_float(job.get("labor_hours", 0))
+
+        if approved_map is not None:
+            if idx not in approved_map:
+                continue
+            approved_item = approved_map[idx]
+            selected_tier = approved_item.get("tier", "quality") if isinstance(approved_item, dict) else "quality"
+            selected_parts = approved_item.get("selected_parts", []) if isinstance(approved_item, dict) else []
+        else:
+            selected_tier = "quality"
+            selected_parts = []
+
         subtotal_labor += labor_hours * labor_rate
-        subtotal_parts += get_job_parts_total(job, "quality")
+        subtotal_parts += get_job_parts_total_from_selections(job, selected_parts, default_tier=selected_tier)
 
     subtotal = subtotal_labor + subtotal_parts + service_fee
     tax = subtotal_parts * (tax_rate / 100.0)
@@ -307,62 +395,35 @@ def build_quote_totals(quote, payload):
     }
 
 
-def parse_approved_map(approved_json):
-    approved_jobs = json.loads(approved_json) if approved_json else []
-    approved_map = {}
-
-    for item in approved_jobs:
-        if isinstance(item, dict):
-            try:
-                idx = int(item.get("job_index"))
-            except (TypeError, ValueError):
-                continue
-
-            tier = (item.get("tier") or "quality").strip().lower()
-            if tier not in ("oem", "quality", "economy"):
-                tier = "quality"
-
-            approved_map[idx] = tier
-        else:
-            try:
-                idx = int(item)
-            except (TypeError, ValueError):
-                continue
-            approved_map[idx] = "quality"
-
-    return approved_jobs, approved_map
+def get_customers_and_vehicles(conn):
+    customers = conn.execute(
+        "SELECT * FROM customers ORDER BY name COLLATE NOCASE ASC, created_at DESC"
+    ).fetchall()
+    vehicles = conn.execute(
+        """
+        SELECT
+            vehicles.*,
+            customers.name AS customer_name
+        FROM vehicles
+        LEFT JOIN customers ON customers.id = vehicles.customer_id
+        ORDER BY customers.name COLLATE NOCASE ASC, vehicles.vehicle_text COLLATE NOCASE ASC
+        """
+    ).fetchall()
+    return customers, vehicles
 
 
 @app.route("/", methods=["GET"])
 def index():
     conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT id, name, phone, email
-        FROM customers
-        ORDER BY name COLLATE NOCASE ASC
-    """)
-    customers = cur.fetchall()
-
-    cur.execute("""
-        SELECT vehicles.id, vehicles.customer_id, vehicles.vehicle_text, vehicles.vin, customers.name AS customer_name
-        FROM vehicles
-        LEFT JOIN customers ON customers.id = vehicles.customer_id
-        ORDER BY customers.name COLLATE NOCASE ASC, vehicles.vehicle_text COLLATE NOCASE ASC
-    """)
-    vehicles = cur.fetchall()
-
+    customers, vehicles = get_customers_and_vehicles(conn)
     conn.close()
-
     return render_template(
         "index.html",
-        now=datetime.now(),
-        default_labor_rate=150.0,
-        default_tax_rate=7.25,
-        default_service_fee=0.0,
         customers=customers,
-        vehicles=vehicles
+        vehicles=vehicles,
+        default_labor_rate=DEFAULT_LABOR_RATE,
+        default_tax_rate=DEFAULT_TAX_RATE,
+        default_service_fee=DEFAULT_SERVICE_FEE,
     )
 
 
@@ -371,25 +432,18 @@ def save_quote():
     customer_name = request.form.get("customer_name", "").strip()
     customer_phone = request.form.get("customer_phone", "").strip()
     customer_email = request.form.get("customer_email", "").strip()
-
     vehicle = request.form.get("vehicle", "").strip()
     vin = request.form.get("vin", "").strip().upper()
-
-    labor_rate = safe_float(request.form.get("labor_rate"), 0)
-    tax_rate = safe_float(request.form.get("tax_rate"), 0)
-    service_fee = safe_float(request.form.get("service_fee"), 0)
+    labor_rate = safe_float(request.form.get("labor_rate"), DEFAULT_LABOR_RATE)
+    tax_rate = safe_float(request.form.get("tax_rate"), DEFAULT_TAX_RATE)
+    service_fee = safe_float(request.form.get("service_fee"), DEFAULT_SERVICE_FEE)
 
     job_desc = request.form.getlist("job_desc[]")
     job_labor_hrs = request.form.getlist("job_labor_hrs[]")
     job_notes = request.form.getlist("job_notes[]")
 
     jobs = []
-
-    max_len = max(
-        len(job_desc),
-        len(job_labor_hrs),
-        len(job_notes),
-    ) if any([job_desc, job_labor_hrs, job_notes]) else 0
+    max_len = max(len(job_desc), len(job_labor_hrs), len(job_notes)) if any([job_desc, job_labor_hrs, job_notes]) else 0
 
     for i in range(max_len):
         desc = job_desc[i].strip() if i < len(job_desc) else ""
@@ -426,7 +480,7 @@ def save_quote():
                 "qty": qty,
                 "oem": oem,
                 "quality": quality,
-                "economy": economy
+                "economy": economy,
             })
 
         if not desc and labor_hours == 0 and not notes and not parts:
@@ -436,7 +490,7 @@ def save_quote():
             "desc": desc,
             "labor_hours": labor_hours,
             "notes": notes,
-            "parts": parts
+            "parts": parts,
         })
 
     payload = {"jobs": jobs}
@@ -444,14 +498,20 @@ def save_quote():
 
     conn = get_db()
     cur = conn.cursor()
-
     customer_id = find_or_create_customer(conn, customer_name, customer_phone, customer_email)
     vehicle_id = find_or_create_vehicle(conn, customer_id, vehicle, vin) if customer_id else None
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO quotes (
-            quote_token,
-            created_at,
+            quote_token, created_at, customer_id, vehicle_id, customer_name, customer_phone,
+            customer_email, vehicle, vin, labor_rate, tax_rate, service_fee, payload_json, status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            token,
+            datetime.now().isoformat(),
             customer_id,
             vehicle_id,
             customer_name,
@@ -462,40 +522,20 @@ def save_quote():
             labor_rate,
             tax_rate,
             service_fee,
-            payload_json,
-            status
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        token,
-        datetime.now().isoformat(),
-        customer_id,
-        vehicle_id,
-        customer_name,
-        customer_phone,
-        customer_email,
-        vehicle,
-        vin,
-        labor_rate,
-        tax_rate,
-        service_fee,
-        json.dumps(payload),
-        "quote"
-    ))
+            json.dumps(payload),
+            "quote",
+        ),
+    )
 
     conn.commit()
     conn.close()
-
     return redirect(url_for("view_quote", token=token))
 
 
 @app.route("/quote/<token>")
 def view_quote(token):
     conn = get_db()
-    row = conn.execute(
-        "SELECT * FROM quotes WHERE quote_token = ?",
-        (token,)
-    ).fetchone()
+    row = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
     conn.close()
 
     if row is None:
@@ -505,7 +545,8 @@ def view_quote(token):
     payload = json.loads(quote["payload_json"] or "{}")
     jobs = payload.get("jobs", [])
 
-    return render_template("quote.html", quote=quote, jobs=jobs)
+    _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
+    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map)
 
 
 @app.route("/approve_quote/<token>", methods=["POST"])
@@ -513,10 +554,10 @@ def approve_quote(token):
     approved_jobs = request.form.getlist("approve_job[]")
     signature_data = request.form.get("signature_data", "")
     signed_name = request.form.get("signed_name", "").strip()
+    location_permission_confirm = request.form.get("location_permission_confirm", "").strip().lower()
 
     conn = get_db()
     cur = conn.cursor()
-
     cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
     quote = cur.fetchone()
     if not quote:
@@ -525,7 +566,6 @@ def approve_quote(token):
 
     payload = json.loads(quote["payload_json"] or "{}")
     jobs = payload.get("jobs", [])
-
     approved_payload = []
 
     for approved_idx in approved_jobs:
@@ -537,34 +577,52 @@ def approve_quote(token):
         if idx < 0 or idx >= len(jobs):
             continue
 
-        selected_tier = request.form.get(f"job_tier_{idx}", "quality").strip().lower()
-        if selected_tier not in ("oem", "quality", "economy"):
-            selected_tier = "quality"
+        job = jobs[idx]
+        parts = normalize_job_parts(job)
+        selected_parts = []
+
+        for part_index, _part in enumerate(parts):
+            selected_tier = request.form.get(f"part_tier_{idx}_{part_index}", "quality").strip().lower()
+            if selected_tier not in ("oem", "quality", "economy"):
+                selected_tier = "quality"
+
+            selected_parts.append({
+                "part_index": part_index,
+                "tier": selected_tier,
+            })
+
+        job_default_tier = selected_parts[0]["tier"] if selected_parts else "quality"
 
         approved_payload.append({
             "job_index": idx,
-            "tier": selected_tier
+            "tier": job_default_tier,
+            "selected_parts": selected_parts,
         })
 
-    cur.execute("""
+    approval_meta = {
+        "location_permission_confirm": location_permission_confirm == "yes",
+    }
+
+    cur.execute(
+        """
         UPDATE quotes
-        SET approved_json = ?,
-            signature_data = ?,
-            signed_name = ?,
-            signed_at = ?,
-            status = 'approved'
+        SET approved_json = ?, signature_data = ?, signed_name = ?, signed_at = ?, status = 'approved'
         WHERE quote_token = ?
-    """, (
-        json.dumps(approved_payload),
-        signature_data,
-        signed_name,
-        datetime.now().isoformat(),
-        token
-    ))
+        """,
+        (
+            json.dumps({
+                "approved_jobs": approved_payload,
+                "approval_meta": approval_meta,
+            }),
+            signature_data,
+            signed_name,
+            datetime.now().isoformat(),
+            token,
+        ),
+    )
 
     conn.commit()
     conn.close()
-
     return redirect(url_for("view_quote", token=token))
 
 
@@ -575,7 +633,6 @@ def convert_invoice(token):
 
     cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
     quote = cur.fetchone()
-
     if not quote:
         conn.close()
         abort(404)
@@ -587,48 +644,36 @@ def convert_invoice(token):
         return redirect(url_for("view_invoice", invoice_number=existing_invoice["invoice_number"]))
 
     payload = json.loads(quote["payload_json"] or "{}")
-    approved_jobs, approved_map = parse_approved_map(quote["approved_json"])
+    _, approved_map = parse_approved_map(quote["approved_json"])
 
     labor_total = 0.0
     parts_total = 0.0
     tax_rate = safe_float(quote["tax_rate"], 0)
     service_fee = safe_float(quote["service_fee"], 0)
 
-    for idx, tier in approved_map.items():
+    for idx, approved_item in approved_map.items():
         if idx < 0 or idx >= len(payload.get("jobs", [])):
             continue
 
         job = payload["jobs"][idx]
+        selected_tier = approved_item.get("tier", "quality") if isinstance(approved_item, dict) else "quality"
+        selected_parts = approved_item.get("selected_parts", []) if isinstance(approved_item, dict) else []
+
         labor_total += safe_float(job.get("labor_hours", 0)) * safe_float(quote["labor_rate"], 0)
-        parts_total += get_job_parts_total(job, tier)
+        parts_total += get_job_parts_total_from_selections(job, selected_parts, default_tier=selected_tier)
 
     tax_total = parts_total * (tax_rate / 100.0)
     grand_total = labor_total + parts_total + service_fee + tax_total
-
     invoice_number = generate_invoice_number()
 
-    cur.execute("""
-        INSERT INTO invoices (
-            invoice_number,
-            quote_id,
-            created_at,
-            total,
-            payment_status
-        )
-        VALUES (?, ?, ?, ?, ?)
-    """, (
-        invoice_number,
-        quote["id"],
-        datetime.now().isoformat(),
-        round(grand_total, 2),
-        "unpaid"
-    ))
-
+    cur.execute(
+        "INSERT INTO invoices (invoice_number, quote_id, created_at, total, payment_status) VALUES (?, ?, ?, ?, ?)",
+        (invoice_number, quote["id"], datetime.now().isoformat(), round(grand_total, 2), "unpaid"),
+    )
     cur.execute("UPDATE quotes SET status = 'invoiced' WHERE id = ?", (quote["id"],))
 
     conn.commit()
     conn.close()
-
     return redirect(url_for("view_invoice", invoice_number=invoice_number))
 
 
@@ -636,8 +681,8 @@ def convert_invoice(token):
 def view_invoice(invoice_number):
     conn = get_db()
     cur = conn.cursor()
-
-    cur.execute("""
+    cur.execute(
+        """
         SELECT
             invoices.id AS invoice_id,
             invoices.invoice_number,
@@ -650,17 +695,18 @@ def view_invoice(invoice_number):
         FROM invoices
         JOIN quotes ON quotes.id = invoices.quote_id
         WHERE invoices.invoice_number = ?
-    """, (invoice_number,))
+        """,
+        (invoice_number,),
+    )
     row = cur.fetchone()
-
     conn.close()
 
     if not row:
         abort(404)
 
     payload = json.loads(row["payload_json"] or "{}")
-    totals = build_quote_totals(row, payload)
     approved_jobs, approved_map = parse_approved_map(row["approved_json"])
+    totals = build_quote_totals(row, payload, approved_map=approved_map)
 
     return render_template(
         "invoice.html",
@@ -668,7 +714,7 @@ def view_invoice(invoice_number):
         payload=payload,
         totals=totals,
         approved_jobs=approved_jobs,
-        approved_map=approved_map
+        approved_map=approved_map,
     )
 
 
@@ -676,8 +722,8 @@ def view_invoice(invoice_number):
 def admin():
     conn = get_db()
     cur = conn.cursor()
-
-    cur.execute("""
+    cur.execute(
+        """
         SELECT
             quotes.*,
             invoices.invoice_number,
@@ -687,41 +733,31 @@ def admin():
         FROM quotes
         LEFT JOIN invoices ON invoices.quote_id = quotes.id
         ORDER BY quotes.created_at DESC
-    """)
+        """
+    )
     rows = cur.fetchall()
-
     conn.close()
-
     return render_template("admin_quotes.html", rows=rows)
+
 
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])
 def mark_paid(invoice_number):
     conn = get_db()
     cur = conn.cursor()
-
-    cur.execute(
-        "SELECT * FROM invoices WHERE invoice_number = ?",
-        (invoice_number,)
-    )
+    cur.execute("SELECT * FROM invoices WHERE invoice_number = ?", (invoice_number,))
     invoice = cur.fetchone()
-
     if not invoice:
         conn.close()
         abort(404)
 
-    cur.execute("""
-        UPDATE invoices
-        SET payment_status = 'paid',
-            paid_at = ?
-        WHERE invoice_number = ?
-    """, (
-        datetime.now().isoformat(),
-        invoice_number
-    ))
-
+    cur.execute(
+        "UPDATE invoices SET payment_status = 'paid', paid_at = ? WHERE invoice_number = ?",
+        (datetime.now().isoformat(), invoice_number),
+    )
     conn.commit()
     conn.close()
-
     return redirect(url_for("view_invoice", invoice_number=invoice_number))
+
+
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
