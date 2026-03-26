@@ -1,4 +1,6 @@
 import os
+print("ENV TEST:", dict(os.environ))
+import os
 import json
 import sqlite3
 import secrets
