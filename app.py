@@ -796,6 +796,9 @@ def admin():
 
 
 @app.route("/send_quote_sms/<token>", methods=["POST"])
+print("SID:", os.environ.get("TWILIO_ACCOUNT_SID"))
+print("TOKEN:", os.environ.get("TWILIO_AUTH_TOKEN"))
+print("PHONE:", os.environ.get("TWILIO_PHONE_NUMBER"))
 def send_quote_sms_route(token):
     conn = get_db()
     cur = conn.cursor()
