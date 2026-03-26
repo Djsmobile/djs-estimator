@@ -12,11 +12,10 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
 
-# SMS CONFIG
-TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
-APP_BASE_URL = os.environ.get("APP_BASE_URL", "")
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER", "").strip()
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "").strip().rstrip("/")
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
@@ -55,20 +54,7 @@ def add_column_if_missing(conn, table_name, column_name, column_def):
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
 
 
-def init_db()
-
-def send_quote_sms(phone, token, customer_name):
-    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER):
-        return False, "Twilio not configured"
-    try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        quote_url = f"{APP_BASE_URL}/quote/{token}"
-        body = f"DJ’s Mobile Mechanic:\nHi {customer_name}, here is your estimate:\n{quote_url}\n\nReview and approve online."
-        msg = client.messages.create(body=body, from_=TWILIO_PHONE_NUMBER, to=phone)
-        return True, msg.sid
-    except Exception as e:
-        return False, str(e)
-:
+def init_db():
     conn = get_db()
     cur = conn.cursor()
 
@@ -143,6 +129,9 @@ def send_quote_sms(phone, token, customer_name):
     add_column_if_missing(conn, "quotes", "signed_name", "TEXT")
     add_column_if_missing(conn, "quotes", "signed_at", "TEXT")
     add_column_if_missing(conn, "quotes", "status", "TEXT DEFAULT 'quote'")
+    add_column_if_missing(conn, "quotes", "sms_sent_at", "TEXT")
+    add_column_if_missing(conn, "quotes", "sms_status", "TEXT")
+    add_column_if_missing(conn, "quotes", "sms_sid", "TEXT")
 
     add_column_if_missing(conn, "invoices", "payment_status", "TEXT DEFAULT 'unpaid'")
     add_column_if_missing(conn, "invoices", "payment_method", "TEXT")
@@ -154,18 +143,50 @@ def send_quote_sms(phone, token, customer_name):
 
 init_db()
 
-def send_quote_sms(phone, token, customer_name):
-    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER):
-        return False, "Twilio not configured"
+def normalize_phone_number(phone):
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        return f"+1{digits}"
+    if len(digits) == 11 and digits.startswith("1"):
+        return f"+{digits}"
+    if (phone or "").strip().startswith("+"):
+        return (phone or "").strip()
+    return f"+{digits}"
+
+
+def build_quote_url(token):
+    if APP_BASE_URL:
+        return f"{APP_BASE_URL}/quote/{token}"
+    return url_for("view_quote", token=token, _external=True)
+
+
+def send_quote_sms_message(phone, token, customer_name):
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_PHONE_NUMBER:
+        return False, "Twilio environment variables are missing.", None
+
+    normalized_phone = normalize_phone_number(phone)
+    if not normalized_phone:
+        return False, "Customer phone number is missing or invalid.", None
+
+    quote_url = build_quote_url(token)
+    display_name = (customer_name or "there").strip()
+    body = (
+        f"DJ's Mobile Mechanic: Hi {display_name}, here is your estimate: "
+        f"{quote_url} Review and approve online."
+    )
+
     try:
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        quote_url = f"{APP_BASE_URL}/quote/{token}"
-        body = f"DJ’s Mobile Mechanic:\nHi {customer_name}, here is your estimate:\n{quote_url}\n\nReview and approve online."
-        msg = client.messages.create(body=body, from_=TWILIO_PHONE_NUMBER, to=phone)
-        return True, msg.sid
-    except Exception as e:
-        return False, str(e)
-
+        message = client.messages.create(
+            body=body,
+            from_=TWILIO_PHONE_NUMBER,
+            to=normalized_phone,
+        )
+        return True, "Text sent successfully.", message.sid
+    except Exception as exc:
+        return False, str(exc), None
 
 
 def generate_token():
@@ -773,6 +794,49 @@ def admin():
     return render_template("admin_quotes.html", rows=rows)
 
 
+@app.route("/send_quote_sms/<token>", methods=["POST"])
+def send_quote_sms_route(token):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
+    quote = cur.fetchone()
+
+    if not quote:
+        conn.close()
+        abort(404)
+
+    phone = (quote["customer_phone"] or "").strip()
+    customer_name = (quote["customer_name"] or "there").strip()
+
+    success, message_text, sms_sid = send_quote_sms_message(phone, token, customer_name)
+
+    if success:
+        cur.execute(
+            """
+            UPDATE quotes
+            SET sms_sent_at = ?, sms_status = ?, sms_sid = ?
+            WHERE quote_token = ?
+            """,
+            (datetime.now().isoformat(), "sent", sms_sid, token),
+        )
+        conn.commit()
+        flash("Quote text sent successfully.")
+    else:
+        cur.execute(
+            """
+            UPDATE quotes
+            SET sms_sent_at = ?, sms_status = ?, sms_sid = ?
+            WHERE quote_token = ?
+            """,
+            (datetime.now().isoformat(), f"failed: {message_text}", None, token),
+        )
+        conn.commit()
+        flash(f"Text failed: {message_text}")
+
+    conn.close()
+    return redirect(url_for("admin"))
+
+
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])
 def mark_paid(invoice_number):
     conn = get_db()
@@ -792,25 +856,5 @@ def mark_paid(invoice_number):
     return redirect(url_for("view_invoice", invoice_number=invoice_number))
 
 
-@app.route("/send_quote_sms/<token>", methods=["POST"])
-def send_quote_sms_route(token):
-    conn = get_db()
-    quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
-    conn.close()
-    if not quote:
-        abort(404)
-    phone = (quote["customer_phone"] or "").strip()
-    name = (quote["customer_name"] or "Customer").strip()
-    if not phone:
-        flash("No phone number on file")
-        return redirect(url_for("admin"))
-    success, result = send_quote_sms(phone, token, name)
-    if success:
-        flash("Text sent")
-    else:
-        flash(f"Text failed: {result}")
-    return redirect(url_for("admin"))
-
 if __name__ == "__main__":
-
     app.run(debug=True)

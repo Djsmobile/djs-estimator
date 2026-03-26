@@ -19,6 +19,19 @@ a{color:#fff}
 <div class="wrap">
   <div class="card">
     <h2>Quotes</h2>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div style="margin-bottom:14px;">
+      {% for message in messages %}
+        <div style="padding:10px 12px;border-radius:10px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:8px;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
     <table>
       <thead>
         <tr>
@@ -69,6 +82,18 @@ a{color:#fff}
 <td>
   {% if row.quote_token %}
     <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
+    <br>
+    <form method="POST" action="/send_quote_sms/{{ row.quote_token }}" style="margin-top:6px;">
+      <button type="submit" style="display:inline-block;padding:6px 10px;border-radius:999px;background:#1d4ed8;color:#ffffff;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.12);cursor:pointer;">
+        Text quote
+      </button>
+    </form>
+    <div class="small" style="margin-top:6px;">
+      SMS: {{ row.sms_status or 'not sent' }}
+      {% if row.sms_sent_at %}
+        <br>{{ row.sms_sent_at }}
+      {% endif %}
+    </div>
   {% else %}
     <span>No quote link</span>
   {% endif %}
@@ -85,16 +110,8 @@ a{color:#fff}
     <br>
     <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
   {% endif %}
-
-<br>
-<form method="POST" action="/send_quote_sms/{{ row.quote_token }}" style="margin-top:6px;">
-  <button type="submit" style="padding:6px 10px;border-radius:999px;background:#2563eb;color:#fff;border:none;font-weight:700;cursor:pointer;">
-    Text Quote
-  </button>
-</form>
 </td>
 </tr>
-
 {% endfor %}
 </tbody>
     </table>
