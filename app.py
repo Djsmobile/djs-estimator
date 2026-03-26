@@ -1,4 +1,3 @@
-# SMS FIX VERSION
 import os
 import json
 import sqlite3
@@ -130,6 +129,7 @@ def init_db():
     add_column_if_missing(conn, "quotes", "signed_name", "TEXT")
     add_column_if_missing(conn, "quotes", "signed_at", "TEXT")
     add_column_if_missing(conn, "quotes", "status", "TEXT DEFAULT 'quote'")
+
     add_column_if_missing(conn, "quotes", "sms_sent_at", "TEXT")
     add_column_if_missing(conn, "quotes", "sms_status", "TEXT")
     add_column_if_missing(conn, "quotes", "sms_sid", "TEXT")
@@ -144,6 +144,7 @@ def init_db():
 
 init_db()
 
+
 def normalize_phone_number(phone):
     digits = "".join(ch for ch in (phone or "") if ch.isdigit())
     if not digits:
@@ -152,8 +153,8 @@ def normalize_phone_number(phone):
         return f"+1{digits}"
     if len(digits) == 11 and digits.startswith("1"):
         return f"+{digits}"
-    if (phone or "").strip().startswith("+"):
-        return (phone or "").strip()
+    if str(phone).strip().startswith("+"):
+        return str(phone).strip()
     return f"+{digits}"
 
 
@@ -796,9 +797,6 @@ def admin():
 
 
 @app.route("/send_quote_sms/<token>", methods=["POST"])
-print("SID:", os.environ.get("TWILIO_ACCOUNT_SID"))
-print("TOKEN:", os.environ.get("TWILIO_AUTH_TOKEN"))
-print("PHONE:", os.environ.get("TWILIO_PHONE_NUMBER"))
 def send_quote_sms_route(token):
     conn = get_db()
     cur = conn.cursor()
