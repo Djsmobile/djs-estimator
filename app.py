@@ -12,10 +12,13 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
 
-TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
-TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
-TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER", "").strip()
-APP_BASE_URL = os.environ.get("APP_BASE_URL", "").strip().rstrip("/")
+def get_runtime_config():
+    return {
+        "TWILIO_ACCOUNT_SID": os.environ.get("TWILIO_ACCOUNT_SID", "").strip(),
+        "TWILIO_AUTH_TOKEN": os.environ.get("TWILIO_AUTH_TOKEN", "").strip(),
+        "TWILIO_PHONE_NUMBER": os.environ.get("TWILIO_PHONE_NUMBER", "").strip(),
+        "APP_BASE_URL": os.environ.get("APP_BASE_URL", "").strip().rstrip("/"),
+    }
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
@@ -159,14 +162,17 @@ def normalize_phone_number(phone):
 
 
 def build_quote_url(token):
-    if APP_BASE_URL:
-        return f"{APP_BASE_URL}/quote/{token}"
+    config = get_runtime_config()
+    if config["APP_BASE_URL"]:
+        return f'{config["APP_BASE_URL"]}/quote/{token}'
     return url_for("view_quote", token=token, _external=True)
 
 
 def send_quote_sms_message(phone, token, customer_name):
-    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_PHONE_NUMBER:
-        return False, "Twilio environment variables are missing.", None
+    config = get_runtime_config()
+    missing = [key for key in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER") if not config.get(key)]
+    if missing:
+        return False, "Missing: " + ", ".join(missing), None
 
     normalized_phone = normalize_phone_number(phone)
     if not normalized_phone:
@@ -180,10 +186,10 @@ def send_quote_sms_message(phone, token, customer_name):
     )
 
     try:
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client = Client(config["TWILIO_ACCOUNT_SID"], config["TWILIO_AUTH_TOKEN"])
         message = client.messages.create(
             body=body,
-            from_=TWILIO_PHONE_NUMBER,
+            from_=config["TWILIO_PHONE_NUMBER"],
             to=normalized_phone,
         )
         return True, "Text sent successfully.", message.sid
