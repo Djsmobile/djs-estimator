@@ -3,13 +3,20 @@ import json
 import sqlite3
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, flash
+from twilio.rest import Client
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
+
+# SMS CONFIG
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "")
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
@@ -48,7 +55,20 @@ def add_column_if_missing(conn, table_name, column_name, column_def):
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
 
 
-def init_db():
+def init_db()
+
+def send_quote_sms(phone, token, customer_name):
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER):
+        return False, "Twilio not configured"
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        quote_url = f"{APP_BASE_URL}/quote/{token}"
+        body = f"DJ’s Mobile Mechanic:\nHi {customer_name}, here is your estimate:\n{quote_url}\n\nReview and approve online."
+        msg = client.messages.create(body=body, from_=TWILIO_PHONE_NUMBER, to=phone)
+        return True, msg.sid
+    except Exception as e:
+        return False, str(e)
+:
     conn = get_db()
     cur = conn.cursor()
 
@@ -133,6 +153,19 @@ def init_db():
 
 
 init_db()
+
+def send_quote_sms(phone, token, customer_name):
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER):
+        return False, "Twilio not configured"
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        quote_url = f"{APP_BASE_URL}/quote/{token}"
+        body = f"DJ’s Mobile Mechanic:\nHi {customer_name}, here is your estimate:\n{quote_url}\n\nReview and approve online."
+        msg = client.messages.create(body=body, from_=TWILIO_PHONE_NUMBER, to=phone)
+        return True, msg.sid
+    except Exception as e:
+        return False, str(e)
+
 
 
 def generate_token():
@@ -759,5 +792,25 @@ def mark_paid(invoice_number):
     return redirect(url_for("view_invoice", invoice_number=invoice_number))
 
 
+@app.route("/send_quote_sms/<token>", methods=["POST"])
+def send_quote_sms_route(token):
+    conn = get_db()
+    quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
+    conn.close()
+    if not quote:
+        abort(404)
+    phone = (quote["customer_phone"] or "").strip()
+    name = (quote["customer_name"] or "Customer").strip()
+    if not phone:
+        flash("No phone number on file")
+        return redirect(url_for("admin"))
+    success, result = send_quote_sms(phone, token, name)
+    if success:
+        flash("Text sent")
+    else:
+        flash(f"Text failed: {result}")
+    return redirect(url_for("admin"))
+
 if __name__ == "__main__":
+
     app.run(debug=True)

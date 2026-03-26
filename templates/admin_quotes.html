@@ -85,8 +85,16 @@ a{color:#fff}
     <br>
     <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
   {% endif %}
+
+<br>
+<form method="POST" action="/send_quote_sms/{{ row.quote_token }}" style="margin-top:6px;">
+  <button type="submit" style="padding:6px 10px;border-radius:999px;background:#2563eb;color:#fff;border:none;font-weight:700;cursor:pointer;">
+    Text Quote
+  </button>
+</form>
 </td>
 </tr>
+
 {% endfor %}
 </tbody>
     </table>
