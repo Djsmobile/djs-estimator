@@ -419,212 +419,24 @@
         padding: 10px 0;
       }
     }
-
-    .brand-shell {
-      position: relative;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at top right, rgba(212,175,55,.14), transparent 30%),
-        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
-    }
-
-    .brand-shell::after{
-      content:"";
-      position:absolute;
-      inset:auto -10% -30% auto;
-      width:280px;
-      height:280px;
-      border-radius:50%;
-      background:radial-gradient(circle, rgba(212,175,55,.10), transparent 70%);
-      pointer-events:none;
-      filter:blur(10px);
-    }
-
-    .brand-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:18px;
-      flex-wrap:wrap;
-    }
-
-    .brand-lockup{
-      display:flex;
-      align-items:center;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    .brand-logo{
-      width:92px;
-      height:92px;
-      object-fit:contain;
-      border-radius:18px;
-      padding:10px;
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.07);
-      box-shadow:0 10px 24px rgba(0,0,0,.28);
-    }
-
-    .brand-kicker{
-      color:var(--accent);
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.14em;
-      font-weight:800;
-      margin-bottom:6px;
-    }
-
-    .brand-title{
-      margin:0;
-      font-size:30px;
-      line-height:1.05;
-      letter-spacing:.01em;
-    }
-
-    .brand-copy{
-      color:var(--muted);
-      margin-top:6px;
-      max-width:680px;
-    }
-
-    .brand-contact{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
-    }
-
-    .contact-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#111318;
-      color:var(--muted);
-      font-size:13px;
-      font-weight:700;
-    }
-
-    .header-actions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-
-    .status-badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#111318;
-      font-size:13px;
-      font-weight:800;
-      text-transform:uppercase;
-      letter-spacing:.06em;
-    }
-
-    .status-badge.quote{ color:#d4d4d8; }
-    .status-badge.approved{ color:#86efac; border-color:rgba(134,239,172,.25); background:#13251a; }
-    .status-badge.invoiced{ color:#93c5fd; border-color:rgba(147,197,253,.25); background:#15233d; }
-
-    .toolbar{
-      margin-top:16px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .toolbar .btn, .toolbar a.btn{
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    .btn-ghost{
-      background:#171a20;
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-
-    .meta div strong{
-      display:block;
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      color:var(--muted);
-      margin-bottom:6px;
-    }
-
-    @media print{
-      body{ background:#fff; color:#111; }
-      .wrap{ max-width:none; padding:0; }
-      .card, .job, .parts-box, .meta div, .job-total-inner{
-        background:#fff !important;
-        color:#111 !important;
-        box-shadow:none !important;
-      }
-      .card, .job, .parts-box, .meta div, .job-total-inner, .part-line-choice, input[type="text"], .signature-pad-wrap{
-        border-color:#d1d5db !important;
-      }
-      .muted, .footer-note, .small, .contact-pill{ color:#4b5563 !important; }
-      .money, h2, .brand-kicker{ color:#111 !important; }
-      .toolbar, .actions, .signature-wrap, .approve-box input, #location_permission_confirm{ display:none !important; }
-      .contact-pill{ background:#fff !important; }
-      .brand-shell::after{ display:none; }
-    }
-
   </style>
 </head>
 <body>
   <div class="wrap">
 
-    <div class="card brand-shell">
-      <div class="brand-top">
-        <div style="flex:1 1 640px;">
-          <div class="brand-lockup">
-            <img src="/static/logo.png" alt="DJ's Mobile Mechanic logo" class="brand-logo" onerror="this.style.display='none'">
-            <div>
-              <div class="brand-kicker">Estimate Review</div>
-              <h1 class="brand-title">DJ's Mobile Mechanic</h1>
-              <div class="brand-copy">Review the estimate, choose your preferred parts option, and approve the work when you're ready.</div>
-            </div>
-          </div>
+    <div class="card">
+      <h1>DJ's Estimate Review</h1>
+      <div class="muted">Please review the estimate details below.</div>
 
-          <div class="brand-contact">
-            <span class="contact-pill">279-966-4771</span>
-            <span class="contact-pill">djsmobilemechanic@proton.me</span>
-            <span class="contact-pill">www.djsmobilediag.com</span>
-          </div>
-        </div>
-
-        <div class="header-actions">
-          <span class="status-badge {% if quote.status == 'approved' %}approved{% elif quote.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">
-            {{ quote.status or 'quote' }}
-          </span>
-        </div>
-      </div>
-
-      <div class="toolbar">
-        <button type="button" class="btn btn-ghost" onclick="window.print()">Print / Save PDF</button>
-      </div>
-
-      <div class="meta" style="margin-top:18px;">
-        <div><strong>Customer</strong>{{ quote.customer_name or '-' }}</div>
-        <div><strong>Email</strong>{{ quote.customer_email or '-' }}</div>
-        <div><strong>Phone</strong>{{ quote.customer_phone or '-' }}</div>
-        <div><strong>Vehicle</strong>{{ quote.vehicle or '-' }}</div>
-        <div><strong>VIN</strong>{{ quote.vin or '-' }}</div>
-        <div><strong>Mileage</strong>-</div>
-        <div><strong>Status</strong>{{ quote.status or '-' }}</div>
-        <div><strong>Created</strong>{{ quote.created_at or '-' }}</div>
+      <div class="meta">
+        <div><strong>Customer</strong><br>{{ quote.customer_name or '-' }}</div>
+        <div><strong>Email</strong><br>{{ quote.customer_email or '-' }}</div>
+        <div><strong>Phone</strong><br>{{ quote.customer_phone or '-' }}</div>
+        <div><strong>Vehicle</strong><br>{{ quote.vehicle or '-' }}</div>
+        <div><strong>VIN</strong><br>{{ quote.vin or '-' }}</div>
+        <div><strong>Mileage</strong><br>-</div>
+        <div><strong>Status</strong><br>{{ quote.status or '-' }}</div>
+        <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
       </div>
     </div>
 
@@ -916,26 +728,31 @@
       }
 
       function getSelectedPartsTotal(jobEl) {
-        const partSelects = Array.from(jobEl.querySelectorAll('.part-line-choice'));
+        const partRows = Array.from(jobEl.querySelectorAll('.detailed-part-row'));
+        if (partRows.length === 0) return 0;
 
-        if (partSelects.length > 0) {
-          return partSelects.reduce((sum, selectEl) => {
-            const row = selectEl.closest('.detailed-part-row');
-            if (!row) return sum;
+        return partRows.reduce((sum, row) => {
+          const selectEl = row.querySelector('.part-line-choice');
+          const savedTierEl = row.querySelector('.selected-tier-pill');
 
-            if (selectEl.value === 'oem') {
-              return sum + parseFloat(row.dataset.lineOem || 0);
-            }
+          let tier = 'quality';
 
-            if (selectEl.value === 'economy') {
-              return sum + parseFloat(row.dataset.lineEconomy || 0);
-            }
+          if (selectEl) {
+            tier = (selectEl.value || 'quality').toLowerCase();
+          } else if (savedTierEl) {
+            tier = (savedTierEl.textContent || 'quality').trim().toLowerCase();
+          }
 
-            return sum + parseFloat(row.dataset.lineQuality || 0);
-          }, 0);
-        }
+          if (tier === 'oem') {
+            return sum + parseFloat(row.dataset.lineOem || 0);
+          }
 
-        return 0;
+          if (tier === 'economy') {
+            return sum + parseFloat(row.dataset.lineEconomy || 0);
+          }
+
+          return sum + parseFloat(row.dataset.lineQuality || 0);
+        }, 0);
       }
 
       function updateJob(jobEl) {
