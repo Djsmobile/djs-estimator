@@ -5,132 +5,195 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DJ's Quotes Admin</title>
 <style>
-:root{--bg:#0b0b0b;--card:#141414;--text:#f2f2f2;--muted:rgba(242,242,242,.75);--border:rgba(255,255,255,.12)}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-.wrap{max-width:1160px;margin:auto;padding:20px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top}
-a{color:#fff}
+:root{
+  --bg:#0b0b0d;
+  --panel:#141519;
+  --panel-2:#1b1d22;
+  --text:#f3f4f6;
+  --muted:#a1a1aa;
+  --line:#2c2f36;
+  --accent:#d4af37;
+  --green:#22c55e;
+  --red:#ef4444;
+  --blue:#3b82f6;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+.wrap{max-width:1380px;margin:auto;padding:22px 16px 32px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 32px rgba(0,0,0,.24)}
+.hero{
+  margin-bottom:16px;
+  background:
+    radial-gradient(circle at top right, rgba(212,175,55,.14), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+}
+.hero-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.brand{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.logo{width:86px;height:86px;object-fit:contain;border-radius:18px;padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.kicker{color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;margin-bottom:6px}
+h1{margin:0;font-size:30px;line-height:1.05}
+.sub{color:var(--muted);margin-top:6px}
+.pill-row,.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.pill, .stat{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;border:1px solid var(--line);background:#111318;color:var(--muted);font-size:13px;font-weight:800}
+.table-wrap{overflow:auto;margin-top:14px}
+table{width:100%;border-collapse:separate;border-spacing:0 10px;font-size:14px;min-width:1200px}
+thead th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;padding:0 12px 8px;text-align:left}
+tbody td{padding:14px 12px;vertical-align:top;background:var(--panel-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:14px;border-bottom-left-radius:14px}
+tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:14px;border-bottom-right-radius:14px}
 .small{color:var(--muted);font-size:12px}
+.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--line);background:#111318}
+.status.approved{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.status.invoiced{background:#172554;color:#93c5fd;border-color:rgba(147,197,253,.25)}
+.status.quote{background:#2a2a2a;color:#d4d4d8}
 .actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.btn{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.12);cursor:pointer;background:#2a2a2a;color:#fff}
+.btn, a.btn{
+  display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
+  padding:8px 12px;border-radius:12px;font-weight:800;border:1px solid rgba(255,255,255,.10);cursor:pointer;
+  background:#20242b;color:var(--text)
+}
+.btn:hover, a.btn:hover{filter:brightness(1.08)}
 .btn-blue{background:#1d4ed8}
 .btn-green{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
 .btn-red{background:#3a1111;color:#fecaca;border-color:rgba(248,113,113,.25)}
 .btn-amber{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
+.link{color:#fff;text-decoration:none;font-weight:700}
+.flash{padding:12px 14px;border-radius:12px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:10px}
 .inline-form{margin:0}
+@media (max-width:900px){
+  .wrap{padding:16px 12px 24px}
+  h1{font-size:26px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="card">
-    <h2>Quotes</h2>
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <div style="margin-bottom:14px;">
-      {% for message in messages %}
-        <div style="padding:10px 12px;border-radius:10px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:8px;">
-          {{ message }}
+  <div class="card hero">
+    <div class="hero-top">
+      <div style="flex:1 1 760px">
+        <div class="brand">
+          <img src="/static/logo.png" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
+          <div>
+            <div class="kicker">Shop Control Center</div>
+            <h1>DJ's Quotes Admin</h1>
+            <div class="sub">Manage quotes, approvals, invoice conversion, texting, and cleanup from one place.</div>
+          </div>
         </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
-
-    <table>
-      <thead>
-        <tr>
-          <th>Status</th>
-          <th>Customer</th>
-          <th>Vehicle</th>
-          <th>Phone</th>
-          <th>Created</th>
-          <th>Signed</th>
-          <th>Invoice</th>
-          <th>Links</th>
-        </tr>
-      </thead>
-<tbody>
-{% for row in rows %}
-<tr>
-  <td>
-  {% if row.status == 'approved' %}
-    <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#16351f;color:#86efac;font-weight:700;">APPROVED</span>
-  {% elif row.status == 'invoiced' %}
-    <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#172554;color:#93c5fd;font-weight:700;">INVOICED</span>
-  {% else %}
-    <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#2a2a2a;color:#d4d4d8;font-weight:700;">QUOTE</span>
-  {% endif %}
-</td>
-
-  <td>
-    {{ row.customer_name or '-' }}<br>
-    <span class="small">{{ row.customer_email or '' }}</span>
-  </td>
-
-  <td>
-    {{ row.vehicle or '-' }}<br>
-    <span class="small">{{ row.vin or '' }}</span>
-  </td>
-
-  <td>{{ row.customer_phone or '-' }}</td>
-
-  <td>{{ row.created_at or '-' }}</td>
-
-  <td>
-    {{ row.signed_name or '-' }}<br>
-    <span class="small">{{ row.signed_at or '' }}</span>
-  </td>
-
-  <td>{{ row.invoice_number or '-' }}</td>
-
-<td>
-  <div class="actions">
-    {% if row.quote_token %}
-      <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
-
-      <form method="POST" action="/send_quote_sms/{{ row.quote_token }}" class="inline-form">
-        <button type="submit" class="btn btn-blue">Text quote</button>
-      </form>
-
-      <div class="small">
-        SMS: {{ row.sms_status or 'not sent' }}
-        {% if row.sms_sent_at %}
-          <br>{{ row.sms_sent_at }}
-        {% endif %}
       </div>
-    {% else %}
-      <span>No quote link</span>
-    {% endif %}
+      <div class="pill-row">
+        <span class="pill">Live quote management</span>
+        <span class="pill">Approval tracking</span>
+        <span class="pill">Invoice cleanup tools</span>
+      </div>
+    </div>
 
-    {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
-      <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
-    {% endif %}
-
-    {% if row.invoice_number %}
-      <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
-      <form method="POST" action="/admin/delete_invoice/{{ row.invoice_number }}" class="inline-form" onsubmit="return confirm('Delete invoice {{ row.invoice_number }}? This keeps the quote but removes the invoice.');">
-        <button type="submit" class="btn btn-red">Delete invoice</button>
-      </form>
-    {% endif %}
-
-    {% if row.status in ['approved', 'invoiced'] and row.quote_token %}
-      <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and signature for this quote?');">
-        <button type="submit" class="btn btn-amber" {% if row.invoice_number %}disabled title="Delete invoice first" style="opacity:.55;cursor:not-allowed;"{% endif %}>Clear approval</button>
-      </form>
-    {% endif %}
-
-    <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote and any linked invoice? This cannot be undone.');">
-      <button type="submit" class="btn btn-red">Delete quote</button>
-    </form>
+    <div class="stats">
+      <span class="stat">Total records: {{ rows|length }}</span>
+      <span class="stat">Quotes / approvals / invoices at a glance</span>
+    </div>
   </div>
-</td>
-</tr>
-{% endfor %}
-</tbody>
-    </table>
+
+  <div class="card">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div style="margin-bottom:14px;">
+          {% for message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Vehicle</th>
+            <th>Phone</th>
+            <th>Created</th>
+            <th>Signed</th>
+            <th>Invoice</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">
+                {{ row.status or 'quote' }}
+              </span>
+            </td>
+
+            <td>
+              <div style="font-weight:800;">{{ row.customer_name or '-' }}</div>
+              <div class="small">{{ row.customer_email or '' }}</div>
+            </td>
+
+            <td>
+              <div style="font-weight:800;">{{ row.vehicle or '-' }}</div>
+              <div class="small">{{ row.vin or '' }}</div>
+            </td>
+
+            <td>{{ row.customer_phone or '-' }}</td>
+            <td>{{ row.created_at or '-' }}</td>
+
+            <td>
+              <div>{{ row.signed_name or '-' }}</div>
+              <div class="small">{{ row.signed_at or '' }}</div>
+            </td>
+
+            <td>
+              <div style="font-weight:800;">{{ row.invoice_number or '-' }}</div>
+              <div class="small">
+                SMS: {{ row.sms_status or 'not sent' }}
+                {% if row.sms_sent_at %}
+                  <br>{{ row.sms_sent_at }}
+                {% endif %}
+              </div>
+            </td>
+
+            <td>
+              <div class="actions">
+                {% if row.quote_token %}
+                  <a href="/quote/{{ row.quote_token }}" target="_blank" class="link">Open quote</a>
+
+                  <form method="POST" action="/send_quote_sms/{{ row.quote_token }}" class="inline-form">
+                    <button type="submit" class="btn btn-blue">Text quote</button>
+                  </form>
+                {% else %}
+                  <span class="small">No quote link</span>
+                {% endif %}
+
+                {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
+                  <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
+                {% endif %}
+
+                {% if row.invoice_number %}
+                  <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="link">Open invoice</a>
+                  <form method="POST" action="/admin/delete_invoice/{{ row.invoice_number }}" class="inline-form" onsubmit="return confirm('Delete invoice {{ row.invoice_number }}? This keeps the quote but removes the invoice.');">
+                    <button type="submit" class="btn btn-red">Delete invoice</button>
+                  </form>
+                {% endif %}
+
+                {% if row.status in ['approved', 'invoiced'] and row.quote_token %}
+                  <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and signature for this quote?');">
+                    <button type="submit" class="btn btn-amber" {% if row.invoice_number %}disabled title="Delete invoice first" style="opacity:.55;cursor:not-allowed;"{% endif %}>Clear approval</button>
+                  </form>
+                {% endif %}
+
+                <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote and any linked invoice? This cannot be undone.');">
+                  <button type="submit" class="btn btn-red">Delete quote</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 </body>
