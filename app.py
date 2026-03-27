@@ -459,6 +459,13 @@ def build_quote_totals(quote, payload, approved_map=None):
     }
 
 
+def get_quote_status_after_invoice_delete(quote_row):
+    approved_json = (quote_row["approved_json"] or "").strip() if quote_row else ""
+    if approved_json:
+        return "approved"
+    return "quote"
+
+
 def get_customers_and_vehicles(conn):
     customers = conn.execute(
         "SELECT * FROM customers ORDER BY name COLLATE NOCASE ASC, created_at DESC"
@@ -802,6 +809,94 @@ def admin():
     rows = cur.fetchall()
     conn.close()
     return render_template("admin_quotes.html", rows=rows)
+
+
+@app.route("/admin/delete_quote/<int:quote_id>", methods=["POST"])
+def delete_quote_admin(quote_id):
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,))
+    quote = cur.fetchone()
+    if not quote:
+        conn.close()
+        abort(404)
+
+    cur.execute("DELETE FROM invoices WHERE quote_id = ?", (quote_id,))
+    cur.execute("DELETE FROM quotes WHERE id = ?", (quote_id,))
+    conn.commit()
+    conn.close()
+
+    flash("Quote deleted successfully.")
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/delete_invoice/<invoice_number>", methods=["POST"])
+def delete_invoice_admin(invoice_number):
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT invoices.*, quotes.approved_json
+        FROM invoices
+        JOIN quotes ON quotes.id = invoices.quote_id
+        WHERE invoices.invoice_number = ?
+        """,
+        (invoice_number,),
+    )
+    invoice = cur.fetchone()
+    if not invoice:
+        conn.close()
+        abort(404)
+
+    cur.execute("DELETE FROM invoices WHERE invoice_number = ?", (invoice_number,))
+    cur.execute(
+        "UPDATE quotes SET status = ? WHERE id = ?",
+        (get_quote_status_after_invoice_delete(invoice), invoice["quote_id"]),
+    )
+    conn.commit()
+    conn.close()
+
+    flash("Invoice deleted successfully.")
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/clear_approval/<token>", methods=["POST"])
+def clear_approval_admin(token):
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
+    quote = cur.fetchone()
+    if not quote:
+        conn.close()
+        abort(404)
+
+    cur.execute("SELECT invoice_number FROM invoices WHERE quote_id = ?", (quote["id"],))
+    invoice = cur.fetchone()
+    if invoice:
+        conn.close()
+        flash("Delete the invoice before clearing approval on this quote.")
+        return redirect(url_for("admin"))
+
+    cur.execute(
+        """
+        UPDATE quotes
+        SET approved_json = NULL,
+            signature_data = NULL,
+            signed_name = NULL,
+            signed_at = NULL,
+            status = 'quote'
+        WHERE quote_token = ?
+        """,
+        (token,),
+    )
+    conn.commit()
+    conn.close()
+
+    flash("Approval cleared successfully.")
+    return redirect(url_for("admin"))
 
 
 @app.route("/send_quote_sms/<token>", methods=["POST"])

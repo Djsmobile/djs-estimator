@@ -13,6 +13,13 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top}
 a{color:#fff}
 .small{color:var(--muted);font-size:12px}
+.actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.btn{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.12);cursor:pointer;background:#2a2a2a;color:#fff}
+.btn-blue{background:#1d4ed8}
+.btn-green{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.btn-red{background:#3a1111;color:#fecaca;border-color:rgba(248,113,113,.25)}
+.btn-amber{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
+.inline-form{margin:0}
 </style>
 </head>
 <body>
@@ -80,36 +87,45 @@ a{color:#fff}
   <td>{{ row.invoice_number or '-' }}</td>
 
 <td>
-  {% if row.quote_token %}
-    <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
-    <br>
-    <form method="POST" action="/send_quote_sms/{{ row.quote_token }}" style="margin-top:6px;">
-      <button type="submit" style="display:inline-block;padding:6px 10px;border-radius:999px;background:#1d4ed8;color:#ffffff;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.12);cursor:pointer;">
-        Text quote
-      </button>
+  <div class="actions">
+    {% if row.quote_token %}
+      <a href="/quote/{{ row.quote_token }}" target="_blank">Open quote</a>
+
+      <form method="POST" action="/send_quote_sms/{{ row.quote_token }}" class="inline-form">
+        <button type="submit" class="btn btn-blue">Text quote</button>
+      </form>
+
+      <div class="small">
+        SMS: {{ row.sms_status or 'not sent' }}
+        {% if row.sms_sent_at %}
+          <br>{{ row.sms_sent_at }}
+        {% endif %}
+      </div>
+    {% else %}
+      <span>No quote link</span>
+    {% endif %}
+
+    {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
+      <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
+    {% endif %}
+
+    {% if row.invoice_number %}
+      <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
+      <form method="POST" action="/admin/delete_invoice/{{ row.invoice_number }}" class="inline-form" onsubmit="return confirm('Delete invoice {{ row.invoice_number }}? This keeps the quote but removes the invoice.');">
+        <button type="submit" class="btn btn-red">Delete invoice</button>
+      </form>
+    {% endif %}
+
+    {% if row.status in ['approved', 'invoiced'] and row.quote_token %}
+      <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and signature for this quote?');">
+        <button type="submit" class="btn btn-amber" {% if row.invoice_number %}disabled title="Delete invoice first" style="opacity:.55;cursor:not-allowed;"{% endif %}>Clear approval</button>
+      </form>
+    {% endif %}
+
+    <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote and any linked invoice? This cannot be undone.');">
+      <button type="submit" class="btn btn-red">Delete quote</button>
     </form>
-    <div class="small" style="margin-top:6px;">
-      SMS: {{ row.sms_status or 'not sent' }}
-      {% if row.sms_sent_at %}
-        <br>{{ row.sms_sent_at }}
-      {% endif %}
-    </div>
-  {% else %}
-    <span>No quote link</span>
-  {% endif %}
-
-  {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
-    <br>
-    <a href="/convert_invoice/{{ row.quote_token }}" target="_blank"
-       style="display:inline-block;margin-top:6px;padding:6px 10px;border-radius:999px;background:#16351f;color:#86efac;font-weight:700;text-decoration:none;border:1px solid rgba(134,239,172,.25);">
-      Convert to invoice
-    </a>
-  {% endif %}
-
-  {% if row.invoice_number %}
-    <br>
-    <a href="/invoice/{{ row.invoice_number }}" target="_blank">Open invoice</a>
-  {% endif %}
+  </div>
 </td>
 </tr>
 {% endfor %}
