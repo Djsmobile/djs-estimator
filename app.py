@@ -3,7 +3,7 @@ import json
 import sqlite3
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -89,6 +89,31 @@ JOB_PRESETS = {
         ],
     },
 }
+
+
+def slugify(value):
+    cleaned = ''.join(ch.lower() if ch.isalnum() else '_' for ch in (value or '').strip())
+    while '__' in cleaned:
+        cleaned = cleaned.replace('__', '_')
+    return cleaned.strip('_') or 'preset'
+
+
+def normalize_preset_jobs(jobs):
+    normalized_jobs = []
+    if not isinstance(jobs, list):
+        return normalized_jobs
+
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        normalized_jobs.append({
+            "desc": (job.get("desc") or "").strip(),
+            "labor_hours": safe_float(job.get("labor_hours", 0), 0),
+            "notes": (job.get("notes") or "").strip(),
+            "parts": normalize_job_parts(job),
+        })
+    return normalized_jobs
+
 
 
 def get_db():
@@ -178,6 +203,18 @@ def init_db():
         payment_method TEXT,
         paid_at TEXT,
         FOREIGN KEY (quote_id) REFERENCES quotes(id)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS saved_job_presets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        preset_key TEXT UNIQUE,
+        preset_name TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_at TEXT,
+        updated_at TEXT,
+        is_system INTEGER DEFAULT 0
     )
     """)
 
@@ -463,6 +500,77 @@ def build_quote_totals(quote, payload, approved_map=None):
     }
 
 
+
+def get_saved_presets(conn):
+    rows = conn.execute(
+        "SELECT preset_key, preset_name, payload_json, is_system FROM saved_job_presets ORDER BY LOWER(preset_name) ASC, id ASC"
+    ).fetchall()
+
+    custom_presets = {}
+    for row in rows:
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            continue
+
+        jobs = normalize_preset_jobs(payload.get("jobs", []))
+        if not jobs:
+            continue
+
+        custom_presets[row["preset_key"]] = {
+            "name": (payload.get("name") or row["preset_name"] or "Saved Preset").strip(),
+            "jobs": jobs,
+            "is_custom": not bool(row["is_system"]),
+        }
+
+    return custom_presets
+
+
+def get_all_job_presets(conn):
+    presets = {key: {**value, "is_custom": False} for key, value in JOB_PRESETS.items()}
+    presets.update(get_saved_presets(conn))
+    return presets
+
+
+def upsert_saved_preset(conn, preset_name, jobs):
+    preset_name = (preset_name or '').strip()
+    normalized_jobs = normalize_preset_jobs(jobs)
+    if not preset_name:
+        raise ValueError('Preset name is required.')
+    if not normalized_jobs:
+        raise ValueError('Preset needs at least one valid service.')
+
+    base_key = slugify(preset_name)
+    preset_key = f"custom_{base_key}"
+    if preset_key in JOB_PRESETS:
+        preset_key = f"custom_{base_key}_{int(datetime.now().timestamp())}"
+
+    payload = {
+        "name": preset_name,
+        "jobs": normalized_jobs,
+    }
+    now = datetime.now().isoformat()
+
+    existing = conn.execute(
+        "SELECT id, preset_key FROM saved_job_presets WHERE LOWER(preset_name) = LOWER(?)",
+        (preset_name,),
+    ).fetchone()
+
+    if existing:
+        conn.execute(
+            "UPDATE saved_job_presets SET payload_json = ?, updated_at = ?, is_system = 0 WHERE id = ?",
+            (json.dumps(payload), now, existing["id"]),
+        )
+        conn.commit()
+        return existing["preset_key"]
+
+    conn.execute(
+        "INSERT INTO saved_job_presets (preset_key, preset_name, payload_json, created_at, updated_at, is_system) VALUES (?, ?, ?, ?, ?, 0)",
+        (preset_key, preset_name, json.dumps(payload), now, now),
+    )
+    conn.commit()
+    return preset_key
+
 def get_customers_and_vehicles(conn):
     customers = conn.execute(
         "SELECT * FROM customers ORDER BY name COLLATE NOCASE ASC, created_at DESC"
@@ -484,6 +592,7 @@ def get_customers_and_vehicles(conn):
 def index():
     conn = get_db()
     customers, vehicles = get_customers_and_vehicles(conn)
+    all_job_presets = get_all_job_presets(conn)
     conn.close()
     return render_template(
         "index.html",
@@ -492,8 +601,34 @@ def index():
         default_labor_rate=DEFAULT_LABOR_RATE,
         default_tax_rate=DEFAULT_TAX_RATE,
         default_service_fee=DEFAULT_SERVICE_FEE,
-        job_presets_json=json.dumps(JOB_PRESETS),
+        job_presets_json=json.dumps(all_job_presets),
     )
+
+
+@app.route("/save_preset", methods=["POST"])
+def save_preset():
+    data = request.get_json(silent=True) or {}
+    preset_name = (data.get("name") or "").strip()
+    jobs = data.get("jobs", [])
+
+    conn = get_db()
+    try:
+        preset_key = upsert_saved_preset(conn, preset_name, jobs)
+        all_presets = get_all_job_presets(conn)
+    except ValueError as exc:
+        conn.close()
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception:
+        conn.close()
+        return jsonify({"ok": False, "error": "Preset could not be saved."}), 500
+
+    conn.close()
+    return jsonify({
+        "ok": True,
+        "message": f'Preset "{preset_name}" saved.',
+        "preset_key": preset_key,
+        "presets": all_presets,
+    })
 
 
 @app.route("/save_quote", methods=["POST"])

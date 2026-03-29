@@ -201,7 +201,7 @@
           <button type="button" id="addPresetBtn">+ Add preset to quote</button>
           <button type="button" id="startBlankBtn">+ Add blank service</button>
         </div>
-        <div class="preset-note">Preset pricing is just your starting point. You can edit labor, notes, parts, and quantities after it drops in.</div>
+        <div class="preset-note">Preset pricing is just your starting point. You can edit labor, notes, parts, and quantities after it drops in. You can also save your own service presets from any service card below.</div>
       </div>
 
       <div class="card">
@@ -224,6 +224,10 @@
         <div class="totline"><span>Service call fee</span><span>$<span id="service_total">0.00</span></span></div>
         <div class="totline big"><span>Grand total</span><span>$<span id="grand_total">0.00</span></span></div>
         <div class="save-note">Preview uses the <strong style="color:#fff;">Quality</strong> parts column by default. Your customer can still choose different parts tiers later on the quote page.</div>
+        <div class="divider"></div>
+        <div class="btnrow">
+          <button type="button" id="saveAllAsPresetBtn" class="secondary-btn">Save all services as one preset</button>
+        </div>
         <div class="divider"></div>
         <button type="submit" class="primary-btn">Save Quote</button>
       </div>
@@ -319,7 +323,7 @@
               <div class="jobtitle">Service #${jobIndex + 1}</div>
               <div class="small-note">Preset-ready service line with full edit control.</div>
             </div>
-            <button type="button" class="delete-btn" data-action="delete-job">Delete service</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button type="button" class="delete-btn" data-action="save-preset">Save as preset</button><button type="button" class="delete-btn" data-action="delete-job">Delete service</button></div>
           </div>
 
           <div class="row" style="margin-top:12px;">
@@ -507,12 +511,96 @@
 
     function populatePresets(){
       const select = document.getElementById('preset_select');
-      Object.entries(JOB_PRESETS).forEach(([key, preset]) => {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = preset.name || key;
-        select.appendChild(option);
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">— Select a preset —</option>';
+      Object.entries(JOB_PRESETS)
+        .sort((a, b) => String(a[1]?.name || a[0]).localeCompare(String(b[1]?.name || b[0])))
+        .forEach(([key, preset]) => {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = `${preset.name || key}${preset.is_custom ? ' (saved)' : ''}`;
+          select.appendChild(option);
+        });
+      if(currentValue && JOB_PRESETS[currentValue]){
+        select.value = currentValue;
+      }
+    }
+
+
+    function collectJobData(jobEl){
+      if(!jobEl) return null;
+      const desc = jobEl.querySelector('[name="job_desc[]"]')?.value || '';
+      const laborHours = toNum(jobEl.querySelector('[name="job_labor_hrs[]"]')?.value || 0);
+      const notes = jobEl.querySelector('[name="job_notes[]"]')?.value || '';
+      const parts = [];
+
+      jobEl.querySelectorAll('.part-row').forEach(row => {
+        const partDesc = row.querySelector('[name^="part_desc_"]')?.value || '';
+        const qty = toNum(row.querySelector('[name^="part_qty_"]')?.value || 0);
+        const oem = toNum(row.querySelector('[name^="part_oem_"]')?.value || 0);
+        const quality = toNum(row.querySelector('[name^="part_quality_"]')?.value || 0);
+        const economy = toNum(row.querySelector('[name^="part_economy_"]')?.value || 0);
+        if(partDesc.trim() || qty || oem || quality || economy){
+          parts.push({
+            part_desc: partDesc.trim(),
+            qty,
+            oem,
+            quality,
+            economy
+          });
+        }
       });
+
+      return {
+        desc: desc.trim(),
+        labor_hours: laborHours,
+        notes: notes.trim(),
+        parts
+      };
+    }
+
+    function collectAllJobs(){
+      return Array.from(document.querySelectorAll('#services .job'))
+        .map(jobEl => collectJobData(jobEl))
+        .filter(job => job && (job.desc || job.notes || job.labor_hours || job.parts.length));
+    }
+
+    async function savePresetRequest(name, jobs){
+      const response = await fetch('/save_preset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, jobs })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if(!response.ok || !data.ok){
+        throw new Error(data.error || 'Preset could not be saved.');
+      }
+
+      Object.keys(JOB_PRESETS).forEach(key => delete JOB_PRESETS[key]);
+      Object.entries(data.presets || {}).forEach(([key, value]) => {
+        JOB_PRESETS[key] = value;
+      });
+      populatePresets();
+      const presetSelect = document.getElementById('preset_select');
+      if(presetSelect && data.preset_key){
+        presetSelect.value = data.preset_key;
+      }
+      alert(data.message || 'Preset saved.');
+    }
+
+    async function promptAndSavePreset(jobs, defaultName = ''){
+      if(!Array.isArray(jobs) || !jobs.length){
+        alert('Add a service first, then save it as a preset.');
+        return;
+      }
+      const name = window.prompt('Preset name', defaultName || 'My preset');
+      if(!name || !name.trim()) return;
+      try{
+        await savePresetRequest(name.trim(), jobs);
+      } catch(err){
+        alert(err.message || 'Preset could not be saved.');
+      }
     }
 
     document.addEventListener('blur', function(e){
@@ -539,7 +627,24 @@
         addBlankService();
       });
 
+      document.getElementById('saveAllAsPresetBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        const jobs = collectAllJobs();
+        const defaultName = jobs.length === 1 ? (jobs[0].desc || 'My preset') : 'Multi-service preset';
+        promptAndSavePreset(jobs, defaultName);
+      });
+
       document.getElementById('services').addEventListener('click', (e) => {
+        const savePresetBtn = e.target.closest('[data-action="save-preset"]');
+        if(savePresetBtn){
+          e.preventDefault();
+          const job = savePresetBtn.closest('.job');
+          const payload = collectJobData(job);
+          const defaultName = payload?.desc || 'My service preset';
+          promptAndSavePreset(payload ? [payload] : [], defaultName);
+          return;
+        }
+
         const deleteJobBtn = e.target.closest('[data-action="delete-job"]');
         if(deleteJobBtn){
           e.preventDefault();
