@@ -1,26 +1,15 @@
 import os
-print("ENV TEST:", dict(os.environ))
-import os
 import json
 import sqlite3
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort, flash
-from twilio.rest import Client
+from flask import Flask, render_template, request, redirect, url_for, abort
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
-
-def get_runtime_config():
-    return {
-        "TWILIO_ACCOUNT_SID": os.environ.get("TWILIO_ACCOUNT_SID", "").strip(),
-        "TWILIO_AUTH_TOKEN": os.environ.get("TWILIO_AUTH_TOKEN", "").strip(),
-        "TWILIO_PHONE_NUMBER": os.environ.get("TWILIO_PHONE_NUMBER", "").strip(),
-        "APP_BASE_URL": os.environ.get("APP_BASE_URL", "").strip().rstrip("/"),
-    }
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
@@ -32,6 +21,74 @@ app.secret_key = secrets.token_hex(16)
 DEFAULT_LABOR_RATE = 150.00
 DEFAULT_TAX_RATE = 7.25
 DEFAULT_SERVICE_FEE = 0.00
+
+JOB_PRESETS = {
+    "oil_filter_change": {
+        "name": "Oil & Filter Change",
+        "jobs": [
+            {
+                "desc": "Oil & Filter Change",
+                "labor_hours": 0.50,
+                "notes": "Includes oil and filter replacement. Additional oil, specialty filters, skid plate removal, or cartridge housing issues may change final price.",
+                "parts": [
+                    {"part_desc": "Full Synthetic Engine Oil", "qty": 1, "oem": 65.00, "quality": 45.00, "economy": 35.00},
+                    {"part_desc": "Oil Filter", "qty": 1, "oem": 18.00, "quality": 12.00, "economy": 9.00},
+                ],
+            }
+        ],
+    },
+    "rotate_balance": {
+        "name": "Tire Rotation",
+        "jobs": [
+            {
+                "desc": "Tire Rotation",
+                "labor_hours": 0.40,
+                "notes": "Rotation only. Tire balance, road force, TPMS service, or damaged lug nuts are additional if needed.",
+                "parts": [],
+            }
+        ],
+    },
+    "battery_replace": {
+        "name": "Battery Replacement",
+        "jobs": [
+            {
+                "desc": "Battery Replacement",
+                "labor_hours": 0.40,
+                "notes": "Includes battery install and terminal cleaning. Registration/programming extra when required.",
+                "parts": [
+                    {"part_desc": "Battery", "qty": 1, "oem": 245.00, "quality": 185.00, "economy": 150.00},
+                ],
+            }
+        ],
+    },
+    "front_brakes": {
+        "name": "Front Brake Pads & Rotors",
+        "jobs": [
+            {
+                "desc": "Front Brake Pads & Rotors",
+                "labor_hours": 1.50,
+                "notes": "Price may change if calipers, brackets, seized hardware, or brake hoses are needed.",
+                "parts": [
+                    {"part_desc": "Front Brake Pads", "qty": 1, "oem": 145.00, "quality": 95.00, "economy": 70.00},
+                    {"part_desc": "Front Brake Rotors", "qty": 2, "oem": 120.00, "quality": 85.00, "economy": 65.00},
+                ],
+            }
+        ],
+    },
+    "spark_plugs_4cyl": {
+        "name": "Spark Plug Replacement (4 Cylinder)",
+        "jobs": [
+            {
+                "desc": "Spark Plug Replacement",
+                "labor_hours": 1.00,
+                "notes": "Pricing shown for an accessible 4-cylinder layout. Intake removal, plenum gaskets, or broken boots are extra if needed.",
+                "parts": [
+                    {"part_desc": "Spark Plugs", "qty": 4, "oem": 24.00, "quality": 16.00, "economy": 10.00},
+                ],
+            }
+        ],
+    },
+}
 
 
 def get_db():
@@ -135,10 +192,6 @@ def init_db():
     add_column_if_missing(conn, "quotes", "signed_at", "TEXT")
     add_column_if_missing(conn, "quotes", "status", "TEXT DEFAULT 'quote'")
 
-    add_column_if_missing(conn, "quotes", "sms_sent_at", "TEXT")
-    add_column_if_missing(conn, "quotes", "sms_status", "TEXT")
-    add_column_if_missing(conn, "quotes", "sms_sid", "TEXT")
-
     add_column_if_missing(conn, "invoices", "payment_status", "TEXT DEFAULT 'unpaid'")
     add_column_if_missing(conn, "invoices", "payment_method", "TEXT")
     add_column_if_missing(conn, "invoices", "paid_at", "TEXT")
@@ -148,55 +201,6 @@ def init_db():
 
 
 init_db()
-
-
-def normalize_phone_number(phone):
-    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
-    if not digits:
-        return ""
-    if len(digits) == 10:
-        return f"+1{digits}"
-    if len(digits) == 11 and digits.startswith("1"):
-        return f"+{digits}"
-    if str(phone).strip().startswith("+"):
-        return str(phone).strip()
-    return f"+{digits}"
-
-
-def build_quote_url(token):
-    config = get_runtime_config()
-    if config["APP_BASE_URL"]:
-        return f'{config["APP_BASE_URL"]}/quote/{token}'
-    return url_for("view_quote", token=token, _external=True)
-
-
-def send_quote_sms_message(phone, token, customer_name):
-    config = get_runtime_config()
-    missing = [key for key in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER") if not config.get(key)]
-    if missing:
-        return False, "Missing: " + ", ".join(missing), None
-
-    normalized_phone = normalize_phone_number(phone)
-    if not normalized_phone:
-        return False, "Customer phone number is missing or invalid.", None
-
-    quote_url = build_quote_url(token)
-    display_name = (customer_name or "there").strip()
-    body = (
-        f"DJ's Mobile Mechanic: Hi {display_name}, here is your estimate: "
-        f"{quote_url} Review and approve online."
-    )
-
-    try:
-        client = Client(config["TWILIO_ACCOUNT_SID"], config["TWILIO_AUTH_TOKEN"])
-        message = client.messages.create(
-            body=body,
-            from_=config["TWILIO_PHONE_NUMBER"],
-            to=normalized_phone,
-        )
-        return True, "Text sent successfully.", message.sid
-    except Exception as exc:
-        return False, str(exc), None
 
 
 def generate_token():
@@ -459,13 +463,6 @@ def build_quote_totals(quote, payload, approved_map=None):
     }
 
 
-def get_quote_status_after_invoice_delete(quote_row):
-    approved_json = (quote_row["approved_json"] or "").strip() if quote_row else ""
-    if approved_json:
-        return "approved"
-    return "quote"
-
-
 def get_customers_and_vehicles(conn):
     customers = conn.execute(
         "SELECT * FROM customers ORDER BY name COLLATE NOCASE ASC, created_at DESC"
@@ -495,6 +492,7 @@ def index():
         default_labor_rate=DEFAULT_LABOR_RATE,
         default_tax_rate=DEFAULT_TAX_RATE,
         default_service_fee=DEFAULT_SERVICE_FEE,
+        job_presets_json=json.dumps(JOB_PRESETS),
     )
 
 
@@ -809,137 +807,6 @@ def admin():
     rows = cur.fetchall()
     conn.close()
     return render_template("admin_quotes.html", rows=rows)
-
-
-@app.route("/admin/delete_quote/<int:quote_id>", methods=["POST"])
-def delete_quote_admin(quote_id):
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,))
-    quote = cur.fetchone()
-    if not quote:
-        conn.close()
-        abort(404)
-
-    cur.execute("DELETE FROM invoices WHERE quote_id = ?", (quote_id,))
-    cur.execute("DELETE FROM quotes WHERE id = ?", (quote_id,))
-    conn.commit()
-    conn.close()
-
-    flash("Quote deleted successfully.")
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/delete_invoice/<invoice_number>", methods=["POST"])
-def delete_invoice_admin(invoice_number):
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT invoices.*, quotes.approved_json
-        FROM invoices
-        JOIN quotes ON quotes.id = invoices.quote_id
-        WHERE invoices.invoice_number = ?
-        """,
-        (invoice_number,),
-    )
-    invoice = cur.fetchone()
-    if not invoice:
-        conn.close()
-        abort(404)
-
-    cur.execute("DELETE FROM invoices WHERE invoice_number = ?", (invoice_number,))
-    cur.execute(
-        "UPDATE quotes SET status = ? WHERE id = ?",
-        (get_quote_status_after_invoice_delete(invoice), invoice["quote_id"]),
-    )
-    conn.commit()
-    conn.close()
-
-    flash("Invoice deleted successfully.")
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/clear_approval/<token>", methods=["POST"])
-def clear_approval_admin(token):
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
-    quote = cur.fetchone()
-    if not quote:
-        conn.close()
-        abort(404)
-
-    cur.execute("SELECT invoice_number FROM invoices WHERE quote_id = ?", (quote["id"],))
-    invoice = cur.fetchone()
-    if invoice:
-        conn.close()
-        flash("Delete the invoice before clearing approval on this quote.")
-        return redirect(url_for("admin"))
-
-    cur.execute(
-        """
-        UPDATE quotes
-        SET approved_json = NULL,
-            signature_data = NULL,
-            signed_name = NULL,
-            signed_at = NULL,
-            status = 'quote'
-        WHERE quote_token = ?
-        """,
-        (token,),
-    )
-    conn.commit()
-    conn.close()
-
-    flash("Approval cleared successfully.")
-    return redirect(url_for("admin"))
-
-
-@app.route("/send_quote_sms/<token>", methods=["POST"])
-def send_quote_sms_route(token):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,))
-    quote = cur.fetchone()
-
-    if not quote:
-        conn.close()
-        abort(404)
-
-    phone = (quote["customer_phone"] or "").strip()
-    customer_name = (quote["customer_name"] or "there").strip()
-
-    success, message_text, sms_sid = send_quote_sms_message(phone, token, customer_name)
-
-    if success:
-        cur.execute(
-            """
-            UPDATE quotes
-            SET sms_sent_at = ?, sms_status = ?, sms_sid = ?
-            WHERE quote_token = ?
-            """,
-            (datetime.now().isoformat(), "sent", sms_sid, token),
-        )
-        conn.commit()
-        flash("Quote text sent successfully.")
-    else:
-        cur.execute(
-            """
-            UPDATE quotes
-            SET sms_sent_at = ?, sms_status = ?, sms_sid = ?
-            WHERE quote_token = ?
-            """,
-            (datetime.now().isoformat(), f"failed: {message_text}", None, token),
-        )
-        conn.commit()
-        flash(f"Text failed: {message_text}")
-
-    conn.close()
-    return redirect(url_for("admin"))
 
 
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])

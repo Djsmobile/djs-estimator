@@ -4,41 +4,40 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DJ's Estimate Builder</title>
-
   <style>
     :root{
       --bg:#0b0b0b;
       --card:#141414;
       --card2:#101010;
       --text:#f2f2f2;
-      --muted:rgba(242,242,242,.75);
-      --border:rgba(255,255,255,.12);
-      --border2:rgba(255,255,255,.20);
+      --muted:rgba(242,242,242,.72);
+      --border:rgba(255,255,255,.10);
+      --border2:rgba(255,255,255,.18);
+      --accent:rgba(255,255,255,.08);
+      --accent-strong:rgba(255,255,255,.14);
       --danger:#7a1f1f;
       --dangerBorder:rgba(255,120,120,.28);
-      --accent:rgba(255,255,255,.08);
-      --ok:#173517;
+      --success:rgba(120,255,170,.10);
     }
 
     *{box-sizing:border-box}
     body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:1160px;margin:0 auto;padding:16px 14px 40px}
+    .wrap{max-width:1120px;margin:0 auto;padding:16px 14px 40px}
     .page-header{margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .page-header h1{margin:0;font-size:24px;font-weight:800;letter-spacing:.3px}
     .subtle{color:var(--muted);font-size:13px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
-    .section-title{font-weight:900;margin-bottom:10px;font-size:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:14px}
+    .section-title{font-weight:900;margin-bottom:8px;font-size:16px}
     .section-sub{color:var(--muted);font-size:13px;margin-bottom:12px}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
     .grow{flex:1 1 260px}
     .col{flex:0 0 160px}
     .col-wide{flex:0 0 220px}
     label{color:var(--muted);font-size:13px;display:block;margin-bottom:6px}
-    input, textarea, select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);outline:none}
+    input, textarea, select{width:100%;padding:10px;border-radius:12px;border:1px solid var(--border2);background:var(--card2);color:var(--text);outline:none}
     textarea{resize:vertical;min-height:90px}
-    select{appearance:auto}
     .money-input{position:relative}
-    .money-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-weight:600;pointer-events:none}
+    .money-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-weight:700;pointer-events:none}
     .money-input input{padding-left:22px}
     .divider{height:1px;background:var(--border);margin:12px 0}
     .btnrow{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
@@ -47,101 +46,52 @@
     .primary-btn{background:rgba(255,255,255,.10)}
     .delete-btn{background:var(--danger);border:1px solid var(--dangerBorder)}
     .delete-btn:hover{background:#922727}
-    .job{margin-top:12px}
+    .pill-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .pill{background:var(--accent);border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:999px;font-size:12px}
+    .preset-wrap{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end}
+    .preset-note{padding:10px 12px;border:1px dashed var(--border2);border-radius:12px;background:rgba(255,255,255,.03);color:var(--muted);font-size:12px}
+
+    .job{margin-top:12px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));padding:14px}
     .jobhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
     .jobtitle{font-weight:800;font-size:16px}
     .small-note{color:var(--muted);font-size:12px;margin-top:6px}
-    .tierbox{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03)}
-    .grid3{margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .part-row{display:grid;grid-template-columns:2.2fr .7fr 1fr 1fr 1fr auto;gap:10px;align-items:end;margin-top:10px}
-    .part-wrap{margin-top:10px}
-    .totline{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03);margin-top:8px}
-    .totline.big{font-size:16px;font-weight:900;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.06)}
-    .pill-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-    .pill{background:var(--accent);border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:999px;font-size:12px}
-    .job-summary{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03)}
-    .job-summary .line{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
-    .ghost-btn{background:rgba(255,255,255,.04)}
-    @media(max-width:980px){
-      .grid3{grid-template-columns:1fr}
-      .part-row{grid-template-columns:1fr 1fr}
-      .col, .col-wide{flex:1 1 180px}
-    }
+    .job-summary{margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .stat{padding:10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.03)}
+    .stat .k{font-size:12px;color:var(--muted)}
+    .stat .v{margin-top:4px;font-weight:800}
+    .parts-area{margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.03)}
+    .parts-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+    .part-row{display:grid;grid-template-columns:minmax(180px,2fr) 90px 1fr 1fr 1fr auto;gap:10px;align-items:end;padding:10px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.025);margin-bottom:10px}
+    .part-row:last-child{margin-bottom:0}
+    .job-footer{margin-top:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .job-footer .small-note{margin-top:0}
+    .totline{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03);margin-top:8px}
+    .totline.big{font-size:17px;font-weight:900;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.07)}
+    .save-note{margin-top:12px;padding:12px;border-radius:12px;background:var(--success);border:1px solid var(--border);color:var(--muted);font-size:12px}
 
-    .shop-hero{
-      position:relative;
-      overflow:hidden;
-      background:
-        radial-gradient(circle at top right, rgba(212,175,55,.16), transparent 30%),
-        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
-      border:1px solid var(--border);
-      border-radius:18px;
-      padding:18px;
-      margin-bottom:14px;
-      box-shadow:0 12px 32px rgba(0,0,0,.24);
+    @media(max-width:960px){
+      .part-row{grid-template-columns:1fr 1fr;}
+      .part-row .delete-cell{grid-column:1 / -1}
+      .job-summary{grid-template-columns:1fr}
+      .preset-wrap{grid-template-columns:1fr}
     }
-    .shop-hero::after{
-      content:"";
-      position:absolute;
-      width:260px;
-      height:260px;
-      right:-70px;
-      top:-70px;
-      border-radius:50%;
-      background:radial-gradient(circle, rgba(212,175,55,.12), transparent 68%);
-      filter:blur(8px);
-      pointer-events:none;
+    @media(max-width:840px){
+      .col,.col-wide,.grow{flex:1 1 100%}
     }
-    .brand-row{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
-    .brand-lockup{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-    .brand-logo{width:88px;height:88px;object-fit:contain;border-radius:18px;padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08)}
-    .hero-kicker{color:#d4af37;font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:900;margin-bottom:6px}
-    .hero-title{margin:0;font-size:30px;font-weight:900;line-height:1.04}
-    .hero-copy{color:var(--muted);margin-top:6px;max-width:760px}
-    .hero-pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .hero-pill{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:800}
-    .page-header{display:none}
-    .card{border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
-    .section-title{font-size:17px;letter-spacing:.01em}
-    .sticky-save{
-      position:sticky;
-      bottom:12px;
-      z-index:20;
-      backdrop-filter:blur(10px);
-      background:rgba(11,11,11,.88);
-      border:1px solid var(--border2);
-      border-radius:16px;
-      padding:12px;
-      box-shadow:0 16px 34px rgba(0,0,0,.32);
-    }
-
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="shop-hero">
-      <div class="brand-row">
-        <div style="flex:1 1 760px;">
-          <div class="brand-lockup">
-            <img src="/static/logo.png" alt="DJ's Mobile Mechanic logo" class="brand-logo" onerror="this.style.display='none'">
-            <div>
-              <div class="hero-kicker">Estimator Builder</div>
-              <h1 class="hero-title">DJ's Mobile Mechanic</h1>
-              <div class="hero-copy">Fast estimate building for real-world mobile work. Save customers, build jobs cleanly, send approval links, and keep everything looking like a real shop system.</div>
-            </div>
-          </div>
-          <div class="hero-pills">
-            <span class="hero-pill">Mobile-first workflow</span>
-            <span class="hero-pill">Clean quote structure</span>
-            <span class="hero-pill">OEM / Quality / Economy parts</span>
-          </div>
-        </div>
+    <div class="page-header">
+      <div>
+        <h1>DJ's Estimate Builder</h1>
+        <div class="subtle">Build quotes fast, use presets for common jobs, and still customize every line.</div>
       </div>
     </div>
 
     <form method="POST" action="/save_quote" onsubmit="return beforeSave();">
       <div class="card">
-        <div class="section-title">Customer & Vehicle Info</div>
+        <div class="section-title">Customer &amp; Vehicle Info</div>
         <div class="section-sub">Pick an existing customer/vehicle or enter a new one manually.</div>
 
         <div class="row">
@@ -187,12 +137,10 @@
             <label>Customer name</label>
             <input type="text" id="customer_name" name="customer_name" placeholder="John Smith" required />
           </div>
-
           <div class="grow">
             <label>Phone</label>
             <input type="text" id="customer_phone" name="customer_phone" placeholder="(916) 555-1234" />
           </div>
-
           <div class="grow">
             <label>Email</label>
             <input type="email" id="customer_email" name="customer_email" placeholder="john@email.com" />
@@ -204,7 +152,6 @@
             <label>Vehicle</label>
             <input type="text" id="vehicle" name="vehicle" placeholder="2018 Honda Accord 1.5T" required />
           </div>
-
           <div class="grow">
             <label>VIN</label>
             <input type="text" id="vin" name="vin" placeholder="1HGXXXXXXXXXXXXXX" />
@@ -219,7 +166,6 @@
 
       <div class="card">
         <div class="section-title">Estimate Settings</div>
-
         <div class="row">
           <div class="col">
             <label>Labor rate</label>
@@ -228,12 +174,10 @@
               <input type="number" id="labor_rate" name="labor_rate" step="0.01" min="0" value="{{ '%.2f'|format(default_labor_rate) }}" />
             </div>
           </div>
-
           <div class="col">
             <label>Tax rate (%)</label>
-            <input type="number" id="tax_rate" name="tax_rate" step="0.01" min="0" value="{{ default_tax_rate }}" />
+            <input type="number" id="tax_rate" name="tax_rate" step="0.01" min="0" value="{{ '%.2f'|format(default_tax_rate) }}" />
           </div>
-
           <div class="col">
             <label>Service call fee</label>
             <div class="money-input">
@@ -245,37 +189,50 @@
       </div>
 
       <div class="card">
+        <div class="section-title">Job Presets</div>
+        <div class="section-sub">Pick a common service and it will drop in ready to edit. This keeps your quotes fast without boxing you in.</div>
+        <div class="preset-wrap">
+          <div>
+            <label>Preset job</label>
+            <select id="preset_select">
+              <option value="">— Select a preset —</option>
+            </select>
+          </div>
+          <button type="button" id="addPresetBtn">+ Add preset to quote</button>
+          <button type="button" id="startBlankBtn">+ Add blank service</button>
+        </div>
+        <div class="preset-note">Preset pricing is just your starting point. You can edit labor, notes, parts, and quantities after it drops in.</div>
+      </div>
+
+      <div class="card">
         <div class="btnrow">
           <div>
             <div class="section-title" style="margin-bottom:4px;">Services</div>
-            <div class="section-sub" style="margin-bottom:0;">Add each job with labor, multiple part lines, pricing tiers, and notes.</div>
+            <div class="section-sub" style="margin-bottom:0;">Each service can have its own labor and multiple part lines with OEM / Quality / Economy pricing.</div>
           </div>
-
-          <button type="button" id="addServiceBtn">+ Add another service</button>
         </div>
 
         <div class="divider"></div>
-
         <div id="services"></div>
       </div>
 
       <div class="card">
         <div class="section-title">Estimate Preview</div>
-
         <div class="totline"><span>Labor total</span><span>$<span id="labor_total">0.00</span></span></div>
         <div class="totline"><span>Quality parts total</span><span>$<span id="parts_total">0.00</span></span></div>
         <div class="totline"><span>Tax on parts</span><span>$<span id="tax_total">0.00</span></span></div>
         <div class="totline"><span>Service call fee</span><span>$<span id="service_total">0.00</span></span></div>
         <div class="totline big"><span>Grand total</span><span>$<span id="grand_total">0.00</span></span></div>
-
+        <div class="save-note">Preview uses the <strong style="color:#fff;">Quality</strong> parts column by default. Your customer can still choose different parts tiers later on the quote page.</div>
         <div class="divider"></div>
-
         <button type="submit" class="primary-btn">Save Quote</button>
       </div>
     </form>
   </div>
 
   <script>
+    const JOB_PRESETS = {{ job_presets_json|safe }};
+
     function toNum(v){
       const n = Number(v);
       return Number.isFinite(n) ? n : 0;
@@ -290,223 +247,214 @@
       if(el) el.textContent = val;
     }
 
+    function escapeHtml(value){
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function serviceCount(){
+      return document.querySelectorAll('#services .job').length;
+    }
+
     function renumberJobs(){
-      const jobs = document.querySelectorAll("#services .job");
+      const jobs = document.querySelectorAll('#services .job');
       jobs.forEach((job, index) => {
         job.dataset.idx = index;
-        const title = job.querySelector(".jobtitle");
-        if(title) title.textContent = `Service #${index + 1}`;
-
-        const partRows = job.querySelectorAll(".part-row");
-        partRows.forEach((row, pIndex) => {
-          row.querySelectorAll("[data-part-name]").forEach(el => {
-            const base = el.dataset.partName;
-            el.name = `${base}_${index}[]`;
+        const title = job.querySelector('.jobtitle');
+        if(title){
+          title.textContent = `Service #${index + 1}`;
+        }
+        const rows = job.querySelectorAll('.part-row');
+        rows.forEach((row, pIndex) => {
+          row.querySelectorAll('[data-base-name]').forEach(input => {
+            const baseName = input.dataset.baseName;
+            input.name = `${baseName}_${index}[]`;
           });
         });
       });
+      calcAll();
     }
 
-    function partRowHtml(jobIdx){
+    function partRowHtml(jobIndex, part = {}){
       return `
         <div class="part-row">
           <div>
             <label>Part description</label>
-            <input type="text" data-part-name="part_desc" name="part_desc_${jobIdx}[]" placeholder="Brake pads" />
+            <input type="text" data-base-name="part_desc" name="part_desc_${jobIndex}[]" value="${escapeHtml(part.part_desc || '')}" placeholder="Oil filter" />
           </div>
-
           <div>
             <label>Qty</label>
-            <input type="number" data-part-name="part_qty" name="part_qty_${jobIdx}[]" step="0.01" min="0" value="1.00" />
+            <input type="number" data-base-name="part_qty" name="part_qty_${jobIndex}[]" step="0.01" min="0" value="${money(part.qty ?? 1)}" />
           </div>
-
           <div>
             <label>OEM</label>
-            <div class="money-input">
-              <span>$</span>
-              <input type="number" data-part-name="part_oem" name="part_oem_${jobIdx}[]" step="0.01" min="0" value="0.00" />
-            </div>
+            <div class="money-input"><span>$</span><input type="number" data-base-name="part_oem" name="part_oem_${jobIndex}[]" step="0.01" min="0" value="${money(part.oem ?? 0)}" /></div>
           </div>
-
           <div>
             <label>Quality</label>
-            <div class="money-input">
-              <span>$</span>
-              <input type="number" data-part-name="part_quality" name="part_quality_${jobIdx}[]" step="0.01" min="0" value="0.00" data-role="part-quality" />
-            </div>
+            <div class="money-input"><span>$</span><input type="number" data-base-name="part_quality" name="part_quality_${jobIndex}[]" step="0.01" min="0" value="${money(part.quality ?? 0)}" data-role="part-quality" /></div>
           </div>
-
           <div>
             <label>Economy</label>
-            <div class="money-input">
-              <span>$</span>
-              <input type="number" data-part-name="part_economy" name="part_economy_${jobIdx}[]" step="0.01" min="0" value="0.00" />
-            </div>
+            <div class="money-input"><span>$</span><input type="number" data-base-name="part_economy" name="part_economy_${jobIndex}[]" step="0.01" min="0" value="${money(part.economy ?? 0)}" /></div>
           </div>
-
-          <div>
-            <label>&nbsp;</label>
+          <div class="delete-cell">
             <button type="button" class="delete-btn" data-action="delete-part">Delete part</button>
           </div>
         </div>
       `;
     }
 
-    function jobHtml(idx){
+    function jobHtml(jobIndex, job = {}){
+      const parts = Array.isArray(job.parts) && job.parts.length ? job.parts : [];
+      const partsMarkup = parts.map(part => partRowHtml(jobIndex, part)).join('');
       return `
-        <div class="card job" data-idx="${idx}">
+        <div class="job" data-idx="${jobIndex}">
           <div class="jobhead">
             <div>
-              <div class="jobtitle">Service #${idx + 1}</div>
-              <div class="small-note">Customer-facing description, labor time, multiple parts, and notes.</div>
+              <div class="jobtitle">Service #${jobIndex + 1}</div>
+              <div class="small-note">Preset-ready service line with full edit control.</div>
             </div>
-
             <button type="button" class="delete-btn" data-action="delete-job">Delete service</button>
           </div>
 
           <div class="row" style="margin-top:12px;">
             <div class="grow">
               <label>Service / Job description</label>
-              <input type="text" name="job_desc[]" placeholder="Front brake pads &amp; rotors" />
+              <input type="text" name="job_desc[]" value="${escapeHtml(job.desc || '')}" placeholder="Oil &amp; Filter Change" />
             </div>
-
             <div class="col">
               <label>Labor hrs</label>
-              <input type="number" name="job_labor_hrs[]" step="0.1" min="0" value="0.0" data-role="labor-hrs" />
-            </div>
-          </div>
-
-          <div class="tierbox">
-            <div class="btnrow">
-              <div>
-                <label style="margin:0">Parts lines</label>
-                <div class="small-note">Add as many parts as you need for this service.</div>
-              </div>
-              <button type="button" class="ghost-btn" data-action="add-part">+ Add part line</button>
-            </div>
-
-            <div class="part-wrap" data-part-wrap>
-              ${partRowHtml(idx)}
-            </div>
-
-            <div class="small-note">
-              Estimate preview uses the <strong style="color:#fff;">Quality</strong> column by default.
+              <input type="number" name="job_labor_hrs[]" step="0.01" min="0" value="${money(job.labor_hours ?? 0)}" data-role="labor-hrs" />
             </div>
           </div>
 
           <div style="margin-top:12px;">
             <label>Line-item notes</label>
-            <textarea name="job_notes[]" placeholder="Additional notes, recommendations, warranty notes, or job details..."></textarea>
+            <textarea name="job_notes[]" placeholder="Additional notes, warranty notes, what is included, or pricing conditions...">${escapeHtml(job.notes || '')}</textarea>
+          </div>
+
+          <div class="parts-area">
+            <div class="parts-head">
+              <div>
+                <div class="section-title" style="margin:0;font-size:15px;">Parts</div>
+                <div class="small-note">Add as many part lines as you want for this service.</div>
+              </div>
+              <button type="button" data-action="add-part">+ Add part</button>
+            </div>
+            <div class="parts-list">${partsMarkup}</div>
           </div>
 
           <div class="job-summary">
-            <div class="line"><span>Labor total</span><strong>$<span data-role="job-labor-total">0.00</span></strong></div>
-            <div class="line"><span>Quality parts total</span><strong>$<span data-role="job-parts-total">0.00</span></strong></div>
-            <div class="line"><span>Job total</span><strong>$<span data-role="job-grand-total">0.00</span></strong></div>
+            <div class="stat"><div class="k">Labor total</div><div class="v">$<span data-role="job-labor-total">0.00</span></div></div>
+            <div class="stat"><div class="k">Quality parts total</div><div class="v">$<span data-role="job-parts-total">0.00</span></div></div>
+            <div class="stat"><div class="k">Service total</div><div class="v">$<span data-role="job-grand-total">0.00</span></div></div>
           </div>
         </div>
       `;
     }
 
-    function calcJob(jobEl){
-      const hrs = toNum(jobEl.querySelector('[data-role="labor-hrs"]')?.value);
-      const laborRate = toNum(document.getElementById("labor_rate")?.value);
-      const labor = hrs * laborRate;
+    function addJob(jobData = null){
+      const services = document.getElementById('services');
+      const idx = serviceCount();
+      const wrap = document.createElement('div');
+      wrap.innerHTML = jobHtml(idx, jobData || {});
+      services.appendChild(wrap.firstElementChild);
+      renumberJobs();
+    }
 
-      let parts = 0;
-      jobEl.querySelectorAll('[data-role="part-quality"]').forEach(input => {
-        const row = input.closest(".part-row");
-        const qty = toNum(row.querySelector('[name^="part_qty_"]')?.value);
-        const price = toNum(input.value);
-        parts += qty * price;
+    function addBlankService(){
+      addJob({
+        desc: '',
+        labor_hours: 0,
+        notes: '',
+        parts: []
       });
+    }
+
+    function addPresetToQuote(){
+      const presetKey = document.getElementById('preset_select').value;
+      if(!presetKey || !JOB_PRESETS[presetKey]) return;
+      const preset = JOB_PRESETS[presetKey];
+      const jobs = Array.isArray(preset.jobs) ? preset.jobs : [];
+      jobs.forEach(job => addJob(job));
+      calcAll();
+    }
+
+    function addPartToJob(jobEl, partData = null){
+      const idx = Number(jobEl.dataset.idx || 0);
+      const partsList = jobEl.querySelector('.parts-list');
+      const wrap = document.createElement('div');
+      wrap.innerHTML = partRowHtml(idx, partData || {});
+      partsList.appendChild(wrap.firstElementChild);
+      renumberJobs();
+    }
+
+    function deleteService(buttonEl){
+      const job = buttonEl.closest('.job');
+      if(!job) return;
+      job.remove();
+      if(serviceCount() === 0){
+        addBlankService();
+      }
+      renumberJobs();
+    }
+
+    function deletePart(buttonEl){
+      const row = buttonEl.closest('.part-row');
+      const job = buttonEl.closest('.job');
+      if(!row || !job) return;
+      row.remove();
+      calcAll();
+    }
+
+    function calcJob(jobEl){
+      const laborHours = toNum(jobEl.querySelector('[data-role="labor-hrs"]')?.value);
+      const laborRate = toNum(document.getElementById('labor_rate')?.value);
+      let qualityParts = 0;
+
+      jobEl.querySelectorAll('.part-row').forEach(row => {
+        const qty = toNum(row.querySelector('[name^="part_qty_"]')?.value || 0);
+        const price = toNum(row.querySelector('[data-role="part-quality"]')?.value || 0);
+        qualityParts += qty * price;
+      });
+
+      const laborTotal = laborHours * laborRate;
+      const serviceTotal = laborTotal + qualityParts;
 
       const laborEl = jobEl.querySelector('[data-role="job-labor-total"]');
       const partsEl = jobEl.querySelector('[data-role="job-parts-total"]');
       const grandEl = jobEl.querySelector('[data-role="job-grand-total"]');
+      if(laborEl) laborEl.textContent = money(laborTotal);
+      if(partsEl) partsEl.textContent = money(qualityParts);
+      if(grandEl) grandEl.textContent = money(serviceTotal);
 
-      if(laborEl) laborEl.textContent = money(labor);
-      if(partsEl) partsEl.textContent = money(parts);
-      if(grandEl) grandEl.textContent = money(labor + parts);
-
-      return { labor, parts };
+      return { laborTotal, qualityParts, serviceTotal };
     }
 
     function calcAll(){
-      const jobs = document.querySelectorAll("#services .job");
       let laborSum = 0;
       let partsSum = 0;
-
-      jobs.forEach(job => {
-        const r = calcJob(job);
-        laborSum += r.labor;
-        partsSum += r.parts;
+      document.querySelectorAll('#services .job').forEach(job => {
+        const totals = calcJob(job);
+        laborSum += totals.laborTotal;
+        partsSum += totals.qualityParts;
       });
 
-      const taxRate = toNum(document.getElementById("tax_rate")?.value) / 100;
-      const fee = toNum(document.getElementById("service_fee")?.value);
-      const tax = partsSum * taxRate;
-      const grand = laborSum + partsSum + tax + fee;
+      const taxRate = toNum(document.getElementById('tax_rate')?.value) / 100;
+      const serviceFee = toNum(document.getElementById('service_fee')?.value);
+      const taxTotal = partsSum * taxRate;
+      const grandTotal = laborSum + partsSum + taxTotal + serviceFee;
 
-      setText("labor_total", money(laborSum));
-      setText("parts_total", money(partsSum));
-      setText("tax_total", money(tax));
-      setText("service_total", money(fee));
-      setText("grand_total", money(grand));
-    }
-
-    function addService(){
-      const services = document.getElementById("services");
-      const idx = services.querySelectorAll(".job").length;
-      const wrap = document.createElement("div");
-      wrap.innerHTML = jobHtml(idx);
-      services.appendChild(wrap.firstElementChild);
-      renumberJobs();
-      calcAll();
-    }
-
-    function deleteService(buttonEl){
-      const job = buttonEl.closest(".job");
-      if(!job) return;
-      job.remove();
-      renumberJobs();
-      calcAll();
-
-      if(document.querySelectorAll("#services .job").length === 0){
-        addService();
-      }
-    }
-
-    function addPart(buttonEl){
-      const job = buttonEl.closest(".job");
-      if(!job) return;
-
-      const idx = Number(job.dataset.idx || 0);
-      const wrap = job.querySelector("[data-part-wrap]");
-      const holder = document.createElement("div");
-      holder.innerHTML = partRowHtml(idx);
-      wrap.appendChild(holder.firstElementChild);
-      renumberJobs();
-      calcAll();
-    }
-
-    function deletePart(buttonEl){
-      const row = buttonEl.closest(".part-row");
-      const wrap = buttonEl.closest("[data-part-wrap]");
-      if(!row || !wrap) return;
-
-      row.remove();
-
-      if(wrap.querySelectorAll(".part-row").length === 0){
-        const job = wrap.closest(".job");
-        const idx = Number(job.dataset.idx || 0);
-        const holder = document.createElement("div");
-        holder.innerHTML = partRowHtml(idx);
-        wrap.appendChild(holder.firstElementChild);
-      }
-
-      renumberJobs();
-      calcAll();
+      setText('labor_total', money(laborSum));
+      setText('parts_total', money(partsSum));
+      setText('tax_total', money(taxTotal));
+      setText('service_total', money(serviceFee));
+      setText('grand_total', money(grandTotal));
     }
 
     function beforeSave(){
@@ -515,21 +463,19 @@
     }
 
     function fillCustomerFromSelect(){
-      const select = document.getElementById("existing_customer");
+      const select = document.getElementById('existing_customer');
       const opt = select.options[select.selectedIndex];
       if(!opt || !opt.value) return;
+      document.getElementById('customer_name').value = opt.dataset.name || '';
+      document.getElementById('customer_phone').value = opt.dataset.phone || '';
+      document.getElementById('customer_email').value = opt.dataset.email || '';
 
-      document.getElementById("customer_name").value = opt.dataset.name || "";
-      document.getElementById("customer_phone").value = opt.dataset.phone || "";
-      document.getElementById("customer_email").value = opt.dataset.email || "";
-
-      const vehicleSelect = document.getElementById("existing_vehicle");
+      const vehicleSelect = document.getElementById('existing_vehicle');
       const selectedCustomerId = opt.value;
-
       for(let i = 0; i < vehicleSelect.options.length; i++){
         const vOpt = vehicleSelect.options[i];
         if(!vOpt.value) continue;
-        if(String(vOpt.dataset.customerId || "") === String(selectedCustomerId)){
+        if(String(vOpt.dataset.customerId || '') === String(selectedCustomerId)){
           vehicleSelect.selectedIndex = i;
           fillVehicleFromSelect();
           break;
@@ -538,51 +484,62 @@
     }
 
     function fillVehicleFromSelect(){
-      const select = document.getElementById("existing_vehicle");
+      const select = document.getElementById('existing_vehicle');
       const opt = select.options[select.selectedIndex];
       if(!opt || !opt.value) return;
-
-      document.getElementById("vehicle").value = opt.dataset.vehicle || "";
-      document.getElementById("vin").value = opt.dataset.vin || "";
-
-      const customerId = opt.dataset.customerId || "";
+      document.getElementById('vehicle').value = opt.dataset.vehicle || '';
+      document.getElementById('vin').value = opt.dataset.vin || '';
+      const customerId = opt.dataset.customerId || '';
       if(customerId){
-        const customerSelect = document.getElementById("existing_customer");
+        const customerSelect = document.getElementById('existing_customer');
         for(let i = 0; i < customerSelect.options.length; i++){
           const cOpt = customerSelect.options[i];
-          if(String(cOpt.value || "") === String(customerId)){
+          if(String(cOpt.value || '') === String(customerId)){
             customerSelect.selectedIndex = i;
-            document.getElementById("customer_name").value = cOpt.dataset.name || "";
-            document.getElementById("customer_phone").value = cOpt.dataset.phone || "";
-            document.getElementById("customer_email").value = cOpt.dataset.email || "";
+            document.getElementById('customer_name').value = cOpt.dataset.name || '';
+            document.getElementById('customer_phone').value = cOpt.dataset.phone || '';
+            document.getElementById('customer_email').value = cOpt.dataset.email || '';
             break;
           }
         }
       }
     }
 
-    document.addEventListener("blur", function(e){
+    function populatePresets(){
+      const select = document.getElementById('preset_select');
+      Object.entries(JOB_PRESETS).forEach(([key, preset]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = preset.name || key;
+        select.appendChild(option);
+      });
+    }
+
+    document.addEventListener('blur', function(e){
       if(e.target.matches('input[type="number"]')){
-        let v = parseFloat(e.target.value);
+        const v = parseFloat(e.target.value);
         if(!isNaN(v)){
           e.target.value = v.toFixed(2);
-          calcAll();
         }
+        calcAll();
       }
     }, true);
 
-    document.addEventListener("DOMContentLoaded", () => {
-      addService();
+    document.addEventListener('DOMContentLoaded', () => {
+      populatePresets();
+      addBlankService();
 
-      document.getElementById("addServiceBtn").addEventListener("click", (e) => {
+      document.getElementById('addPresetBtn').addEventListener('click', (e) => {
         e.preventDefault();
-        addService();
+        addPresetToQuote();
       });
 
-      document.getElementById("services").addEventListener("input", calcAll);
-      document.getElementById("services").addEventListener("change", calcAll);
+      document.getElementById('startBlankBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        addBlankService();
+      });
 
-      document.getElementById("services").addEventListener("click", (e) => {
+      document.getElementById('services').addEventListener('click', (e) => {
         const deleteJobBtn = e.target.closest('[data-action="delete-job"]');
         if(deleteJobBtn){
           e.preventDefault();
@@ -593,7 +550,9 @@
         const addPartBtn = e.target.closest('[data-action="add-part"]');
         if(addPartBtn){
           e.preventDefault();
-          addPart(addPartBtn);
+          const job = addPartBtn.closest('.job');
+          addPartToJob(job, { qty: 1, oem: 0, quality: 0, economy: 0 });
+          calcAll();
           return;
         }
 
@@ -604,12 +563,13 @@
         }
       });
 
-      document.getElementById("labor_rate").addEventListener("input", calcAll);
-      document.getElementById("tax_rate").addEventListener("input", calcAll);
-      document.getElementById("service_fee").addEventListener("input", calcAll);
-
-      document.getElementById("existing_customer").addEventListener("change", fillCustomerFromSelect);
-      document.getElementById("existing_vehicle").addEventListener("change", fillVehicleFromSelect);
+      document.getElementById('services').addEventListener('input', calcAll);
+      document.getElementById('services').addEventListener('change', calcAll);
+      document.getElementById('labor_rate').addEventListener('input', calcAll);
+      document.getElementById('tax_rate').addEventListener('input', calcAll);
+      document.getElementById('service_fee').addEventListener('input', calcAll);
+      document.getElementById('existing_customer').addEventListener('change', fillCustomerFromSelect);
+      document.getElementById('existing_vehicle').addEventListener('change', fillVehicleFromSelect);
 
       calcAll();
     });
