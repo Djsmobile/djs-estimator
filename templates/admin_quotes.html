@@ -148,10 +148,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
             <td>
               <div style="font-weight:800;">{{ row.invoice_number or '-' }}</div>
               <div class="small">
-                SMS: {{ row.sms_status or 'not sent' }}
-                {% if row.sms_sent_at %}
-                  <br>{{ row.sms_sent_at }}
-                {% endif %}
+                Quote link ready
               </div>
             </td>
 

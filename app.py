@@ -131,6 +131,21 @@ def safe_float(value, default=0.0):
         return default
 
 
+def safe_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off", ""}:
+        return False
+    return default
+
+
 def table_columns(conn, table_name):
     cur = conn.cursor()
     cur.execute(f"PRAGMA table_info({table_name})")
@@ -348,17 +363,14 @@ def normalize_job_parts(job):
             oem = safe_float(part.get("oem", 0))
             quality = safe_float(part.get("quality", 0))
             economy = safe_float(part.get("economy", 0))
+
             enabled_oem = safe_bool(part.get("enabled_oem"), oem > 0)
             enabled_quality = safe_bool(part.get("enabled_quality"), quality > 0 or (not enabled_oem and economy <= 0))
             enabled_economy = safe_bool(part.get("enabled_economy"), economy > 0)
 
-            if not any([enabled_oem, enabled_quality, enabled_economy]):
-                enabled_oem = oem > 0
-                enabled_quality = quality > 0 or (not enabled_oem and economy <= 0)
-                enabled_economy = economy > 0
             normalized.append({
                 "part_desc": (part.get("part_desc") or "").strip(),
-                "qty": safe_float(part.get("qty", 1), 1),
+                "qty": max(safe_float(part.get("qty", 1), 1), 0),
                 "oem": oem,
                 "quality": quality,
                 "economy": economy,
@@ -808,17 +820,9 @@ def save_quote():
             markup_oem = safe_float(part_markup_oems[p] if p < len(part_markup_oems) else (1.0 if oem else 1.4), 1.4)
             markup_quality = safe_float(part_markup_qualities[p] if p < len(part_markup_qualities) else (1.0 if quality else 1.4), 1.4)
             markup_economy = safe_float(part_markup_economies[p] if p < len(part_markup_economies) else (1.0 if economy else 1.4), 1.4)
-            enabled_oem = safe_bool(enabled_oems[p] if p < len(enabled_oems) else None, oem > 0)
-            enabled_quality = safe_bool(
-                enabled_qualities[p] if p < len(enabled_qualities) else None,
-                quality > 0 or (not enabled_oem and economy <= 0)
-            )
-            enabled_economy = safe_bool(enabled_economies[p] if p < len(enabled_economies) else None, economy > 0)
-
-            if not any([enabled_oem, enabled_quality, enabled_economy]):
-                enabled_oem = oem > 0
-                enabled_quality = quality > 0 or (not enabled_oem and economy <= 0)
-                enabled_economy = economy > 0
+            enabled_oem = (enabled_oems[p].strip() == "1") if p < len(enabled_oems) else (oem > 0)
+            enabled_quality = (enabled_qualities[p].strip() == "1") if p < len(enabled_qualities) else (quality > 0 or (not enabled_oem and economy <= 0))
+            enabled_economy = (enabled_economies[p].strip() == "1") if p < len(enabled_economies) else (economy > 0)
 
             if not part_desc and qty == 1 and oem == 0 and quality == 0 and economy == 0 and list_oem == 0 and list_quality == 0 and list_economy == 0:
                 continue
@@ -903,8 +907,7 @@ def view_quote(token):
     quote = dict(row)
     payload = json.loads(quote["payload_json"] or "{}")
     jobs = payload.get("jobs", [])
-    for job in jobs:
-        job["parts"] = normalize_job_parts(job)
+    jobs = [{**job, "parts": normalize_job_parts(job)} for job in jobs]
 
     _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
     inspection = load_inspection(quote)
@@ -1040,77 +1043,19 @@ def convert_invoice(token):
 @app.route("/inspection/<token>", methods=["GET", "POST"])
 def inspection(token):
     conn = get_db()
-    cur = conn.cursor()
-    quote = cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
-    if not quote:
-        conn.close()
-        abort(404)
-    if request.method == "POST":
-        labels = request.form.getlist("inspection_label[]")
-        statuses = request.form.getlist("inspection_status[]")
-        notes_list = request.form.getlist("inspection_notes[]")
-        existing_photos = request.form.getlist("existing_photo[]")
-        estimate_added_flags = request.form.getlist("estimate_added[]")
-        files = request.files.getlist("inspection_photo[]")
-        items = []
-        max_len = max(len(labels), len(statuses), len(notes_list), len(existing_photos), len(files)) if any([labels, statuses, notes_list, existing_photos, files]) else 0
-        upload_dir = quote_upload_dir(token)
-        for idx in range(max_len):
-            label = labels[idx].strip() if idx < len(labels) else ""
-            status = (statuses[idx].strip().lower() if idx < len(statuses) else "good") or "good"
-            if status not in ("good", "monitor", "needs_attention"):
-                status = "good"
-            notes = notes_list[idx].strip() if idx < len(notes_list) else ""
-            photo = existing_photos[idx].strip() if idx < len(existing_photos) else ""
-            already_added = (estimate_added_flags[idx].strip().lower() == "true") if idx < len(estimate_added_flags) else False
-            upload = files[idx] if idx < len(files) else None
-            if upload and upload.filename and allowed_file(upload.filename):
-                ext = upload.filename.rsplit('.', 1)[1].lower()
-                fname = f"inspection_{idx}_{secrets.token_hex(6)}.{ext}"
-                save_path = os.path.join(upload_dir, fname)
-                upload.save(save_path)
-                photo = f"/static/uploads/{slugify(token)}/{fname}"
-            if not label and not notes and not photo:
-                continue
-            items.append({"label": label, "status": status, "notes": notes, "photo": photo, "estimate_added": already_added})
-        save_inspection_json(conn, quote["id"], {"items": items})
-        conn.close()
-        flash("Inspection saved.")
-        return redirect(url_for("inspection", token=token))
-    inspection_data = load_inspection(quote)
+    quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
     conn.close()
-    return render_template("inspection.html", quote=dict(quote), inspection=inspection_data)
+    if not quote:
+        abort(404)
+
+    flash("Inspection editing is locked after the quote is saved. Inspection items can only be edited on the estimator page before saving the quote.")
+    return redirect(url_for("view_quote", token=token))
 
 
 @app.route("/inspection_add_to_estimate/<token>/<int:item_index>", methods=["POST"])
 def inspection_add_to_estimate(token, item_index):
-    conn = get_db()
-    cur = conn.cursor()
-    quote = cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
-    if not quote:
-        conn.close()
-        abort(404)
-    payload = json.loads(quote["payload_json"] or "{}")
-    jobs = payload.get("jobs", [])
-    inspection_data = load_inspection(quote)
-    items = inspection_data.get("items", [])
-    if item_index < 0 or item_index >= len(items):
-        conn.close()
-        abort(404)
-    item = items[item_index]
-    if not item.get("estimate_added"):
-        notes = item.get("notes") or "Added from inspection."
-        if item.get("photo"):
-            notes += "\nPhoto attached in inspection report."
-        jobs.append({"desc": item.get("label") or "Inspection Item", "labor_hours": 0, "notes": notes, "parts": []})
-        item["estimate_added"] = True
-        cur.execute("UPDATE quotes SET payload_json = ?, inspection_json = ? WHERE id = ?", (json.dumps({"jobs": jobs}), json.dumps({"items": items}), quote["id"]))
-        conn.commit()
-        flash("Inspection item added to estimate.")
-    else:
-        flash("That inspection item is already on the estimate.")
-    conn.close()
-    return redirect(url_for("inspection", token=token))
+    flash("Inspection items can only be added or edited from the estimator before the quote is saved.")
+    return redirect(url_for("view_quote", token=token))
 
 
 @app.route("/invoice/<invoice_number>", methods=["GET"])
@@ -1202,7 +1147,7 @@ def send_quote_sms(token):
     conn.close()
     if not quote:
         abort(404)
-    flash("Text quote is not wired up in this build yet. The custom quote link is live and ready to copy from the quote page.")
+    flash("Text quote is not wired up in this build yet. Your custom quote link is live from the quote page.")
     return redirect(url_for("admin"))
 
 
@@ -1216,9 +1161,8 @@ def delete_invoice(invoice_number):
         abort(404)
 
     cur.execute("DELETE FROM invoices WHERE invoice_number = ?", (invoice_number,))
-    linked_quote_id = invoice["quote_id"]
-    if linked_quote_id:
-        cur.execute("UPDATE quotes SET status = 'approved' WHERE id = ? AND status = 'invoiced'", (linked_quote_id,))
+    if invoice["quote_id"]:
+        cur.execute("UPDATE quotes SET status = 'approved' WHERE id = ? AND status = 'invoiced'", (invoice["quote_id"],))
     conn.commit()
     conn.close()
     flash(f"Invoice {invoice_number} deleted.")
