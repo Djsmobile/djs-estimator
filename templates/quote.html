@@ -126,7 +126,7 @@
       overflow:hidden;
     }
     .service-shell{
-      padding:14px;
+      padding:12px;
     }
     .service-top{
       display:grid;
@@ -153,8 +153,8 @@
     .service-controls{
       display:flex;
       flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
+      gap:7px;
+      margin-top:10px;
     }
     .mini-btn{
       appearance:none;
@@ -201,7 +201,7 @@
 
     .parts-box{
       margin-top:4px;
-      padding:12px;
+      padding:10px;
       background:var(--panel-3);
       border:1px solid var(--line);
       border-radius:12px;
@@ -213,10 +213,10 @@
     }
     .part-row{
       display:grid;
-      grid-template-columns:minmax(0,1.7fr) 76px 150px 110px;
-      gap:10px;
+      grid-template-columns:minmax(0,1.7fr) 76px 140px 110px;
+      gap:8px;
       align-items:center;
-      padding:10px 0;
+      padding:9px 0;
       border-bottom:1px dashed #2d3139;
     }
     .part-row:last-child{border-bottom:none}
@@ -337,7 +337,7 @@
   <div class="wrap">
     <div class="card">
       <h1>DJ's Estimate Review</h1>
-      <div class="muted">Please review the estimate details below.</div>
+      <div class="muted">Please review the estimate details below. Inspection notes and photos are view-only here and stay locked after the estimate is saved.</div>
       <div class="meta">
         <div><strong>Customer</strong><br>{{ quote.customer_name or '-' }}</div>
         <div><strong>Email</strong><br>{{ quote.customer_email or '-' }}</div>
@@ -348,7 +348,6 @@
         <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
       </div>
       <div class="actions">
-        <a class="btn btn-secondary" href="/inspection/{{ quote.quote_token }}">Inspection / Photos</a>
         {% if quote.status == 'approved' %}<a class="btn btn-secondary" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>{% endif %}
       </div>
     </div>
@@ -356,6 +355,7 @@
     {% if inspection and inspection["items"] %}
     <div class="card">
       <h2>Inspection Notes</h2>
+      <div class="muted" style="margin-bottom:10px;">Captured during estimate build. Editing is locked once the quote is saved.</div>
       {% for item in inspection["items"] %}
       <div class="inspection-item">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -441,7 +441,7 @@
                   {% if parts and parts|length > 0 %}
                   <div class="section-block" data-section="parts">
                     <div class="parts-box">
-                      <div class="help">Only available parts options are shown. Your selections update the total instantly.</div>
+                      <div class="help">Only enabled parts options are shown. Your selections update the total instantly, including Economy when it is enabled on the estimate.</div>
                       {% for part in parts %}
                         {% set part_index = loop.index0 %}
                         {% set qty = part.get('qty', 1)|float %}

@@ -35,8 +35,8 @@
     .success-btn{background:var(--success);color:var(--successText);border:1px solid rgba(134,239,172,.18)}
     .preset-wrap{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end}
 
-    .job{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:10px;margin-bottom:10px}
-    .job-top{display:grid;grid-template-columns:minmax(180px,1.6fr) 92px 130px auto;gap:8px;align-items:end}
+    .job{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:9px;margin-bottom:9px}
+    .job-top{display:grid;grid-template-columns:minmax(180px,1.6fr) 92px 120px auto;gap:8px;align-items:end}
     .job-quick-title{display:flex;flex-direction:column;gap:4px}
     .jobtitle{font-weight:900;font-size:16px;line-height:1.15}
     .job-header-total{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right;padding:7px 10px;border:1px solid var(--border);border-radius:10px;background:#0f0f0f;min-height:42px}
@@ -47,22 +47,22 @@
     .collapse-section{display:none}
     .collapse-section.open{display:block}
     .compact-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;border:1px solid var(--border);background:#111;color:var(--muted);font-size:11px}
-    .compact-grid{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:8px;margin-top:8px}
+    .compact-grid{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(118px,1fr));gap:8px;margin-top:8px}
     .job-summary{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:8px}
     .stat{background:#0e0e0e;border:1px solid var(--border);border-radius:10px;padding:8px}
     .stat .k{color:var(--muted);font-size:11px}
     .stat .v{font-size:17px;font-weight:900;margin-top:3px}
-    .parts-area{margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:12px;background:#0d0d0d}
+    .parts-area{margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:12px;background:#0d0d0d}
     .parts-head{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
     .parts-list{display:flex;flex-direction:column;gap:8px}
-    .part-row{border:1px solid var(--border);border-radius:12px;padding:10px;background:#121212}
-    .part-top{display:grid;grid-template-columns:minmax(140px,2fr) 78px auto;gap:8px;align-items:end}
-    .tier-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:8px;margin-top:8px}
-    .tier-card{border:1px solid var(--border);border-radius:10px;padding:8px;background:#0e0e0e}
+    .part-row{border:1px solid var(--border);border-radius:12px;padding:8px;background:#121212}
+    .part-top{display:grid;grid-template-columns:minmax(140px,2fr) 72px auto;gap:8px;align-items:end}
+    .tier-grid{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:8px;margin-top:8px}
+    .tier-card{border:1px solid var(--border);border-radius:10px;padding:7px;background:#0e0e0e}
     .tier-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
     .tier-name{font-weight:800;font-size:12px}
     .tier-toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}
-    .tier-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+    .tier-fields{display:grid;grid-template-columns:1fr 0.9fr 1fr;gap:6px}
     .tier-fields label{font-size:11px}
     .save-note{font-size:12px;color:var(--muted)}
     .inspection-link{display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:9px 12px;border-radius:12px;background:#1d4ed8;color:#fff;font-weight:800}
@@ -137,7 +137,7 @@
       </div>
 
       <div class="card">
-        <div class="btnrow"><div><div class="section-title" style="margin-bottom:4px;">Services</div><div class="section-sub" style="margin-bottom:0;">Retail prices are customer-facing. List prices and markups stay internal.</div></div></div>
+        <div class="btnrow"><div><div class="section-title" style="margin-bottom:4px;">Services</div><div class="section-sub" style="margin-bottom:0;">Retail prices are customer-facing. List prices and markups stay internal. Compact layout keeps each service tighter on mobile.</div></div></div>
         <div class="divider"></div>
         <div id="services"></div>
       </div>
@@ -153,7 +153,7 @@
 
       <div class="card">
         <div class="section-title">Estimate Preview</div>
-        <div class="save-note" style="margin-bottom:10px;">Preview uses enabled <strong style="color:#fff;">Quality</strong> retail pricing by default unless that option is disabled for a part.</div>
+        <div class="save-note" style="margin-bottom:10px;">Preview uses the first available customer-facing tier for each part, preferring <strong style="color:#fff;">Quality</strong> when it is enabled.</div>
         <div class="row">
           <div class="stat"><div class="k">Labor total</div><div class="v">$<span id="labor_total">0.00</span></div></div>
           <div class="stat"><div class="k">Parts total</div><div class="v">$<span id="parts_total">0.00</span></div></div>
@@ -181,7 +181,8 @@
     function setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
     function escapeHtml(value){ return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;'); }
     function serviceCount(){ return document.querySelectorAll('#services .job').length; }
-    function defaultEnabledFor(part, tier){ if(part[`enabled_${tier}`] !== undefined) return !!part[`enabled_${tier}`]; return toNum(part[tier]) > 0 || tier === 'quality'; }
+    function isTruthy(value){ if(value === true || value === false) return value; const text=String(value ?? '').trim().toLowerCase(); if(['1','true','yes','on'].includes(text)) return true; if(['0','false','no','off',''].includes(text)) return false; return !!value; }
+    function defaultEnabledFor(part, tier){ if(part[`enabled_${tier}`] !== undefined) return isTruthy(part[`enabled_${tier}`]); return toNum(part[tier]) > 0 || tier === 'quality'; }
     function retailFrom(part, tier){ const retail = part[tier] ?? part[`retail_${tier}`] ?? 0; return money(retail); }
     function listFrom(part, tier){ const list = part[`list_${tier}`] ?? part[tier] ?? 0; return money(list); }
     function markupFrom(part, tier){ const markup = part[`markup_${tier}`] ?? ((toNum(part[tier]) && toNum(part[`list_${tier}`])) ? toNum(part[tier])/Math.max(toNum(part[`list_${tier}`]),0.01) : (toNum(part[tier]) ? 1 : 1.4)); return money(markup || 1.4); }
@@ -287,7 +288,7 @@
       </div>`;
     }
 
-    function updateTierToggleHidden(row){ TIER_META.forEach(t=>{ const check=row.querySelector(`[data-role="enabled-${t.key}"]`); const hidden=row.querySelector(`input[type="hidden"][data-base-name="part_enabled_${t.key}"]`); if(hidden){ hidden.disabled = !!check.checked; } }); }
+    function updateTierToggleHidden(row){ TIER_META.forEach(t=>{ const check=row.querySelector(`[data-role="enabled-${t.key}"]`); const hidden=row.querySelector(`input[type="hidden"][data-base-name="part_enabled_${t.key}"]`); const tierCard=row.querySelector(`.tier-card[data-tier="${t.key}"]`); if(hidden && check){ hidden.disabled = !!check.checked; } if(tierCard && check){ tierCard.style.opacity = check.checked ? "1" : ".58"; } }); }
     function recalcPartRow(row){
       TIER_META.forEach(t=>{
         const listEl=row.querySelector(`[data-role="list-${t.key}"]`); const markupEl=row.querySelector(`[data-role="markup-${t.key}"]`); const retailEl=row.querySelector(`[data-role="retail-${t.key}"]`);
@@ -309,7 +310,7 @@
     function addJob(jobData=null){ const services=document.getElementById('services'); const idx=serviceCount(); const wrap=document.createElement('div'); wrap.innerHTML=jobHtml(idx, jobData || {}); services.appendChild(wrap.firstElementChild); renumberJobs(); }
     function addBlankService(){ addJob({desc:'', labor_hours:0, notes:'', parts:[]}); }
     function addPresetToQuote(){ const presetKey=document.getElementById('preset_select').value; if(!presetKey || !JOB_PRESETS[presetKey]) return; (JOB_PRESETS[presetKey].jobs || []).forEach(job=>addJob(job)); calcAll(); }
-    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); wrap.innerHTML=partRowHtml(idx, partData || {}); partsList.appendChild(wrap.firstElementChild); renumberJobs(); }
+    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); const defaults={qty:1,oem:0,quality:0,economy:0,list_oem:0,list_quality:0,list_economy:0,markup_oem:1.4,markup_quality:1.4,markup_economy:1.4,enabled_oem:false,enabled_quality:true,enabled_economy:false}; wrap.innerHTML=partRowHtml(idx, Object.assign(defaults, partData || {})); partsList.appendChild(wrap.firstElementChild); renumberJobs(); }
     function deleteService(btn){ const job=btn.closest('.job'); if(job) job.remove(); if(serviceCount()===0) addBlankService(); renumberJobs(); }
     function deletePart(btn){ const row=btn.closest('.part-row'); if(row) row.remove(); calcAll(); }
     function calcJob(jobEl){
