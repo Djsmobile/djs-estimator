@@ -1,559 +1,101 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Invoice {{ row.invoice_number }}</title>
   <style>
-    :root{
-      --bg:#0b0b0d;
-      --panel:#141519;
-      --panel-2:#1b1d22;
-      --text:#f3f4f6;
-      --muted:#a1a1aa;
-      --line:#2c2f36;
-      --accent:#d4af37;
-      --green:#22c55e;
-      --red:#ef4444;
-      --blue:#3b82f6;
-    }
-
-    *{box-sizing:border-box}
-
-    body{
-      margin:0;
-      font-family:Arial,Helvetica,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      line-height:1.45;
-    }
-
-    .wrap{
-      max-width:1100px;
-      margin:0 auto;
-      padding:24px 16px 40px;
-    }
-
-    .card{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:20px;
-      margin-bottom:18px;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
-    }
-
-    h1,h2,h3{
-      margin:0 0 12px;
-    }
-
-    h1{
-      font-size:28px;
-    }
-
-    h2{
-      font-size:20px;
-      color:var(--accent);
-    }
-
-    h3{
-      font-size:18px;
-    }
-
-    .muted{
-      color:var(--muted);
-    }
-
-    .meta{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(260px,1fr));
-  gap:12px;
-  margin-top:14px;
-}
-
-@media (max-width: 900px){
-  .meta{
-    grid-template-columns:1fr;
-  }
-}
-
-    .meta div{
-      background:var(--panel-2);
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:10px 12px;
-    }
-
-    .pill{
-      display:inline-block;
-      padding:5px 10px;
-      border-radius:999px;
-      font-size:12px;
-      border:1px solid var(--line);
-      background:#111318;
-      color:var(--muted);
-      font-weight:700;
-    }
-
-    .pill-paid{
-      background:#16351f;
-      color:#86efac;
-      border-color:rgba(134,239,172,.25);
-    }
-
-    .pill-unpaid{
-      background:#3a1818;
-      color:#fca5a5;
-      border-color:rgba(252,165,165,.2);
-    }
-
-    .job{
-      border:1px solid var(--line);
-      background:var(--panel-2);
-      border-radius:14px;
-      padding:16px;
-      margin-top:14px;
-    }
-
-    .job-header{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-bottom:8px;
-      align-items:flex-start;
-    }
-
-    .money{
-      font-weight:700;
-      color:var(--accent);
-      font-size:22px;
-    }
-
-    .parts-box{
-      margin-top:12px;
-      padding:12px;
-      background:#111318;
-      border:1px solid var(--line);
-      border-radius:12px;
-    }
-
-    .parts-head{
-      display:grid;
-      grid-template-columns:2fr 1fr 1fr;
-      gap:12px;
-      padding:8px 0;
-      font-weight:700;
-      color:var(--muted);
-      border-bottom:1px solid var(--line);
-      margin-bottom:8px;
-    }
-
-    .part-row{
-      display:grid;
-      grid-template-columns:2fr 1fr 1fr;
-      gap:12px;
-      padding:8px 0;
-      border-bottom:1px dashed #2d3139;
-      align-items:center;
-    }
-
-    .part-row:last-child{
-      border-bottom:none;
-    }
-
-    .line{
-      height:1px;
-      background:var(--line);
-      margin:14px 0;
-    }
-
-    .summary{
-      display:grid;
-      gap:8px;
-      max-width:480px;
-      margin-left:auto;
-      margin-top:14px;
-    }
-
-    .summary-row{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      padding:8px 0;
-      border-bottom:1px solid var(--line);
-    }
-
-    .summary-row.total{
-      font-size:22px;
-      font-weight:800;
-      color:var(--accent);
-      border-bottom:none;
-      padding-top:12px;
-    }
-
-    .footer-note{
-      color:var(--muted);
-      font-size:13px;
-      margin-top:10px;
-    }
-
-    .empty{
-      padding:14px;
-      border:1px dashed var(--line);
-      border-radius:12px;
-      color:var(--muted);
-      background:#111318;
-    }
-
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    @media (max-width: 640px){
-      h1{font-size:24px}
-      .wrap{padding:16px 12px 28px}
-      .card{padding:16px}
-      .parts-head,
-      .part-row{
-        grid-template-columns:1fr !important;
-      }
-      .parts-head{display:none}
-      .part-row{
-        gap:4px;
-        padding:10px 0;
-      }
-    }
-
-    .brand-header{
-      position:relative;
-      overflow:hidden;
-      background:
-        radial-gradient(circle at top right, rgba(212,175,55,.14), transparent 30%),
-        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
-    }
-
-    .brand-wrap{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:18px;
-      flex-wrap:wrap;
-    }
-
-    .brand-left{
-      display:flex;
-      align-items:center;
-      gap:16px;
-      flex-wrap:wrap;
-      flex:1 1 620px;
-    }
-
-    .brand-logo{
-      width:92px;
-      height:92px;
-      object-fit:contain;
-      border-radius:18px;
-      padding:10px;
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.07);
-      box-shadow:0 10px 24px rgba(0,0,0,.28);
-    }
-
-    .brand-kicker{
-      color:var(--accent);
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.14em;
-      font-weight:800;
-      margin-bottom:6px;
-    }
-
-    .brand-name{
-      margin:0;
-      font-size:30px;
-      line-height:1.05;
-    }
-
-    .contact-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
-    }
-
-    .contact-pill{
-      display:inline-flex;
-      align-items:center;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#111318;
-      color:var(--muted);
-      font-size:13px;
-      font-weight:700;
-    }
-
-    .toolbar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-
-    .btn{
-      appearance:none;
-      border:none;
-      border-radius:12px;
-      padding:12px 16px;
-      font-size:14px;
-      font-weight:800;
-      cursor:pointer;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    .btn-ghost{
-      background:#171a20;
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-
-    @media print{
-      body{ background:#fff; color:#111; }
-      .wrap{ max-width:none; padding:0; }
-      .card, .job, .parts-box, .meta div{
-        background:#fff !important;
-        color:#111 !important;
-        box-shadow:none !important;
-      }
-      .card, .job, .parts-box, .meta div, .pill{
-        border-color:#d1d5db !important;
-      }
-      .toolbar, .barcode-box{ display:none !important; }
-      .muted, .footer-note, .contact-pill{ color:#4b5563 !important; }
-      .contact-pill{ background:#fff !important; }
-    }
-
+    :root{--bg:#0b0b0d;--panel:#141519;--panel-2:#1b1d22;--text:#f3f4f6;--muted:#a1a1aa;--line:#2c2f36;--accent:#d4af37;--green:#22c55e;--red:#ef4444}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 40px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    h1,h2,h3{margin:0 0 12px} h1{font-size:28px} h2{font-size:20px;color:var(--accent)} h3{font-size:18px}.muted{color:var(--muted)}
+    .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 18px;margin-top:14px}.meta div{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+    .pill{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:#111318;color:var(--muted);font-weight:700}.pill-paid{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}.pill-unpaid{background:#3a1818;color:#fca5a5;border-color:rgba(252,165,165,.2)}
+    .job{border:1px solid var(--line);background:var(--panel-2);border-radius:14px;padding:16px;margin-top:14px}.job-header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.money{font-weight:700;color:var(--accent);font-size:22px}
+    .parts-box{margin-top:12px;padding:12px;background:#111318;border:1px solid var(--line);border-radius:12px}.part-row{display:grid;grid-template-columns:2fr .8fr 1fr 1fr;gap:12px;padding:10px 0;border-bottom:1px dashed #2d3139;align-items:center}.part-row:last-child{border-bottom:none}
+    .summary{display:grid;gap:8px;max-width:480px;margin-left:auto;margin-top:14px}.summary-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}.summary-row.total{font-size:22px;font-weight:800;color:var(--accent);border-bottom:none;padding-top:12px}
+    .footer-note{color:var(--muted);font-size:13px;margin-top:10px}.actions{display:flex;gap:12px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:10px 14px;border-radius:12px;font-weight:800;border:1px solid rgba(255,255,255,.10);cursor:pointer;background:#20242b;color:var(--text)}
+    @media (max-width:640px){.wrap{padding:16px 12px 28px}.card{padding:16px}.part-row{grid-template-columns:1fr} h1{font-size:24px}}
   </style>
 </head>
 <body>
-  <div class="wrap">
-
-    <div class="card brand-header">
-  <div class="brand-wrap">
-    <div class="brand-left">
-      <img src="/static/logo.png" alt="DJ's Mobile Mechanic logo" class="brand-logo" onerror="this.style.display='none'">
+<div class="wrap">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start;">
       <div>
-        <div class="brand-kicker">Invoice</div>
-        <h1 class="brand-name">DJ's Mobile Mechanic</h1>
-        <div class="muted" style="margin-top:6px;">Dealer-level mobile service, clean paperwork, and customer-friendly records.</div>
-        <div class="contact-row">
-          <span class="contact-pill">279-966-4771</span>
-          <span class="contact-pill">djsmobilemechanic@proton.me</span>
-          <span class="contact-pill">www.djsmobilediag.com</span>
-        </div>
+        <h1>Invoice {{ row.invoice_number }}</h1>
+        <div class="muted">DJ's Mobile Mechanic</div>
+        <div class="muted">At your door</div>
+      </div>
+      <div style="text-align:right;">
+        <div><span class="pill {{ 'pill-paid' if row.payment_status == 'paid' else 'pill-unpaid' }}">{{ row.payment_status|upper }}</span></div>
+        <svg id="barcode"></svg>
       </div>
     </div>
-
-    <div style="flex:0 0 auto;">
-      <div class="toolbar">
-        <button type="button" class="btn btn-ghost" onclick="window.print()">Print / Save PDF</button>
-      </div>
+    <div class="meta">
+      <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
+      <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
+      <div><strong>Phone</strong><br>{{ row.customer_phone or '-' }}</div>
+      <div><strong>Email</strong><br>{{ row.customer_email or '-' }}</div>
+      <div><strong>Created</strong><br>{{ row.invoice_created_at or '-' }}</div>
+      <div><strong>Status</strong><br>{{ row.payment_status or '-' }}</div>
+    </div>
+    <div class="actions" style="margin-top:16px;">
+      {% if row.payment_status == 'paid' %}<div class="footer-note">This invoice has been marked paid.</div>{% else %}<form method="POST" action="/mark_paid/{{ row.invoice_number }}"><button class="btn" type="submit" style="background:#16351f;color:#86efac;">Mark as Paid</button></form>{% endif %}
+      <a class="btn" href="/quote/{{ row.quote_token }}">Back to Estimate</a>
     </div>
   </div>
 
-  <div style="height:1px; background:var(--line); margin:18px 0;"></div>
-
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-    <h1 style="margin:0;">Invoice {{ row.invoice_number }}</h1>
-
-    {% if row.payment_status == 'paid' %}
-      <span class="pill pill-paid">PAID</span>
+  <div class="card">
+    <h2>Approved Services</h2>
+    {% if payload.jobs and payload.jobs|length > 0 %}
+      {% for job in payload.jobs %}
+        {% set job_index = loop.index0 %}
+        {% if job_index in approved_map %}
+          {% set approved_item = approved_map.get(job_index, {}) %}
+          {% set selected_parts = approved_item.get('selected_parts', []) %}
+          {% set labor_total = (job.labor_hours|default(0)|float) * (row.labor_rate|default(0)|float) %}
+          {% set ns = namespace(job_total=labor_total, parts_total=0.0) %}
+          <div class="job">
+            <div class="job-header"><div><h3>{{ job.desc or 'Service Item' }}</h3>{% if job.notes %}<div class="footer-note" style="white-space:pre-wrap;">{{ job.notes }}</div>{% endif %}</div><div class="money">
+              {% for part in job.parts or [] %}
+                {% set idx = loop.index0 %}
+                {% set qty = part.qty|default(1)|float %}
+                {% set chosen = namespace(tier='quality') %}
+                {% for saved_part in selected_parts %}{% if saved_part.get('part_index') == idx %}{% set chosen.tier = saved_part.get('tier', 'quality') %}{% endif %}{% endfor %}
+                {% set ns.job_total = ns.job_total + (qty * (part.get(chosen.tier, 0)|float)) %}
+              {% endfor %}
+              ${{ '%.2f'|format(ns.job_total) }}</div></div>
+            <div class="meta"><div><strong>Labor Hours</strong><br>{{ '%.2f'|format(job.labor_hours|default(0)|float) }}</div><div><strong>Labor Rate</strong><br>${{ '%.2f'|format(row.labor_rate|default(0)|float) }}/hr</div><div><strong>Labor Total</strong><br>${{ '%.2f'|format(labor_total) }}</div></div>
+            {% if job.parts and job.parts|length > 0 %}
+            <div class="parts-box">
+              {% for part in job.parts %}
+                {% set idx = loop.index0 %}
+                {% set qty = part.qty|default(1)|float %}
+                {% set chosen = namespace(tier='quality') %}
+                {% for saved_part in selected_parts %}{% if saved_part.get('part_index') == idx %}{% set chosen.tier = saved_part.get('tier', 'quality') %}{% endif %}{% endfor %}
+                {% set line_total = qty * (part.get(chosen.tier, 0)|float) %}
+                {% set ns.parts_total = ns.parts_total + line_total %}
+                <div class="part-row"><div>{{ part.part_desc or 'Part' }}</div><div>{{ '%.2f'|format(qty) }}</div><div>{{ chosen.tier|upper }}</div><div>${{ '%.2f'|format(line_total) }}</div></div>
+              {% endfor %}
+            </div>
+            <div class="footer-note">Selected parts total: ${{ '%.2f'|format(ns.parts_total) }}</div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+      <div class="summary">
+        <div class="summary-row"><span>Labor</span><span>${{ '%.2f'|format(totals.labor_total) }}</span></div>
+        <div class="summary-row"><span>Parts</span><span>${{ '%.2f'|format(totals.parts_total) }}</span></div>
+        <div class="summary-row"><span>Tax</span><span>${{ '%.2f'|format(totals.tax_amount) }}</span></div>
+        <div class="summary-row"><span>Service Call Fee</span><span>${{ '%.2f'|format(totals.service_fee) }}</span></div>
+        <div class="summary-row total"><span>Total</span><span>${{ '%.2f'|format(row.invoice_total or totals.total) }}</span></div>
+      </div>
     {% else %}
-      <span class="pill pill-unpaid">UNPAID</span>
+      <div class="footer-note">No approved services were available on this invoice.</div>
     {% endif %}
   </div>
-
-  <div class="meta">
-    <div><strong>Customer</strong><br>{{ row.customer_name or '-' }}</div>
-    <div><strong>Customer Phone</strong><br>{{ row.customer_phone or '-' }}</div>
-    <div><strong>Customer Email</strong><br>{{ row.customer_email or '-' }}</div>
-    <div><strong>Vehicle</strong><br>{{ row.vehicle or '-' }}</div>
-    <div><strong>VIN</strong><br>{{ row.vin or '-' }}</div>
-    <div><strong>Invoice Date</strong><br>{{ row.invoice_created_at or row.created_at or '-' }}</div>
-    <div><strong>Signed By</strong><br>{{ row.signed_name or '-' }}</div>
-    <div><strong>Approved At</strong><br>{{ row.signed_at or '-' }}</div>
-    <div><strong>Paid At</strong><br>{{ row.paid_at or '-' }}</div>
-  </div>
 </div>
-
-    <div class="card">
-  <h2>Payment</h2>
-
-  {% if row.payment_status == 'paid' %}
-    <div class="footer-note">This invoice has been marked paid.</div>
-  {% else %}
-    <form method="POST" action="/mark_paid/{{ row.invoice_number }}">
-      <button type="submit"
-              style="appearance:none;border:none;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;background:#22c55e;color:#08130c;">
-        Mark as Paid
-      </button>
-    </form>
-  {% endif %}
-</div>
-
-    <div class="card">
-      <h2>Approved Services</h2>
-
-      {% if payload.jobs and payload.jobs|length > 0 %}
-        {% for job in payload.jobs %}
-          {% set job_index = loop.index0 %}
-          {% if job_index in approved_map %}
-            {% set approved_item = approved_map.get(job_index, {}) %}
-            {% set selected_parts = approved_item.get('selected_parts', []) %}
-            {% set labor_total = (job.labor_hours|default(0)|float) * (row.labor_rate|default(0)|float) %}
-            {% set ns = namespace(parts_total=0.0) %}
-
-            <div class="job">
-              <div class="job-header">
-                <div>
-                  <h3>{{ job.desc or job.description or job.title or 'Service Item' }}</h3>
-                  <div class="muted">Saved customer parts selections</div>
-                </div>
-                <div class="money">
-                  {% if row.invoice_total %}
-                    {% set _ = None %}
-                  {% endif %}
-                  {% set job_ns = namespace(job_total=labor_total) %}
-                  {% if job.parts and job.parts|length > 0 %}
-                    {% for part in job.parts %}
-                      {% set part_index = loop.index0 %}
-                      {% set qty = part.qty|default(1)|float %}
-                      {% set part_sel = namespace(tier='quality') %}
-                      {% for saved_part in selected_parts %}
-                        {% if saved_part.get('part_index') == part_index %}
-                          {% set part_sel.tier = saved_part.get('tier', 'quality') %}
-                        {% endif %}
-                      {% endfor %}
-                      {% set line_price = part[part_sel.tier]|default(0)|float %}
-                      {% set job_ns.job_total = job_ns.job_total + (qty * line_price) %}
-                    {% endfor %}
-                  {% endif %}
-                  ${{ "%.2f"|format(job_ns.job_total) }}
-                </div>
-              </div>
-
-              {% if job.notes %}
-                <div class="footer-note" style="white-space:pre-wrap;margin-bottom:10px;">{{ job.notes }}</div>
-              {% endif %}
-
-              {% if job.parts and job.parts|length > 0 %}
-                {% for part in job.parts %}
-                  {% set part_index = loop.index0 %}
-                  {% set qty = part.qty|default(1)|float %}
-                  {% set part_sel = namespace(tier='quality') %}
-                  {% for saved_part in selected_parts %}
-                    {% if saved_part.get('part_index') == part_index %}
-                      {% set part_sel.tier = saved_part.get('tier', 'quality') %}
-                    {% endif %}
-                  {% endfor %}
-                  {% set line_price = part[part_sel.tier]|default(0)|float %}
-                  {% set ns.parts_total = ns.parts_total + (qty * line_price) %}
-                {% endfor %}
-              {% endif %}
-
-              <div class="meta">
-                <div><strong>Labor Hours</strong><br>{{ "%.2f"|format(job.labor_hours|default(0)|float) }}</div>
-                <div><strong>Labor Rate</strong><br>${{ "%.2f"|format(row.labor_rate|default(0)|float) }}/hr</div>
-                <div><strong>Labor Total</strong><br>${{ "%.2f"|format(labor_total) }}</div>
-                <div><strong>Selected Parts</strong><br>${{ "%.2f"|format(ns.parts_total) }}</div>
-              </div>
-
-              {% if job.parts and job.parts|length > 0 %}
-                <div class="parts-box">
-                  <div class="parts-head" style="grid-template-columns:2fr .8fr 1fr 1fr;">
-                    <div>Part</div>
-                    <div>Qty</div>
-                    <div>Selected Tier</div>
-                    <div>Selected Price</div>
-                  </div>
-
-                  {% for part in job.parts %}
-                    {% set part_index = loop.index0 %}
-                    {% set qty = part.qty|default(1)|float %}
-                    {% set part_sel = namespace(tier='quality') %}
-                    {% for saved_part in selected_parts %}
-                      {% if saved_part.get('part_index') == part_index %}
-                        {% set part_sel.tier = saved_part.get('tier', 'quality') %}
-                      {% endif %}
-                    {% endfor %}
-                    {% set line_price = part[part_sel.tier]|default(0)|float %}
-                    <div class="part-row" style="grid-template-columns:2fr .8fr 1fr 1fr;">
-                      <div>{{ part.part_desc or 'Part' }}</div>
-                      <div>{{ "%.2f"|format(qty) }}</div>
-                      <div>{{ part_sel.tier|upper }}</div>
-                      <div>${{ "%.2f"|format(qty * line_price) }}</div>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            </div>
-          {% endif %}
-        {% endfor %}
-
-        <div class="line"></div>
-
-        <div class="summary">
-          <div class="summary-row">
-            <span>Labor</span>
-            <span>${{ "%.2f"|format(totals.labor_total) }}</span>
-          </div>
-          <div class="summary-row">
-            <span>Parts</span>
-            <span>${{ "%.2f"|format(totals.parts_total) }}</span>
-          </div>
-          <div class="summary-row">
-            <span>Tax</span>
-            <span>${{ "%.2f"|format(totals.tax_amount) }}</span>
-          </div>
-          <div class="summary-row">
-            <span>Service Call Fee</span>
-            <span>${{ "%.2f"|format(totals.service_fee) }}</span>
-          </div>
-          <div class="summary-row total">
-            <span>Total</span>
-            <span>${{ "%.2f"|format(row.invoice_total or totals.total) }}</span>
-          </div>
-        </div>
-      {% else %}
-        <div class="empty">No approved services were available on this invoice.</div>
-      {% endif %}
-    </div>
-
-    <div class="card">
-      <h2>Important</h2>
-      <div class="footer-note">
-        This invoice reflects the approved services and selected parts option captured at the time of approval.
-      </div>
-    </div>
-
-  </div>
-    <script>
-  JsBarcode("#barcode", "{{ row.invoice_number }}", {
-    format: "CODE128",
-    width: 2,
-    height: 48,
-    displayValue: true,
-    margin: 0
-  });
-</script>
+<script>JsBarcode('#barcode','{{ row.invoice_number }}',{format:'CODE128',width:2,height:48,displayValue:true,margin:0});</script>
 </body>
 </html>

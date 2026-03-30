@@ -3,7 +3,7 @@ import json
 import sqlite3
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -13,7 +13,9 @@ DB_PATH = os.environ.get("DB_PATH", os.path.join(DEFAULT_DATA_DIR, "quotes.db"))
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
+UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
 os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
 app.secret_key = secrets.token_hex(16)
@@ -228,6 +230,7 @@ def init_db():
     add_column_if_missing(conn, "quotes", "signed_name", "TEXT")
     add_column_if_missing(conn, "quotes", "signed_at", "TEXT")
     add_column_if_missing(conn, "quotes", "status", "TEXT DEFAULT 'quote'")
+    add_column_if_missing(conn, "quotes", "inspection_json", "TEXT")
 
     add_column_if_missing(conn, "invoices", "payment_status", "TEXT DEFAULT 'unpaid'")
     add_column_if_missing(conn, "invoices", "payment_method", "TEXT")
@@ -342,21 +345,33 @@ def normalize_job_parts(job):
         for part in job["parts"]:
             if not isinstance(part, dict):
                 continue
-            normalized.append(
-                {
-                    "part_desc": (part.get("part_desc") or "").strip(),
-                    "qty": safe_float(part.get("qty", 1), 1),
-                    "oem": safe_float(part.get("oem", 0)),
-                    "quality": safe_float(part.get("quality", 0)),
-                    "economy": safe_float(part.get("economy", 0)),
-                }
-            )
+            oem = safe_float(part.get("oem", 0))
+            quality = safe_float(part.get("quality", 0))
+            economy = safe_float(part.get("economy", 0))
+            enabled_oem = bool(part.get("enabled_oem", oem > 0))
+            enabled_quality = bool(part.get("enabled_quality", quality > 0 or (not enabled_oem and economy <= 0)))
+            enabled_economy = bool(part.get("enabled_economy", economy > 0))
+            normalized.append({
+                "part_desc": (part.get("part_desc") or "").strip(),
+                "qty": safe_float(part.get("qty", 1), 1),
+                "oem": oem,
+                "quality": quality,
+                "economy": economy,
+                "list_oem": safe_float(part.get("list_oem", oem)),
+                "list_quality": safe_float(part.get("list_quality", quality)),
+                "list_economy": safe_float(part.get("list_economy", economy)),
+                "markup_oem": safe_float(part.get("markup_oem", 1.0 if oem else 1.4), 1.4),
+                "markup_quality": safe_float(part.get("markup_quality", 1.0 if quality else 1.4), 1.4),
+                "markup_economy": safe_float(part.get("markup_economy", 1.0 if economy else 1.4), 1.4),
+                "enabled_oem": enabled_oem,
+                "enabled_quality": enabled_quality,
+                "enabled_economy": enabled_economy,
+            })
         return normalized
 
     old_oem = safe_float(job.get("parts_oem", 0))
     old_quality = safe_float(job.get("parts_quality", 0))
     old_economy = safe_float(job.get("parts_economy", 0))
-
     if old_oem or old_quality or old_economy:
         return [{
             "part_desc": "Parts",
@@ -364,20 +379,48 @@ def normalize_job_parts(job):
             "oem": old_oem,
             "quality": old_quality,
             "economy": old_economy,
+            "list_oem": old_oem,
+            "list_quality": old_quality,
+            "list_economy": old_economy,
+            "markup_oem": 1.0,
+            "markup_quality": 1.0,
+            "markup_economy": 1.0,
+            "enabled_oem": old_oem > 0,
+            "enabled_quality": old_quality > 0,
+            "enabled_economy": old_economy > 0,
         }]
-
     return []
 
 
-def get_job_parts_total(job, tier="quality"):
-    tier = (tier or "quality").lower()
-    if tier not in ("oem", "quality", "economy"):
-        tier = "quality"
+def get_enabled_tiers(part):
+    tiers = []
+    if part.get("enabled_oem"):
+        tiers.append("oem")
+    if part.get("enabled_quality"):
+        tiers.append("quality")
+    if part.get("enabled_economy"):
+        tiers.append("economy")
+    if not tiers:
+        tiers.append("quality")
+    return tiers
 
+
+def sanitize_selected_tier(part, requested_tier=None, default_tier="quality"):
+    enabled = get_enabled_tiers(part)
+    desired = (requested_tier or default_tier or "quality").strip().lower()
+    if desired in enabled:
+        return desired
+    if default_tier in enabled:
+        return default_tier
+    return enabled[0]
+
+
+def get_job_parts_total(job, tier="quality"):
     total = 0.0
     for part in normalize_job_parts(job):
         qty = safe_float(part.get("qty", 1), 1)
-        price = safe_float(part.get(tier, 0))
+        resolved_tier = sanitize_selected_tier(part, tier, default_tier="quality")
+        price = safe_float(part.get(resolved_tier, 0))
         total += qty * price
     return round(total, 2)
 
@@ -386,7 +429,6 @@ def get_job_parts_total_from_selections(job, selected_parts=None, default_tier="
     parts = normalize_job_parts(job)
     if not parts:
         return 0.0
-
     selections_map = {}
     if isinstance(selected_parts, list):
         for item in selected_parts:
@@ -396,21 +438,18 @@ def get_job_parts_total_from_selections(job, selected_parts=None, default_tier="
                 part_index = int(item.get("part_index"))
             except (TypeError, ValueError):
                 continue
-            tier = (item.get("tier") or default_tier or "quality").strip().lower()
-            if tier not in ("oem", "quality", "economy"):
-                tier = "quality"
-            selections_map[part_index] = tier
-
+            selections_map[part_index] = (item.get("tier") or default_tier or "quality").strip().lower()
     total = 0.0
     for idx, part in enumerate(parts):
         qty = safe_float(part.get("qty", 1), 1)
-        tier = selections_map.get(idx, (default_tier or "quality").lower())
-        if tier not in ("oem", "quality", "economy"):
-            tier = "quality"
+        tier = sanitize_selected_tier(part, selections_map.get(idx), default_tier=default_tier)
         price = safe_float(part.get(tier, 0))
         total += qty * price
-
     return round(total, 2)
+
+
+def get_default_selected_parts(job, default_tier="quality"):
+    return [{"part_index": idx, "tier": sanitize_selected_tier(part, default_tier, default_tier)} for idx, part in enumerate(normalize_job_parts(job))]
 
 
 def parse_approved_map(approved_json):
@@ -499,6 +538,44 @@ def build_quote_totals(quote, payload, approved_map=None):
         "total": round(grand_total, 2),
     }
 
+
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in {"png", "jpg", "jpeg", "webp", "gif", "heic", "heif"}
+
+
+def quote_upload_dir(token):
+    safe_token = slugify(token)
+    path = os.path.join(UPLOADS_DIR, safe_token)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def load_inspection(quote):
+    raw = quote["inspection_json"] if isinstance(quote, sqlite3.Row) else quote.get("inspection_json")
+    try:
+        data = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        data = {}
+    items = data.get("items", []) if isinstance(data, dict) else []
+    cleaned = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        cleaned.append({
+            "label": (item.get("label") or "").strip(),
+            "status": (item.get("status") or "good").strip().lower() or "good",
+            "notes": (item.get("notes") or "").strip(),
+            "photo": (item.get("photo") or "").strip(),
+            "estimate_added": bool(item.get("estimate_added", False)),
+        })
+    return {"items": cleaned}
+
+
+def save_inspection_json(conn, quote_id, inspection_data):
+    conn.execute("UPDATE quotes SET inspection_json = ? WHERE id = ?", (json.dumps(inspection_data), quote_id))
+    conn.commit()
 
 
 def get_saved_presets(conn):
@@ -659,15 +736,23 @@ def save_quote():
         part_oems = request.form.getlist(f"part_oem_{i}[]")
         part_qualities = request.form.getlist(f"part_quality_{i}[]")
         part_economies = request.form.getlist(f"part_economy_{i}[]")
+        part_list_oems = request.form.getlist(f"part_list_oem_{i}[]")
+        part_list_qualities = request.form.getlist(f"part_list_quality_{i}[]")
+        part_list_economies = request.form.getlist(f"part_list_economy_{i}[]")
+        part_markup_oems = request.form.getlist(f"part_markup_oem_{i}[]")
+        part_markup_qualities = request.form.getlist(f"part_markup_quality_{i}[]")
+        part_markup_economies = request.form.getlist(f"part_markup_economy_{i}[]")
+        enabled_oems = request.form.getlist(f"part_enabled_oem_{i}[]")
+        enabled_qualities = request.form.getlist(f"part_enabled_quality_{i}[]")
+        enabled_economies = request.form.getlist(f"part_enabled_economy_{i}[]")
 
         parts = []
         part_max_len = max(
-            len(part_descs),
-            len(part_qtys),
-            len(part_oems),
-            len(part_qualities),
-            len(part_economies),
-        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies]) else 0
+            len(part_descs), len(part_qtys), len(part_oems), len(part_qualities), len(part_economies),
+            len(part_list_oems), len(part_list_qualities), len(part_list_economies),
+            len(part_markup_oems), len(part_markup_qualities), len(part_markup_economies),
+            len(enabled_oems), len(enabled_qualities), len(enabled_economies)
+        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies]) else 0
 
         for p in range(part_max_len):
             part_desc = part_descs[p].strip() if p < len(part_descs) else ""
@@ -676,7 +761,17 @@ def save_quote():
             quality = safe_float(part_qualities[p] if p < len(part_qualities) else 0, 0)
             economy = safe_float(part_economies[p] if p < len(part_economies) else 0, 0)
 
-            if not part_desc and qty == 1 and oem == 0 and quality == 0 and economy == 0:
+            list_oem = safe_float(part_list_oems[p] if p < len(part_list_oems) else oem, oem)
+            list_quality = safe_float(part_list_qualities[p] if p < len(part_list_qualities) else quality, quality)
+            list_economy = safe_float(part_list_economies[p] if p < len(part_list_economies) else economy, economy)
+            markup_oem = safe_float(part_markup_oems[p] if p < len(part_markup_oems) else (1.0 if oem else 1.4), 1.4)
+            markup_quality = safe_float(part_markup_qualities[p] if p < len(part_markup_qualities) else (1.0 if quality else 1.4), 1.4)
+            markup_economy = safe_float(part_markup_economies[p] if p < len(part_markup_economies) else (1.0 if economy else 1.4), 1.4)
+            enabled_oem = (enabled_oems[p].strip() == "1") if p < len(enabled_oems) else (oem > 0)
+            enabled_quality = (enabled_qualities[p].strip() == "1") if p < len(enabled_qualities) else (quality > 0 or (not enabled_oem and economy <= 0))
+            enabled_economy = (enabled_economies[p].strip() == "1") if p < len(enabled_economies) else (economy > 0)
+
+            if not part_desc and qty == 1 and oem == 0 and quality == 0 and economy == 0 and list_oem == 0 and list_quality == 0 and list_economy == 0:
                 continue
 
             parts.append({
@@ -685,6 +780,15 @@ def save_quote():
                 "oem": oem,
                 "quality": quality,
                 "economy": economy,
+                "list_oem": list_oem,
+                "list_quality": list_quality,
+                "list_economy": list_economy,
+                "markup_oem": markup_oem,
+                "markup_quality": markup_quality,
+                "markup_economy": markup_economy,
+                "enabled_oem": enabled_oem,
+                "enabled_quality": enabled_quality,
+                "enabled_economy": enabled_economy,
             })
 
         if not desc and labor_hours == 0 and not notes and not parts:
@@ -750,7 +854,8 @@ def view_quote(token):
     jobs = payload.get("jobs", [])
 
     _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
-    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map)
+    inspection = load_inspection(quote)
+    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map, inspection=inspection)
 
 
 @app.route("/approve_quote/<token>", methods=["POST"])
@@ -785,11 +890,9 @@ def approve_quote(token):
         parts = normalize_job_parts(job)
         selected_parts = []
 
-        for part_index, _part in enumerate(parts):
-            selected_tier = request.form.get(f"part_tier_{idx}_{part_index}", "quality").strip().lower()
-            if selected_tier not in ("oem", "quality", "economy"):
-                selected_tier = "quality"
-
+        for part_index, part in enumerate(parts):
+            requested_tier = request.form.get(f"part_tier_{idx}_{part_index}", "quality").strip().lower()
+            selected_tier = sanitize_selected_tier(part, requested_tier, default_tier="quality")
             selected_parts.append({
                 "part_index": part_index,
                 "tier": selected_tier,
@@ -879,6 +982,82 @@ def convert_invoice(token):
     conn.commit()
     conn.close()
     return redirect(url_for("view_invoice", invoice_number=invoice_number))
+
+
+@app.route("/inspection/<token>", methods=["GET", "POST"])
+def inspection(token):
+    conn = get_db()
+    cur = conn.cursor()
+    quote = cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
+    if not quote:
+        conn.close()
+        abort(404)
+    if request.method == "POST":
+        labels = request.form.getlist("inspection_label[]")
+        statuses = request.form.getlist("inspection_status[]")
+        notes_list = request.form.getlist("inspection_notes[]")
+        existing_photos = request.form.getlist("existing_photo[]")
+        estimate_added_flags = request.form.getlist("estimate_added[]")
+        files = request.files.getlist("inspection_photo[]")
+        items = []
+        max_len = max(len(labels), len(statuses), len(notes_list), len(existing_photos), len(files)) if any([labels, statuses, notes_list, existing_photos, files]) else 0
+        upload_dir = quote_upload_dir(token)
+        for idx in range(max_len):
+            label = labels[idx].strip() if idx < len(labels) else ""
+            status = (statuses[idx].strip().lower() if idx < len(statuses) else "good") or "good"
+            if status not in ("good", "monitor", "needs_attention"):
+                status = "good"
+            notes = notes_list[idx].strip() if idx < len(notes_list) else ""
+            photo = existing_photos[idx].strip() if idx < len(existing_photos) else ""
+            already_added = (estimate_added_flags[idx].strip().lower() == "true") if idx < len(estimate_added_flags) else False
+            upload = files[idx] if idx < len(files) else None
+            if upload and upload.filename and allowed_file(upload.filename):
+                ext = upload.filename.rsplit('.', 1)[1].lower()
+                fname = f"inspection_{idx}_{secrets.token_hex(6)}.{ext}"
+                save_path = os.path.join(upload_dir, fname)
+                upload.save(save_path)
+                photo = f"/static/uploads/{slugify(token)}/{fname}"
+            if not label and not notes and not photo:
+                continue
+            items.append({"label": label, "status": status, "notes": notes, "photo": photo, "estimate_added": already_added})
+        save_inspection_json(conn, quote["id"], {"items": items})
+        conn.close()
+        flash("Inspection saved.")
+        return redirect(url_for("inspection", token=token))
+    inspection_data = load_inspection(quote)
+    conn.close()
+    return render_template("inspection.html", quote=dict(quote), inspection=inspection_data)
+
+
+@app.route("/inspection_add_to_estimate/<token>/<int:item_index>", methods=["POST"])
+def inspection_add_to_estimate(token, item_index):
+    conn = get_db()
+    cur = conn.cursor()
+    quote = cur.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
+    if not quote:
+        conn.close()
+        abort(404)
+    payload = json.loads(quote["payload_json"] or "{}")
+    jobs = payload.get("jobs", [])
+    inspection_data = load_inspection(quote)
+    items = inspection_data.get("items", [])
+    if item_index < 0 or item_index >= len(items):
+        conn.close()
+        abort(404)
+    item = items[item_index]
+    if not item.get("estimate_added"):
+        notes = item.get("notes") or "Added from inspection."
+        if item.get("photo"):
+            notes += "\nPhoto attached in inspection report."
+        jobs.append({"desc": item.get("label") or "Inspection Item", "labor_hours": 0, "notes": notes, "parts": []})
+        item["estimate_added"] = True
+        cur.execute("UPDATE quotes SET payload_json = ?, inspection_json = ? WHERE id = ?", (json.dumps({"jobs": jobs}), json.dumps({"items": items}), quote["id"]))
+        conn.commit()
+        flash("Inspection item added to estimate.")
+    else:
+        flash("That inspection item is already on the estimate.")
+    conn.close()
+    return redirect(url_for("inspection", token=token))
 
 
 @app.route("/invoice/<invoice_number>", methods=["GET"])

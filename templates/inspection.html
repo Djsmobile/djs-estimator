@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inspection - {{ quote.vehicle or 'Vehicle' }}</title>
+  <style>
+    :root{--bg:#0b0b0d;--panel:#141519;--panel-2:#1b1d22;--text:#f3f4f6;--muted:#a1a1aa;--line:#2c2f36;--accent:#d4af37}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)} .wrap{max-width:1100px;margin:0 auto;padding:24px 16px 40px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px} h1,h2,h3{margin:0 0 12px} h2{color:var(--accent)} .muted{color:var(--muted)}
+    .btn{appearance:none;border:none;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;background:#20242b;color:var(--text);border:1px solid rgba(255,255,255,.10)} .btn-primary{background:var(--accent);color:#111}
+    .item{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--panel-2);margin-top:12px}.row{display:flex;gap:12px;flex-wrap:wrap}.grow{flex:1 1 240px}.status{flex:0 0 180px}
+    label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px} input, textarea, select{width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:#111318;color:var(--text)} input[type="file"]{padding:8px} textarea{min-height:90px;resize:vertical}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center} .flash{padding:12px 14px;border-radius:12px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:12px} img{max-width:100%;border-radius:12px;border:1px solid var(--line)}
+    @media (max-width:640px){.wrap{padding:16px 12px 28px}.card{padding:16px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="actions" style="justify-content:space-between;">
+      <div>
+        <h1>Inspection</h1>
+        <div class="muted">{{ quote.customer_name or '-' }} • {{ quote.vehicle or '-' }}</div>
+      </div>
+      <div class="actions"><a class="btn" href="/quote/{{ quote.quote_token }}">Back to Estimate</a></div>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages() %}{% if messages %}<div>{% for message in messages %}<div class="flash">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+
+  <form method="POST" enctype="multipart/form-data">
+    <div class="card">
+      <div class="actions" style="justify-content:space-between;">
+        <div><h2>Custom Inspection Lines</h2><div class="muted">Build your own lines, add photos from your phone, and push items to the estimate when needed.</div></div>
+        <button type="button" class="btn" id="addLineBtn">+ Add line</button>
+      </div>
+      <div id="items">
+        {% for item in inspection.items %}
+        <div class="item">
+          <div class="row">
+            <div class="grow"><label>Inspection line</label><input type="text" name="inspection_label[]" value="{{ item.label }}" placeholder="Brake pads"></div>
+            <div class="status"><label>Status</label><select name="inspection_status[]"><option value="good" {% if item.status == 'good' %}selected{% endif %}>Good</option><option value="monitor" {% if item.status == 'monitor' %}selected{% endif %}>Monitor</option><option value="needs_attention" {% if item.status == 'needs_attention' %}selected{% endif %}>Needs Attention</option></select></div>
+          </div>
+          <div style="margin-top:12px;"><label>Notes</label><textarea name="inspection_notes[]" placeholder="What you found, what it means, what to watch.">{{ item.notes }}</textarea></div>
+          <div class="row" style="margin-top:12px;align-items:flex-end;">
+            <div class="grow"><label>Photo</label><input type="file" name="inspection_photo[]" accept="image/*" capture="environment"><input type="hidden" name="existing_photo[]" value="{{ item.photo }}"><input type="hidden" name="estimate_added[]" value="{{ 'true' if item.estimate_added else 'false' }}"></div>
+            <div class="actions">
+              {% if item.estimate_added %}<span class="btn" style="cursor:default;background:#16351f;color:#86efac;">Already on estimate</span>{% else %}<button class="btn" formaction="/inspection_add_to_estimate/{{ quote.quote_token }}/{{ loop.index0 }}" formmethod="post">Add to estimate</button>{% endif %}
+              <button type="button" class="btn remove-line">Delete line</button>
+            </div>
+          </div>
+          {% if item.photo %}<div style="margin-top:12px;"><img src="{{ item.photo }}" alt="Inspection photo"></div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="actions" style="margin-top:16px;"><button type="submit" class="btn btn-primary">Save Inspection</button></div>
+    </div>
+  </form>
+</div>
+<script>
+  const container = document.getElementById('items');
+  function newLine(){
+    const wrap=document.createElement('div');
+    wrap.className='item';
+    wrap.innerHTML=`<div class="row"><div class="grow"><label>Inspection line</label><input type="text" name="inspection_label[]" placeholder="Brake pads"></div><div class="status"><label>Status</label><select name="inspection_status[]"><option value="good">Good</option><option value="monitor">Monitor</option><option value="needs_attention">Needs Attention</option></select></div></div><div style="margin-top:12px;"><label>Notes</label><textarea name="inspection_notes[]" placeholder="What you found, what it means, what to watch."></textarea></div><div class="row" style="margin-top:12px;align-items:flex-end;"><div class="grow"><label>Photo</label><input type="file" name="inspection_photo[]" accept="image/*" capture="environment"><input type="hidden" name="existing_photo[]" value=""><input type="hidden" name="estimate_added[]" value="false"></div><div class="actions"><button type="button" class="btn remove-line">Delete line</button></div></div>`;
+    container.appendChild(wrap);
+  }
+  document.getElementById('addLineBtn').addEventListener('click', newLine);
+  document.addEventListener('click', e=>{ const btn=e.target.closest('.remove-line'); if(!btn) return; const item=btn.closest('.item'); if(item) item.remove(); });
+  if(container.children.length===0) newLine();
+</script>
+</body>
+</html>
