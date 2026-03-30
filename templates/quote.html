@@ -40,10 +40,10 @@
       </div>
     </div>
 
-    {% if inspection and inspection.items %}
+    {% if inspection and inspection["items"] %}
     <div class="card">
       <h2>Inspection Notes</h2>
-      {% for item in inspection.items %}
+      {% for item in inspection["items"] %}
       <div class="inspection-item">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
           <strong>{{ item.label or 'Inspection Item' }}</strong>

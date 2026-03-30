@@ -36,7 +36,7 @@
         <button type="button" class="btn" id="addLineBtn">+ Add line</button>
       </div>
       <div id="items">
-        {% for item in inspection.items %}
+        {% for item in inspection["items"] %}
         <div class="item">
           <div class="row">
             <div class="grow"><label>Inspection line</label><input type="text" name="inspection_label[]" value="{{ item.label }}" placeholder="Brake pads"></div>
