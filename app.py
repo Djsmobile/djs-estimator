@@ -578,6 +578,42 @@ def save_inspection_json(conn, quote_id, inspection_data):
     conn.commit()
 
 
+def build_inspection_from_request(form, files, token=None):
+    labels = form.getlist("inspection_label[]")
+    statuses = form.getlist("inspection_status[]")
+    notes_list = form.getlist("inspection_notes[]")
+    uploads = files.getlist("inspection_photo[]") if files else []
+    items = []
+    max_len = max(len(labels), len(statuses), len(notes_list), len(uploads)) if any([labels, statuses, notes_list, uploads]) else 0
+    upload_dir = quote_upload_dir(token) if token else None
+
+    for idx in range(max_len):
+        label = labels[idx].strip() if idx < len(labels) else ""
+        status = (statuses[idx].strip().lower() if idx < len(statuses) else "good") or "good"
+        if status not in ("good", "monitor", "needs_attention"):
+            status = "good"
+        notes = notes_list[idx].strip() if idx < len(notes_list) else ""
+        photo = ""
+        upload = uploads[idx] if idx < len(uploads) else None
+        if upload and getattr(upload, 'filename', None) and allowed_file(upload.filename) and upload_dir:
+            ext = upload.filename.rsplit('.', 1)[1].lower()
+            fname = f"inspection_{idx}_{secrets.token_hex(6)}.{ext}"
+            save_path = os.path.join(upload_dir, fname)
+            upload.save(save_path)
+            photo = f"/static/uploads/{slugify(token)}/{fname}"
+        if not label and not notes and not photo:
+            continue
+        items.append({
+            "label": label,
+            "status": status,
+            "notes": notes,
+            "photo": photo,
+            "estimate_added": False,
+        })
+
+    return {"items": items}
+
+
 def get_saved_presets(conn):
     rows = conn.execute(
         "SELECT preset_key, preset_name, payload_json, is_system FROM saved_job_presets ORDER BY LOWER(preset_name) ASC, id ASC"
@@ -803,6 +839,7 @@ def save_quote():
 
     payload = {"jobs": jobs}
     token = generate_token()
+    inspection_data = build_inspection_from_request(request.form, request.files, token=token)
 
     conn = get_db()
     cur = conn.cursor()
@@ -813,9 +850,9 @@ def save_quote():
         """
         INSERT INTO quotes (
             quote_token, created_at, customer_id, vehicle_id, customer_name, customer_phone,
-            customer_email, vehicle, vin, labor_rate, tax_rate, service_fee, payload_json, status
+            customer_email, vehicle, vin, labor_rate, tax_rate, service_fee, payload_json, inspection_json, status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             token,
@@ -831,6 +868,7 @@ def save_quote():
             tax_rate,
             service_fee,
             json.dumps(payload),
+            json.dumps(inspection_data),
             "quote",
         ),
     )
