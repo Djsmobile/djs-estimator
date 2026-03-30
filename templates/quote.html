@@ -126,7 +126,7 @@
       overflow:hidden;
     }
     .service-shell{
-      padding:12px;
+      padding:14px;
     }
     .service-top{
       display:grid;
@@ -153,8 +153,8 @@
     .service-controls{
       display:flex;
       flex-wrap:wrap;
-      gap:7px;
-      margin-top:10px;
+      gap:8px;
+      margin-top:12px;
     }
     .mini-btn{
       appearance:none;
@@ -170,6 +170,10 @@
     .mini-btn.active{
       background:#232833;
       border-color:#3a4150;
+    }
+    .mini-btn.is-disabled{
+      opacity:.45;
+      cursor:not-allowed;
     }
 
     .service-collapse{
@@ -201,7 +205,7 @@
 
     .parts-box{
       margin-top:4px;
-      padding:10px;
+      padding:12px;
       background:var(--panel-3);
       border:1px solid var(--line);
       border-radius:12px;
@@ -213,10 +217,10 @@
     }
     .part-row{
       display:grid;
-      grid-template-columns:minmax(0,1.7fr) 76px 140px 110px;
-      gap:8px;
+      grid-template-columns:minmax(0,1.7fr) 76px 150px 110px;
+      gap:10px;
       align-items:center;
-      padding:9px 0;
+      padding:10px 0;
       border-bottom:1px dashed #2d3139;
     }
     .part-row:last-child{border-bottom:none}
@@ -337,7 +341,7 @@
   <div class="wrap">
     <div class="card">
       <h1>DJ's Estimate Review</h1>
-      <div class="muted">Please review the estimate details below. Inspection notes and photos are view-only here and stay locked after the estimate is saved.</div>
+      <div class="muted">Please review the estimate details below.</div>
       <div class="meta">
         <div><strong>Customer</strong><br>{{ quote.customer_name or '-' }}</div>
         <div><strong>Email</strong><br>{{ quote.customer_email or '-' }}</div>
@@ -348,14 +352,24 @@
         <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
       </div>
       <div class="actions">
+        <a class="btn btn-secondary" href="/inspection/{{ quote.quote_token }}">Inspection / Photos</a>
         {% if quote.status == 'approved' %}<a class="btn btn-secondary" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>{% endif %}
       </div>
     </div>
 
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="card">
+          {% for message in messages %}
+            <div class="muted" style="margin-bottom:6px;">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     {% if inspection and inspection["items"] %}
     <div class="card">
       <h2>Inspection Notes</h2>
-      <div class="muted" style="margin-bottom:10px;">Captured during estimate build. Editing is locked once the quote is saved.</div>
       {% for item in inspection["items"] %}
       <div class="inspection-item">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -408,9 +422,9 @@
                 </div>
 
                 <div class="service-controls">
-                  <button type="button" class="mini-btn active" data-toggle="expand">Details</button>
-                  {% if notes %}<button type="button" class="mini-btn" data-toggle="notes">Notes</button>{% endif %}
-                  {% if parts and parts|length > 0 %}<button type="button" class="mini-btn" data-toggle="parts">Parts</button>{% endif %}
+                  <button type="button" class="mini-btn active" data-toggle="expand">▼ Expand</button>
+                  <button type="button" class="mini-btn {% if not notes %}is-disabled{% endif %}" data-toggle="notes">Notes</button>
+                  <button type="button" class="mini-btn {% if not parts or parts|length == 0 %}is-disabled{% endif %}" data-toggle="parts">Parts</button>
                 </div>
 
                 <div class="service-collapse open" data-section="expand">
@@ -429,19 +443,21 @@
                     </div>
                   </div>
 
-                  {% if notes %}
-                  <div class="section-block" data-section="notes">
+                                    <div class="section-block" data-section="notes">
                     <div class="parts-box">
                       <div class="help">Service notes</div>
-                      <div class="muted" style="white-space:pre-wrap;">{{ notes }}</div>
+                      {% if notes %}
+                        <div class="muted" style="white-space:pre-wrap;">{{ notes }}</div>
+                      {% else %}
+                        <div class="muted">No notes added for this service.</div>
+                      {% endif %}
                     </div>
                   </div>
-                  {% endif %}
 
-                  {% if parts and parts|length > 0 %}
-                  <div class="section-block" data-section="parts">
+                                    <div class="section-block" data-section="parts">
                     <div class="parts-box">
-                      <div class="help">Only enabled parts options are shown. Your selections update the total instantly, including Economy when it is enabled on the estimate.</div>
+                      <div class="help">Only enabled parts options are shown. Your selections update the total instantly, including Economy whenever it is enabled on the estimate.</div>
+                      {% if parts and parts|length > 0 %}
                       {% for part in parts %}
                         {% set part_index = loop.index0 %}
                         {% set qty = part.get('qty', 1)|float %}
@@ -482,10 +498,12 @@
                             </span>
                           </div>
                         </div>
-                      {% endfor %}
+                                            {% endfor %}
+                      {% else %}
+                        <div class="muted">No parts listed for this service.</div>
+                      {% endif %}
                     </div>
                   </div>
-                  {% endif %}
 
                   <div class="approve-row">
                     {% if quote.status == 'approved' or quote.status == 'invoiced' %}
@@ -617,15 +635,16 @@
           detailBtn.addEventListener('click', ()=>{
             detailsSection.classList.toggle('open');
             detailBtn.classList.toggle('active');
+            detailBtn.textContent = detailsSection.classList.contains('open') ? '▲ Collapse' : '▼ Expand';
           });
         }
-        if(notesBtn && notesSection){
+        if(notesBtn && notesSection && !notesBtn.classList.contains('is-disabled')){
           notesBtn.addEventListener('click', ()=>{
             notesSection.classList.toggle('open');
             notesBtn.classList.toggle('active');
           });
         }
-        if(partsBtn && partsSection){
+        if(partsBtn && partsSection && !partsBtn.classList.contains('is-disabled')){
           partsSection.classList.remove('open');
           partsBtn.classList.remove('active');
           partsBtn.addEventListener('click', ()=>{
