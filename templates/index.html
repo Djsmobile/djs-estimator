@@ -1,132 +1,367 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DJ's Estimate Builder</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJ's Estimate Builder</title>
+  <style>
+    :root{
+      --bg:#0b0b0b; --card:#141414; --card2:#101010; --text:#f2f2f2; --muted:rgba(242,242,242,.72);
+      --border:rgba(255,255,255,.10); --border2:rgba(255,255,255,.18); --accent:#d4af37; --danger:#7a1f1f;
+      --success:#16351f; --successText:#86efac;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1180px;margin:0 auto;padding:14px 12px 36px}
+    .page-header{margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .page-header h1{margin:0;font-size:24px;font-weight:800}
+    .subtle,.small-note{color:var(--muted);font-size:12px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:12px}
+    .section-title{font-weight:900;margin-bottom:6px;font-size:15px}
+    .section-sub{color:var(--muted);font-size:12px;margin-bottom:10px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .grow{flex:1 1 220px}.col{flex:0 0 140px}.col-wide{flex:0 0 220px}
+    label{color:var(--muted);font-size:12px;display:block;margin-bottom:5px}
+    input, textarea, select{width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);outline:none}
+    textarea{resize:vertical;min-height:74px}
+    input[type="checkbox"]{width:auto}
+    .money-input{position:relative}.money-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+    .money-input input{padding-left:24px}
+    .pill-row,.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-size:12px}
+    .divider{height:1px;background:var(--border);margin:10px 0}
+    button{appearance:none;border:none;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}
+    .primary-btn{background:var(--accent);color:#111}.secondary-btn{background:#20242b;color:var(--text);border:1px solid var(--border)}
+    .danger-btn,.delete-btn{background:#2a1111;color:#fecaca;border:1px solid rgba(248,113,113,.18)}
+    .success-btn{background:var(--success);color:var(--successText);border:1px solid rgba(134,239,172,.18)}
+    .preset-wrap{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end}
 
-<style>
-:root{
---bg:#0b0b0b; --card:#141414; --card2:#101010; --text:#f2f2f2;
---muted:rgba(242,242,242,.72); --border:rgba(255,255,255,.10);
---accent:#d4af37;
-}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Arial}
-.wrap{max-width:1100px;margin:auto;padding:12px}
-.card{background:var(--card);padding:12px;border-radius:14px;margin-bottom:12px;border:1px solid var(--border)}
-input,textarea,select{width:100%;padding:8px;border-radius:10px;background:var(--card2);color:#fff;border:1px solid var(--border)}
-button{padding:8px 12px;border-radius:10px;border:none;font-weight:bold;cursor:pointer}
-.primary{background:var(--accent);color:#000}
-.secondary{background:#222;color:#fff}
-.job{background:#111;padding:10px;border-radius:12px;margin-bottom:10px;border:1px solid var(--border)}
-.job-header{display:flex;justify-content:space-between;align-items:center}
-.job-title{font-weight:bold}
-.toggle{cursor:pointer;font-size:12px;color:#aaa}
-.hidden{display:none}
-.small{font-size:12px;color:#aaa}
-.row{display:flex;gap:6px}
-.row input{flex:1}
-.parts{margin-top:10px}
-.part{margin-bottom:8px;padding:8px;border:1px solid #333;border-radius:8px}
+    .job{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:10px;margin-bottom:10px}
+    .job-top{display:grid;grid-template-columns:minmax(180px,1.6fr) 92px 130px auto;gap:8px;align-items:end}
+    .job-quick-title{display:flex;flex-direction:column;gap:4px}
+    .jobtitle{font-weight:900;font-size:16px;line-height:1.15}
+    .job-header-total{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right;padding:7px 10px;border:1px solid var(--border);border-radius:10px;background:#0f0f0f;min-height:42px}
+    .job-header-total .k{color:var(--muted);font-size:11px}
+    .job-header-total .v{font-size:18px;font-weight:900;line-height:1.05}
+    .job-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+    .job-actions button{padding:7px 10px;font-size:12px}
+    .collapse-section{display:none}
+    .collapse-section.open{display:block}
+    .compact-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;border:1px solid var(--border);background:#111;color:var(--muted);font-size:11px}
+    .compact-grid{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:8px;margin-top:8px}
+    .job-summary{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:8px}
+    .stat{background:#0e0e0e;border:1px solid var(--border);border-radius:10px;padding:8px}
+    .stat .k{color:var(--muted);font-size:11px}
+    .stat .v{font-size:17px;font-weight:900;margin-top:3px}
+    .parts-area{margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:12px;background:#0d0d0d}
+    .parts-head{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+    .parts-list{display:flex;flex-direction:column;gap:8px}
+    .part-row{border:1px solid var(--border);border-radius:12px;padding:10px;background:#121212}
+    .part-top{display:grid;grid-template-columns:minmax(140px,2fr) 78px auto;gap:8px;align-items:end}
+    .tier-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:8px;margin-top:8px}
+    .tier-card{border:1px solid var(--border);border-radius:10px;padding:8px;background:#0e0e0e}
+    .tier-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+    .tier-name{font-weight:800;font-size:12px}
+    .tier-toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}
+    .tier-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+    .tier-fields label{font-size:11px}
+    .save-note{font-size:12px;color:var(--muted)}
+    .inspection-link{display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:9px 12px;border-radius:12px;background:#1d4ed8;color:#fff;font-weight:800}
+
+    .inspection-list{display:flex;flex-direction:column;gap:10px}
+    .inspection-item{border:1px solid var(--border);border-radius:12px;padding:10px;background:#121212}
+    .inspection-top{display:grid;grid-template-columns:minmax(160px,2fr) 150px auto;gap:8px;align-items:end}
+    .inspection-photo-note{font-size:11px;color:var(--muted);margin-top:5px}
+
+    @media (max-width:900px){
+      .preset-wrap,.tier-grid,.part-top,.inspection-top{grid-template-columns:1fr}
+      .job-top{grid-template-columns:1fr}
+      .job-header-total,.job-actions{align-items:stretch;text-align:left;justify-content:flex-start}
+      .job-actions{justify-content:flex-start}
+      .job-summary,.compact-grid{grid-template-columns:1fr}
+      .wrap{padding:12px}
+    }
 </style>
 </head>
-
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <div class="page-header">
+      <div>
+        <h1>DJ's Estimate Builder</h1>
+        <div class="subtle">List + retail markup builder, custom presets, and hidden cost tracking.</div>
+      </div>
+      <a class="inspection-link" href="/admin">Admin</a>
+    </div>
 
-<form method="POST" action="/save_quote" enctype="multipart/form-data">
+    <form method="POST" action="/save_quote" onsubmit="return beforeSave()" enctype="multipart/form-data">
+      <div class="card">
+        <div class="section-title">Customer & Vehicle</div>
+        <div class="row">
+          <div class="grow">
+            <label>Existing customer</label>
+            <select id="existing_customer"><option value="">— Select saved customer —</option>{% for customer in customers %}<option value="{{ customer.id }}" data-name="{{ customer.name|e }}" data-phone="{{ customer.phone|e }}" data-email="{{ customer.email|e }}">{{ customer.name }}{% if customer.phone %} — {{ customer.phone }}{% endif %}</option>{% endfor %}</select>
+          </div>
+          <div class="grow">
+            <label>Existing vehicle</label>
+            <select id="existing_vehicle"><option value="">— Select saved vehicle —</option>{% for vehicle in vehicles %}<option value="{{ vehicle.id }}" data-customer-id="{{ vehicle.customer_id }}" data-vehicle="{{ vehicle.vehicle_text|e }}" data-vin="{{ vehicle.vin|e }}">{{ vehicle.vehicle_text }}{% if vehicle.customer_name %} — {{ vehicle.customer_name }}{% endif %}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <div class="grow"><label>Customer name</label><input type="text" id="customer_name" name="customer_name" required /></div>
+          <div class="grow"><label>Phone</label><input type="text" id="customer_phone" name="customer_phone" /></div>
+          <div class="grow"><label>Email</label><input type="email" id="customer_email" name="customer_email" /></div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <div class="grow"><label>Vehicle</label><input type="text" id="vehicle" name="vehicle" required /></div>
+          <div class="grow"><label>VIN</label><input type="text" id="vin" name="vin" /></div>
+        </div>
+        <div class="pill-row" style="margin-top:12px;"><div class="pill">Saved customers: {{ customers|length }}</div><div class="pill">Saved vehicles: {{ vehicles|length }}</div></div>
+      </div>
 
-<div class="card">
-<h3>Customer</h3>
-<input name="customer_name" placeholder="Name">
-<input name="vehicle" placeholder="Vehicle">
-</div>
+      <div class="card">
+        <div class="section-title">Estimate Settings</div>
+        <div class="row">
+          <div class="col"><label>Labor rate</label><div class="money-input"><span>$</span><input type="number" id="labor_rate" name="labor_rate" step="0.01" min="0" value="{{ '%.2f'|format(default_labor_rate) }}" /></div></div>
+          <div class="col"><label>Tax rate (%)</label><input type="number" id="tax_rate" name="tax_rate" step="0.01" min="0" value="{{ '%.2f'|format(default_tax_rate) }}" /></div>
+          <div class="col"><label>Service call fee</label><div class="money-input"><span>$</span><input type="number" id="service_fee" name="service_fee" step="0.01" min="0" value="{{ '%.2f'|format(default_service_fee) }}" /></div></div>
+        </div>
+      </div>
 
-<div id="services"></div>
+      <div class="card">
+        <div class="section-title">Job Presets</div>
+        <div class="section-sub">Load a preset, edit it, then save your own service presets whenever you want.</div>
+        <div class="preset-wrap">
+          <div><label>Preset job</label><select id="preset_select"><option value="">— Select a preset —</option></select></div>
+          <button type="button" id="addPresetBtn" class="secondary-btn">+ Add preset to quote</button>
+          <button type="button" id="startBlankBtn" class="secondary-btn">+ Add blank service</button>
+        </div>
+      </div>
 
-<div class="card">
-<button type="button" onclick="addJob()" class="secondary">+ Add Service</button>
-</div>
+      <div class="card">
+        <div class="btnrow"><div><div class="section-title" style="margin-bottom:4px;">Services</div><div class="section-sub" style="margin-bottom:0;">Retail prices are customer-facing. List prices and markups stay internal.</div></div></div>
+        <div class="divider"></div>
+        <div id="services"></div>
+      </div>
 
-<div class="card">
-<h3>Inspection</h3>
-<div id="inspection"></div>
-<button type="button" onclick="addInspection()" class="secondary">+ Add Item</button>
-</div>
+      <div class="card">
+        <div class="section-title">Inspection</div>
+        <div class="section-sub">Build your own inspection lines right here before saving the quote. On phone, the photo button can use camera or your existing photo library.</div>
+        <div class="btnrow" style="margin-bottom:12px;">
+          <button type="button" id="addInspectionBtn" class="secondary-btn">+ Add inspection item</button>
+        </div>
+        <div id="inspectionItems" class="inspection-list"></div>
+      </div>
 
-<div class="card">
-<button type="submit" class="primary">Save Quote</button>
-</div>
+      <div class="card">
+        <div class="section-title">Estimate Preview</div>
+        <div class="save-note" style="margin-bottom:10px;">Preview uses enabled <strong style="color:#fff;">Quality</strong> retail pricing by default unless that option is disabled for a part.</div>
+        <div class="row">
+          <div class="stat"><div class="k">Labor total</div><div class="v">$<span id="labor_total">0.00</span></div></div>
+          <div class="stat"><div class="k">Parts total</div><div class="v">$<span id="parts_total">0.00</span></div></div>
+          <div class="stat"><div class="k">Tax on parts</div><div class="v">$<span id="tax_total">0.00</span></div></div>
+          <div class="stat"><div class="k">Service call fee</div><div class="v">$<span id="service_total">0.00</span></div></div>
+          <div class="stat"><div class="k">Grand total</div><div class="v">$<span id="grand_total">0.00</span></div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="btnrow"><button type="button" id="saveAllAsPresetBtn" class="secondary-btn">Save all services as one preset</button></div>
+        <div class="divider"></div>
+        <button type="submit" class="primary-btn">Save Quote</button>
+      </div>
+    </form>
+  </div>
 
-</form>
-</div>
+  <script>
+    const JOB_PRESETS = {{ job_presets_json|safe }};
+    const TIER_META = [
+      {key:'oem', label:'OEM'},
+      {key:'quality', label:'Quality'},
+      {key:'economy', label:'Economy'}
+    ];
+    function toNum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+    function money(n){ return (Math.round((toNum(n) + Number.EPSILON) * 100) / 100).toFixed(2); }
+    function setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+    function escapeHtml(value){ return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;'); }
+    function serviceCount(){ return document.querySelectorAll('#services .job').length; }
+    function defaultEnabledFor(part, tier){ if(part[`enabled_${tier}`] !== undefined) return !!part[`enabled_${tier}`]; return toNum(part[tier]) > 0 || tier === 'quality'; }
+    function retailFrom(part, tier){ const retail = part[tier] ?? part[`retail_${tier}`] ?? 0; return money(retail); }
+    function listFrom(part, tier){ const list = part[`list_${tier}`] ?? part[tier] ?? 0; return money(list); }
+    function markupFrom(part, tier){ const markup = part[`markup_${tier}`] ?? ((toNum(part[tier]) && toNum(part[`list_${tier}`])) ? toNum(part[tier])/Math.max(toNum(part[`list_${tier}`]),0.01) : (toNum(part[tier]) ? 1 : 1.4)); return money(markup || 1.4); }
+    function getEnabledTiers(row){ return TIER_META.filter(t=>row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked).map(t=>t.key); }
+    function pickDefaultTier(row){ const enabled=getEnabledTiers(row); if(enabled.includes('quality')) return 'quality'; return enabled[0] || 'quality'; }
+    function renumberJobs(){
+      document.querySelectorAll('#services .job').forEach((job,index)=>{
+        job.dataset.idx=index;
+        const title=job.querySelector('.jobtitle'); if(title) title.textContent=`Service #${index+1}`;
+        job.querySelectorAll('[data-base-name]').forEach(input=>{ input.name=`${input.dataset.baseName}_${index}[]`; });
+      });
+      calcAll();
+    }
+    function tierCardHtml(jobIndex, tier, part={}){
+      return `<div class="tier-card" data-tier="${tier.key}">
+        <div class="tier-head"><div class="tier-name">${tier.label}</div><label class="tier-toggle"><input type="checkbox" data-role="enabled-${tier.key}" data-base-name="part_enabled_${tier.key}" value="1" ${defaultEnabledFor(part,tier.key)?'checked':''}> Show</label></div>
+        <input type="hidden" data-base-name="part_enabled_${tier.key}" value="0" disabled>
+        <div class="tier-fields">
+          <div><label>List</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="list-${tier.key}" data-base-name="part_list_${tier.key}" value="${listFrom(part,tier.key)}"></div></div>
+          <div><label>Markup</label><input type="number" step="0.01" min="0" data-role="markup-${tier.key}" data-base-name="part_markup_${tier.key}" value="${markupFrom(part,tier.key)}"></div></div>
+          <div><label>Retail</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="retail-${tier.key}" data-base-name="part_${tier.key}" value="${retailFrom(part,tier.key)}"></div></div>
+        </div>
+      </div>`;
+    }
+    function partRowHtml(jobIndex, part={}){
+      return `<div class="part-row">
+        <div class="part-top">
+          <div><label>Part description</label><input type="text" data-base-name="part_desc" name="part_desc_${jobIndex}[]" value="${escapeHtml(part.part_desc || '')}" placeholder="Oil filter"></div>
+          <div><label>Qty</label><input type="number" data-base-name="part_qty" name="part_qty_${jobIndex}[]" step="0.01" min="0" value="${money(part.qty ?? 1)}"></div>
+          <div style="display:flex;justify-content:flex-end;align-items:end;"><button type="button" class="delete-btn" data-action="delete-part">Delete part</button></div>
+        </div>
+        <div class="tier-grid">${TIER_META.map(t=>tierCardHtml(jobIndex,t,part)).join('')}</div>
+      </div>`;
+    }
+    
+    function jobHtml(jobIndex, job={}){
+      const parts = Array.isArray(job.parts) && job.parts.length ? job.parts : [];
+      return `<div class="job" data-idx="${jobIndex}">
+        <div class="job-top">
+          <div class="job-quick-title">
+            <div class="jobtitle">Service #${jobIndex+1}</div>
+            <div class="small-note">Compact shop-style card. Expand only what you need.</div>
+          </div>
+          <div>
+            <label>Labor hrs</label>
+            <input type="number" name="job_labor_hrs[]" step="0.01" min="0" value="${money(job.labor_hours ?? 0)}" data-role="labor-hrs">
+          </div>
+          <div class="job-header-total">
+            <div class="k">Service total</div>
+            <div class="v">$<span data-role="job-grand-total-header">0.00</span></div>
+          </div>
+          <div class="job-actions">
+            <button type="button" class="secondary-btn" data-action="toggle-main">▼ Expand</button>
+            <button type="button" class="secondary-btn" data-action="toggle-parts">Parts</button>
+            <button type="button" class="secondary-btn" data-action="toggle-notes">Notes</button>
+            <button type="button" class="secondary-btn" data-action="save-preset">Save</button>
+            <button type="button" class="delete-btn" data-action="delete-job">Delete</button>
+          </div>
+        </div>
 
-<script>
-function addJob(){
-const container=document.getElementById('services')
+        <div class="compact-grid" style="margin-top:8px;">
+          <div>
+            <label>Service / Job description</label>
+            <input type="text" name="job_desc[]" value="${escapeHtml(job.desc || '')}" placeholder="Oil &amp; Filter Change">
+          </div>
+          <div class="stat">
+            <div class="k">Labor total</div>
+            <div class="v">$<span data-role="job-labor-total">0.00</span></div>
+          </div>
+          <div class="stat">
+            <div class="k">Preview parts total</div>
+            <div class="v">$<span data-role="job-parts-total">0.00</span></div>
+          </div>
+        </div>
 
-const div=document.createElement('div')
-div.className='job'
+        <div class="collapse-section" data-section="main">
+          <div class="job-summary">
+            <div class="stat"><div class="k">Service total</div><div class="v">$<span data-role="job-grand-total">0.00</span></div></div>
+            <div class="stat"><div class="k">Visible tiers</div><div class="v" style="font-size:13px;font-weight:700;">Customer sees only enabled retail options</div></div>
+            <div class="stat"><div class="k">Preset-ready</div><div class="v" style="font-size:13px;font-weight:700;">Save this exact setup anytime</div></div>
+          </div>
+        </div>
 
-div.innerHTML=`
-<div class="job-header">
-<div>
-<input name="job_desc[]" placeholder="Service">
-<input name="job_labor_hrs[]" placeholder="Hrs">
-</div>
-<div>
-<div class="toggle" onclick="toggle(this)">▼ Expand</div>
-<button type="button" onclick="this.closest('.job').remove()">X</button>
-</div>
-</div>
+        <div class="collapse-section" data-section="notes">
+          <div style="margin-top:8px;">
+            <label>Line-item notes</label>
+            <textarea name="job_notes[]" placeholder="Additional notes, warranty notes, what is included, or pricing conditions...">${escapeHtml(job.notes || '')}</textarea>
+          </div>
+        </div>
 
-<div class="job-body hidden">
+        <div class="collapse-section" data-section="parts">
+          <div class="parts-area">
+            <div class="parts-head">
+              <div>
+                <div class="section-title" style="margin:0;font-size:14px;">Parts</div>
+                <div class="small-note">Enable only the part options you actually want the customer to see.</div>
+              </div>
+              <button type="button" class="secondary-btn" data-action="add-part">+ Add part</button>
+            </div>
+            <div class="parts-list">${parts.map(part => partRowHtml(jobIndex, part)).join('')}</div>
+          </div>
+        </div>
+      </div>`;
+    }
 
-<textarea name="job_notes[]" placeholder="Notes"></textarea>
+    function updateTierToggleHidden(row){ TIER_META.forEach(t=>{ const check=row.querySelector(`[data-role="enabled-${t.key}"]`); const hidden=row.querySelector(`input[type="hidden"][data-base-name="part_enabled_${t.key}"]`); if(hidden){ hidden.disabled = !!check.checked; } }); }
+    function recalcPartRow(row){
+      TIER_META.forEach(t=>{
+        const listEl=row.querySelector(`[data-role="list-${t.key}"]`); const markupEl=row.querySelector(`[data-role="markup-${t.key}"]`); const retailEl=row.querySelector(`[data-role="retail-${t.key}"]`);
+        if(listEl && markupEl && retailEl && document.activeElement !== retailEl){ retailEl.value = money(toNum(listEl.value) * toNum(markupEl.value || 0)); }
+      });
+      updateTierToggleHidden(row);
+    }
+    function toggleSection(jobEl, section){
+      const target = jobEl.querySelector(`[data-section="${section}"]`);
+      if(!target) return;
+      target.classList.toggle('open');
+      if(section === 'main'){
+        const btn = jobEl.querySelector('[data-action="toggle-main"]');
+        if(btn) btn.textContent = target.classList.contains('open') ? '▲ Collapse' : '▼ Expand';
+      }
+      calcAll();
+    }
 
-<button type="button" onclick="addPart(this)">+ Part</button>
-<div class="parts"></div>
+    function addJob(jobData=null){ const services=document.getElementById('services'); const idx=serviceCount(); const wrap=document.createElement('div'); wrap.innerHTML=jobHtml(idx, jobData || {}); services.appendChild(wrap.firstElementChild); renumberJobs(); }
+    function addBlankService(){ addJob({desc:'', labor_hours:0, notes:'', parts:[]}); }
+    function addPresetToQuote(){ const presetKey=document.getElementById('preset_select').value; if(!presetKey || !JOB_PRESETS[presetKey]) return; (JOB_PRESETS[presetKey].jobs || []).forEach(job=>addJob(job)); calcAll(); }
+    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); wrap.innerHTML=partRowHtml(idx, partData || {}); partsList.appendChild(wrap.firstElementChild); renumberJobs(); }
+    function deleteService(btn){ const job=btn.closest('.job'); if(job) job.remove(); if(serviceCount()===0) addBlankService(); renumberJobs(); }
+    function deletePart(btn){ const row=btn.closest('.part-row'); if(row) row.remove(); calcAll(); }
+    function calcJob(jobEl){
+      const laborHours=toNum(jobEl.querySelector('[data-role="labor-hrs"]')?.value); const laborRate=toNum(document.getElementById('labor_rate')?.value); let previewParts=0;
+      jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const qty=toNum(row.querySelector('[name^="part_qty_"]')?.value || 0); const defaultTier=pickDefaultTier(row); const retail=toNum(row.querySelector(`[data-role="retail-${defaultTier}"]`)?.value || 0); previewParts += qty * retail; });
+      const laborTotal=laborHours*laborRate; const serviceTotal=laborTotal+previewParts; jobEl.querySelector('[data-role="job-labor-total"]').textContent=money(laborTotal); jobEl.querySelector('[data-role="job-parts-total"]').textContent=money(previewParts); jobEl.querySelector('[data-role="job-grand-total"]').textContent=money(serviceTotal); const headerTotal=jobEl.querySelector('[data-role="job-grand-total-header"]'); if(headerTotal) headerTotal.textContent=money(serviceTotal); return {laborTotal, previewParts};
+    }
+    function calcAll(){ let laborSum=0, partsSum=0; document.querySelectorAll('#services .job').forEach(job=>{ const t=calcJob(job); laborSum+=t.laborTotal; partsSum+=t.previewParts; }); const taxRate=toNum(document.getElementById('tax_rate')?.value)/100; const serviceFee=toNum(document.getElementById('service_fee')?.value); const taxTotal=partsSum*taxRate; const grandTotal=laborSum+partsSum+taxTotal+serviceFee; setText('labor_total',money(laborSum)); setText('parts_total',money(partsSum)); setText('tax_total',money(taxTotal)); setText('service_total',money(serviceFee)); setText('grand_total',money(grandTotal)); }
+    function beforeSave(){ calcAll(); return true; }
+    function fillCustomerFromSelect(){ const select=document.getElementById('existing_customer'); const opt=select.options[select.selectedIndex]; if(!opt || !opt.value) return; document.getElementById('customer_name').value=opt.dataset.name || ''; document.getElementById('customer_phone').value=opt.dataset.phone || ''; document.getElementById('customer_email').value=opt.dataset.email || ''; }
+    function fillVehicleFromSelect(){ const select=document.getElementById('existing_vehicle'); const opt=select.options[select.selectedIndex]; if(!opt || !opt.value) return; document.getElementById('vehicle').value=opt.dataset.vehicle || ''; document.getElementById('vin').value=opt.dataset.vin || ''; if(opt.dataset.customerId){ const customerSelect=document.getElementById('existing_customer'); [...customerSelect.options].forEach((o,i)=>{ if(String(o.value)===String(opt.dataset.customerId)){ customerSelect.selectedIndex=i; fillCustomerFromSelect(); } }); } }
+    function populatePresets(){ const select=document.getElementById('preset_select'); const currentValue=select.value; select.innerHTML='<option value="">— Select a preset —</option>'; Object.entries(JOB_PRESETS).sort((a,b)=>String(a[1]?.name || a[0]).localeCompare(String(b[1]?.name || b[0]))).forEach(([key,preset])=>{ const option=document.createElement('option'); option.value=key; option.textContent=`${preset.name || key}${preset.is_custom ? ' (saved)' : ''}`; select.appendChild(option); }); if(currentValue && JOB_PRESETS[currentValue]) select.value=currentValue; }
 
-</div>
-`
+    function inspectionItemHtml(item={}){
+      return `<div class="inspection-item">
+        <div class="inspection-top">
+          <div><label>Inspection item</label><input type="text" name="inspection_label[]" value="${escapeHtml(item.label || '')}" placeholder="Brake pads, oil leak, battery, suspension noise"></div>
+          <div><label>Status</label>
+            <select name="inspection_status[]">
+              <option value="good" ${(item.status||'good')==='good'?'selected':''}>Good</option>
+              <option value="monitor" ${(item.status||'')==='monitor'?'selected':''}>Monitor</option>
+              <option value="needs_attention" ${(item.status||'')==='needs_attention'?'selected':''}>Needs Attention</option>
+            </select>
+          </div>
+          <div style="display:flex;justify-content:flex-end;align-items:end;">
+            <button type="button" class="delete-btn" data-action="delete-inspection-item">Delete item</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <label>Notes</label>
+          <textarea name="inspection_notes[]" placeholder="What you found, what the customer should know, or what needs attention...">${escapeHtml(item.notes || '')}</textarea>
+        </div>
+        <div style="margin-top:10px;">
+          <label>Photo</label>
+          <input type="file" name="inspection_photo[]" accept="image/*">
+          <div class="inspection-photo-note">Phone usually gives you camera, photo library, or file choices here.</div>
+        </div>
+      </div>`;
+    }
+    function addInspectionItem(itemData=null){
+      const list=document.getElementById('inspectionItems');
+      const wrap=document.createElement('div');
+      wrap.innerHTML=inspectionItemHtml(itemData || {});
+      list.appendChild(wrap.firstElementChild);
+    }
 
-container.appendChild(div)
-}
-
-function toggle(el){
-const body=el.closest('.job').querySelector('.job-body')
-body.classList.toggle('hidden')
-}
-
-function addPart(btn){
-const wrap=btn.nextElementSibling
-
-const div=document.createElement('div')
-div.className='part'
-
-div.innerHTML=`
-<input name="part_desc_0[]" placeholder="Part">
-<input name="part_qty_0[]" value="1">
-<input name="part_quality_0[]" placeholder="Price">
-`
-
-wrap.appendChild(div)
-}
-
-function addInspection(){
-const wrap=document.getElementById('inspection')
-
-const div=document.createElement('div')
-
-div.innerHTML=`
-<input name="inspection_label[]" placeholder="Item">
-<textarea name="inspection_notes[]" placeholder="Notes"></textarea>
-<input type="file" name="inspection_photo[]" accept="image/*">
-`
-
-wrap.appendChild(div)
-}
-</script>
-
+    function collectJobData(jobEl){ const desc=jobEl.querySelector('[name="job_desc[]"]')?.value || ''; const laborHours=toNum(jobEl.querySelector('[name="job_labor_hrs[]"]')?.value || 0); const notes=jobEl.querySelector('[name="job_notes[]"]')?.value || ''; const parts=[]; jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const part={ part_desc: row.querySelector('[name^="part_desc_"]')?.value || '', qty: toNum(row.querySelector('[name^="part_qty_"]')?.value || 0) }; TIER_META.forEach(t=>{ part[t.key]=toNum(row.querySelector(`[data-role="retail-${t.key}"]`)?.value || 0); part[`list_${t.key}`]=toNum(row.querySelector(`[data-role="list-${t.key}"]`)?.value || 0); part[`markup_${t.key}`]=toNum(row.querySelector(`[data-role="markup-${t.key}"]`)?.value || 0); part[`enabled_${t.key}`]=!!row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked; }); if(part.part_desc.trim() || part.qty || part.oem || part.quality || part.economy){ parts.push(part); } }); return { desc: desc.trim(), labor_hours: laborHours, notes: notes.trim(), parts }; }
+    function collectAllJobs(){ return Array.from(document.querySelectorAll('#services .job')).map(j=>collectJobData(j)).filter(job=>job && (job.desc || job.notes || job.labor_hours || job.parts.length)); }
+    async function savePresetRequest(name, jobs){ const response=await fetch('/save_preset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,jobs})}); const data=await response.json().catch(()=>({})); if(!response.ok || !data.ok) throw new Error(data.error || 'Preset could not be saved.'); Object.keys(JOB_PRESETS).forEach(k=>delete JOB_PRESETS[k]); Object.entries(data.presets || {}).forEach(([k,v])=>JOB_PRESETS[k]=v); populatePresets(); if(data.preset_key) document.getElementById('preset_select').value=data.preset_key; alert(data.message || 'Preset saved.'); }
+    async function promptAndSavePreset(jobs, defaultName=''){ if(!jobs.length){ alert('Add a service first, then save it as a preset.'); return; } const name=window.prompt('Preset name', defaultName || 'My preset'); if(!name || !name.trim()) return; try{ await savePresetRequest(name.trim(), jobs); }catch(err){ alert(err.message || 'Preset could not be saved.'); } }
+    document.addEventListener('blur', e=>{ if(e.target.matches('input[type="number"]')){ const v=parseFloat(e.target.value); if(!isNaN(v)) e.target.value=v.toFixed(2); calcAll(); } }, true);
+    document.addEventListener('DOMContentLoaded',()=>{ populatePresets(); addBlankService(); document.getElementById('addPresetBtn').addEventListener('click',e=>{e.preventDefault(); addPresetToQuote();}); document.getElementById('startBlankBtn').addEventListener('click',e=>{e.preventDefault(); addBlankService();}); document.getElementById('saveAllAsPresetBtn').addEventListener('click',e=>{e.preventDefault(); const jobs=collectAllJobs(); promptAndSavePreset(jobs, jobs.length===1 ? (jobs[0].desc || 'My preset') : 'Multi-service preset');}); document.getElementById('addInspectionBtn').addEventListener('click',e=>{e.preventDefault(); addInspectionItem();}); document.getElementById('services').addEventListener('click',e=>{ const btn=e.target.closest('button'); if(!btn) return; if(btn.dataset.action==='save-preset'){ e.preventDefault(); const payload=collectJobData(btn.closest('.job')); promptAndSavePreset(payload ? [payload] : [], payload?.desc || 'My service preset'); } if(btn.dataset.action==='delete-job'){ e.preventDefault(); deleteService(btn); } if(btn.dataset.action==='add-part'){ e.preventDefault(); const jobEl=btn.closest('.job'); addPartToJob(jobEl, {qty:1, quality:0, markup_quality:1.4, enabled_quality:true}); const partsSection=jobEl.querySelector('[data-section="parts"]'); if(partsSection) partsSection.classList.add('open'); } if(btn.dataset.action==='delete-part'){ e.preventDefault(); deletePart(btn); } if(btn.dataset.action==='toggle-main'){ e.preventDefault(); toggleSection(btn.closest('.job'), 'main'); } if(btn.dataset.action==='toggle-parts'){ e.preventDefault(); toggleSection(btn.closest('.job'), 'parts'); } if(btn.dataset.action==='toggle-notes'){ e.preventDefault(); toggleSection(btn.closest('.job'), 'notes'); } if(btn.dataset.action==='delete-inspection-item'){ e.preventDefault(); const item=btn.closest('.inspection-item'); if(item) item.remove(); } }); document.getElementById('services').addEventListener('input', e=>{ if(e.target.closest('.part-row')) recalcPartRow(e.target.closest('.part-row')); calcAll(); }); document.getElementById('services').addEventListener('change', e=>{ if(e.target.closest('.part-row')) recalcPartRow(e.target.closest('.part-row')); calcAll(); }); document.getElementById('labor_rate').addEventListener('input', calcAll); document.getElementById('tax_rate').addEventListener('input', calcAll); document.getElementById('service_fee').addEventListener('input', calcAll); document.getElementById('existing_customer').addEventListener('change', fillCustomerFromSelect); document.getElementById('existing_vehicle').addEventListener('change', fillVehicleFromSelect); calcAll(); });
+  </script>
 </body>
 </html>
