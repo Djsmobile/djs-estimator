@@ -60,6 +60,11 @@
     .tier-grid{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:8px;margin-top:8px}
     .tier-card{border:1px solid var(--border);border-radius:10px;padding:7px;background:#0e0e0e}
     .tier-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+    .tier-head-left{display:flex;align-items:center;gap:8px;min-width:0}
+    .tier-radio{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text);font-size:12px;font-weight:800}
+    .tier-radio input[type="radio"]{width:auto;margin:0}
+    .tier-card.selected-tier{border-color:rgba(212,175,55,.45);box-shadow:0 0 0 1px rgba(212,175,55,.18) inset}
+    .tier-card.selected-tier .tier-name{color:#fff}
     .tier-name{font-weight:800;font-size:12px}
     .tier-toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}
     .tier-fields{display:grid;grid-template-columns:1fr 0.9fr 1fr;gap:6px}
@@ -153,7 +158,7 @@
 
       <div class="card">
         <div class="section-title">Estimate Preview</div>
-        <div class="save-note" style="margin-bottom:10px;">Preview uses the first available customer-facing tier for each part, preferring <strong style="color:#fff;">Quality</strong> when it is enabled.</div>
+        <div class="save-note" style="margin-bottom:10px;">Preview uses the selected radio button for each part. If a selected tier gets hidden, the app automatically switches to the next available visible option.</div>
         <div class="row">
           <div class="stat"><div class="k">Labor total</div><div class="v">$<span id="labor_total">0.00</span></div></div>
           <div class="stat"><div class="k">Parts total</div><div class="v">$<span id="parts_total">0.00</span></div></div>
@@ -187,19 +192,69 @@
     function listFrom(part, tier){ const list = part[`list_${tier}`] ?? part[tier] ?? 0; return money(list); }
     function markupFrom(part, tier){ const markup = part[`markup_${tier}`] ?? ((toNum(part[tier]) && toNum(part[`list_${tier}`])) ? toNum(part[tier])/Math.max(toNum(part[`list_${tier}`]),0.01) : (toNum(part[tier]) ? 1 : 1.4)); return money(markup || 1.4); }
     function getEnabledTiers(row){ return TIER_META.filter(t=>row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked).map(t=>t.key); }
-    function pickDefaultTier(row){ const enabled=getEnabledTiers(row); if(enabled.includes('quality')) return 'quality'; return enabled[0] || 'quality'; }
+    function getInitialSelectedTier(part={}){
+      const requested = String(part.selected_tier || part.default_tier || '').trim().toLowerCase();
+      const enabled = TIER_META.filter(t=>defaultEnabledFor(part,t.key)).map(t=>t.key);
+      if(requested && enabled.includes(requested)) return requested;
+      if(enabled.includes('quality')) return 'quality';
+      return enabled[0] || 'quality';
+    }
+    function getSelectedTier(row){
+      const checked = row.querySelector('[data-role="selected-tier"]:checked');
+      if(checked) return String(checked.value || '').toLowerCase();
+      const hidden = row.querySelector('[data-role="selected-tier-hidden"]');
+      return String(hidden?.value || '').toLowerCase();
+    }
+    function syncSelectedTier(row){
+      const enabled = getEnabledTiers(row);
+      let selected = getSelectedTier(row);
+      if(!enabled.includes(selected)){
+        selected = enabled.includes('quality') ? 'quality' : (enabled[0] || 'quality');
+      }
+      row.querySelectorAll('[data-role="selected-tier"]').forEach(radio=>{
+        const match = radio.dataset.tierValue === selected;
+        radio.checked = match;
+        radio.disabled = !enabled.includes(radio.dataset.tierValue);
+      });
+      const hidden = row.querySelector('[data-role="selected-tier-hidden"]');
+      if(hidden) hidden.value = selected;
+      row.querySelectorAll('.tier-card').forEach(card=>{
+        const tier = card.dataset.tier;
+        card.classList.toggle('selected-tier', tier === selected && enabled.includes(tier));
+      });
+      return selected;
+    }
     function renumberJobs(){
       document.querySelectorAll('#services .job').forEach((job,index)=>{
         job.dataset.idx=index;
         const title=job.querySelector('.jobtitle'); if(title) title.textContent=`Service #${index+1}`;
         job.querySelectorAll('[data-base-name]').forEach(input=>{ input.name=`${input.dataset.baseName}_${index}[]`; });
+        job.querySelectorAll('.part-row').forEach((row, partIndex)=>{
+          const hidden=row.querySelector('[data-role="selected-tier-hidden"]');
+          if(hidden){ hidden.name=`part_selected_tier_${index}[]`; }
+          row.querySelectorAll('[data-role="selected-tier"]').forEach(radio=>{
+            radio.name=`part_selected_tier_choice_${index}_${partIndex}`;
+          });
+          syncSelectedTier(row);
+        });
       });
       calcAll();
     }
-    function tierCardHtml(jobIndex, tier, part={}){
+    function tierCardHtml(jobIndex, partIndex, tier, part={}){
+      const groupName = `part_selected_tier_${jobIndex}_${partIndex}`;
+      const selectedTier = getInitialSelectedTier(part);
       return `<div class="tier-card" data-tier="${tier.key}">
-        <div class="tier-head"><div class="tier-name">${tier.label}</div><label class="tier-toggle"><input type="checkbox" data-role="enabled-${tier.key}" data-base-name="part_enabled_${tier.key}" value="1" ${defaultEnabledFor(part,tier.key)?'checked':''}> Show</label></div>
+        <div class="tier-head">
+          <div class="tier-head-left">
+            <label class="tier-radio">
+              <input type="radio" data-role="selected-tier" data-tier-value="${tier.key}" name="${groupName}" value="${tier.key}" ${selectedTier === tier.key ? 'checked' : ''}>
+              <span class="tier-name">${tier.label}</span>
+            </label>
+          </div>
+          <label class="tier-toggle"><input type="checkbox" data-role="enabled-${tier.key}" data-base-name="part_enabled_${tier.key}" value="1" ${defaultEnabledFor(part,tier.key)?'checked':''}> Show</label>
+        </div>
         <input type="hidden" data-base-name="part_enabled_${tier.key}" value="0" disabled>
+        <input type="hidden" data-role="selected-tier-hidden" data-base-name="part_selected_tier" value="${selectedTier}">
         <div class="tier-fields">
           <div><label>List</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="list-${tier.key}" data-base-name="part_list_${tier.key}" value="${listFrom(part,tier.key)}"></div></div>
           <div><label>Markup</label><input type="number" step="0.01" min="0" data-role="markup-${tier.key}" data-base-name="part_markup_${tier.key}" value="${markupFrom(part,tier.key)}"></div>
@@ -207,14 +262,14 @@
         </div>
       </div>`;
     }
-    function partRowHtml(jobIndex, part={}){
+    function partRowHtml(jobIndex, partIndex, part={}){
       return `<div class="part-row">
         <div class="part-top">
           <div><label>Part description</label><input type="text" data-base-name="part_desc" name="part_desc_${jobIndex}[]" value="${escapeHtml(part.part_desc || '')}" placeholder="Oil filter"></div>
           <div><label>Qty</label><input type="number" data-base-name="part_qty" name="part_qty_${jobIndex}[]" step="0.01" min="0" value="${money(part.qty ?? 1)}"></div>
           <div style="display:flex;justify-content:flex-end;align-items:end;"><button type="button" class="delete-btn" data-action="delete-part">Delete part</button></div>
         </div>
-        <div class="tier-grid">${TIER_META.map(t=>tierCardHtml(jobIndex,t,part)).join('')}</div>
+        <div class="tier-grid">${TIER_META.map(t=>tierCardHtml(jobIndex, partIndex, t, part)).join('')}</div>
       </div>`;
     }
     
@@ -282,13 +337,22 @@
               </div>
               <button type="button" class="secondary-btn" data-action="add-part">+ Add part</button>
             </div>
-            <div class="parts-list">${parts.map(part => partRowHtml(jobIndex, part)).join('')}</div>
+            <div class="parts-list">${parts.map((part, partIndex) => partRowHtml(jobIndex, partIndex, part)).join('')}</div>
           </div>
         </div>
       </div>`;
     }
 
-    function updateTierToggleHidden(row){ TIER_META.forEach(t=>{ const check=row.querySelector(`[data-role="enabled-${t.key}"]`); const hidden=row.querySelector(`input[type="hidden"][data-base-name="part_enabled_${t.key}"]`); const tierCard=row.querySelector(`.tier-card[data-tier="${t.key}"]`); if(hidden && check){ hidden.disabled = !!check.checked; } if(tierCard && check){ tierCard.style.opacity = check.checked ? "1" : ".58"; } }); }
+    function updateTierToggleHidden(row){
+      TIER_META.forEach(t=>{
+        const check=row.querySelector(`[data-role="enabled-${t.key}"]`);
+        const hidden=row.querySelector(`input[type="hidden"][data-base-name="part_enabled_${t.key}"]`);
+        const tierCard=row.querySelector(`.tier-card[data-tier="${t.key}"]`);
+        if(hidden && check){ hidden.disabled = !!check.checked; }
+        if(tierCard && check){ tierCard.style.opacity = check.checked ? "1" : ".58"; }
+      });
+      syncSelectedTier(row);
+    }
     function recalcPartRow(row){
       TIER_META.forEach(t=>{
         const listEl=row.querySelector(`[data-role="list-${t.key}"]`); const markupEl=row.querySelector(`[data-role="markup-${t.key}"]`); const retailEl=row.querySelector(`[data-role="retail-${t.key}"]`);
@@ -310,12 +374,12 @@
     function addJob(jobData=null){ const services=document.getElementById('services'); const idx=serviceCount(); const wrap=document.createElement('div'); wrap.innerHTML=jobHtml(idx, jobData || {}); services.appendChild(wrap.firstElementChild); renumberJobs(); }
     function addBlankService(){ addJob({desc:'', labor_hours:0, notes:'', parts:[]}); }
     function addPresetToQuote(){ const presetKey=document.getElementById('preset_select').value; if(!presetKey || !JOB_PRESETS[presetKey]) return; (JOB_PRESETS[presetKey].jobs || []).forEach(job=>addJob(job)); calcAll(); }
-    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); const defaults={qty:1,oem:0,quality:0,economy:0,list_oem:0,list_quality:0,list_economy:0,markup_oem:1.4,markup_quality:1.4,markup_economy:1.4,enabled_oem:true,enabled_quality:true,enabled_economy:true}; wrap.innerHTML=partRowHtml(idx, Object.assign(defaults, partData || {})); partsList.appendChild(wrap.firstElementChild); renumberJobs(); }
+    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); const defaults={qty:1,oem:0,quality:0,economy:0,list_oem:0,list_quality:0,list_economy:0,markup_oem:1.4,markup_quality:1.4,markup_economy:1.4,enabled_oem:true,enabled_quality:true,enabled_economy:true}; const partIndex=partsList.querySelectorAll('.part-row').length; wrap.innerHTML=partRowHtml(idx, partIndex, Object.assign(defaults, partData || {})); partsList.appendChild(wrap.firstElementChild); renumberJobs(); }
     function deleteService(btn){ const job=btn.closest('.job'); if(job) job.remove(); if(serviceCount()===0) addBlankService(); renumberJobs(); }
     function deletePart(btn){ const row=btn.closest('.part-row'); if(row) row.remove(); calcAll(); }
     function calcJob(jobEl){
       const laborHours=toNum(jobEl.querySelector('[data-role="labor-hrs"]')?.value); const laborRate=toNum(document.getElementById('labor_rate')?.value); let previewParts=0;
-      jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const qty=toNum(row.querySelector('[name^="part_qty_"]')?.value || 0); const defaultTier=pickDefaultTier(row); const retail=toNum(row.querySelector(`[data-role="retail-${defaultTier}"]`)?.value || 0); previewParts += qty * retail; });
+      jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const qty=toNum(row.querySelector('[name^="part_qty_"]')?.value || 0); const selectedTier=syncSelectedTier(row); const retail=toNum(row.querySelector(`[data-role="retail-${selectedTier}"]`)?.value || 0); previewParts += qty * retail; });
       const laborTotal=laborHours*laborRate; const serviceTotal=laborTotal+previewParts; jobEl.querySelector('[data-role="job-labor-total"]').textContent=money(laborTotal); jobEl.querySelector('[data-role="job-parts-total"]').textContent=money(previewParts); jobEl.querySelector('[data-role="job-grand-total"]').textContent=money(serviceTotal); const headerTotal=jobEl.querySelector('[data-role="job-grand-total-header"]'); if(headerTotal) headerTotal.textContent=money(serviceTotal); return {laborTotal, previewParts};
     }
     function calcAll(){ let laborSum=0, partsSum=0; document.querySelectorAll('#services .job').forEach(job=>{ const t=calcJob(job); laborSum+=t.laborTotal; partsSum+=t.previewParts; }); const taxRate=toNum(document.getElementById('tax_rate')?.value)/100; const serviceFee=toNum(document.getElementById('service_fee')?.value); const taxTotal=partsSum*taxRate; const grandTotal=laborSum+partsSum+taxTotal+serviceFee; setText('labor_total',money(laborSum)); setText('parts_total',money(partsSum)); setText('tax_total',money(taxTotal)); setText('service_total',money(serviceFee)); setText('grand_total',money(grandTotal)); }
@@ -357,7 +421,7 @@
       list.appendChild(wrap.firstElementChild);
     }
 
-    function collectJobData(jobEl){ const desc=jobEl.querySelector('[name="job_desc[]"]')?.value || ''; const laborHours=toNum(jobEl.querySelector('[name="job_labor_hrs[]"]')?.value || 0); const notes=jobEl.querySelector('[name="job_notes[]"]')?.value || ''; const parts=[]; jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const part={ part_desc: row.querySelector('[name^="part_desc_"]')?.value || '', qty: toNum(row.querySelector('[name^="part_qty_"]')?.value || 0) }; TIER_META.forEach(t=>{ part[t.key]=toNum(row.querySelector(`[data-role="retail-${t.key}"]`)?.value || 0); part[`list_${t.key}`]=toNum(row.querySelector(`[data-role="list-${t.key}"]`)?.value || 0); part[`markup_${t.key}`]=toNum(row.querySelector(`[data-role="markup-${t.key}"]`)?.value || 0); part[`enabled_${t.key}`]=!!row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked; }); if(part.part_desc.trim() || part.qty || part.oem || part.quality || part.economy){ parts.push(part); } }); return { desc: desc.trim(), labor_hours: laborHours, notes: notes.trim(), parts }; }
+    function collectJobData(jobEl){ const desc=jobEl.querySelector('[name="job_desc[]"]')?.value || ''; const laborHours=toNum(jobEl.querySelector('[name="job_labor_hrs[]"]')?.value || 0); const notes=jobEl.querySelector('[name="job_notes[]"]')?.value || ''; const parts=[]; jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const part={ part_desc: row.querySelector('[name^="part_desc_"]')?.value || '', qty: toNum(row.querySelector('[name^="part_qty_"]')?.value || 0) }; TIER_META.forEach(t=>{ part[t.key]=toNum(row.querySelector(`[data-role="retail-${t.key}"]`)?.value || 0); part[`list_${t.key}`]=toNum(row.querySelector(`[data-role="list-${t.key}"]`)?.value || 0); part[`markup_${t.key}`]=toNum(row.querySelector(`[data-role="markup-${t.key}"]`)?.value || 0); part[`enabled_${t.key}`]=!!row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked; }); part.selected_tier = syncSelectedTier(row); if(part.part_desc.trim() || part.qty || part.oem || part.quality || part.economy){ parts.push(part); } }); return { desc: desc.trim(), labor_hours: laborHours, notes: notes.trim(), parts }; }
     function collectAllJobs(){ return Array.from(document.querySelectorAll('#services .job')).map(j=>collectJobData(j)).filter(job=>job && (job.desc || job.notes || job.labor_hours || job.parts.length)); }
     async function savePresetRequest(name, jobs){ const response=await fetch('/save_preset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,jobs})}); const data=await response.json().catch(()=>({})); if(!response.ok || !data.ok) throw new Error(data.error || 'Preset could not be saved.'); Object.keys(JOB_PRESETS).forEach(k=>delete JOB_PRESETS[k]); Object.entries(data.presets || {}).forEach(([k,v])=>JOB_PRESETS[k]=v); populatePresets(); if(data.preset_key) document.getElementById('preset_select').value=data.preset_key; alert(data.message || 'Preset saved.'); }
     async function promptAndSavePreset(jobs, defaultName=''){ if(!jobs.length){ alert('Add a service first, then save it as a preset.'); return; } const name=window.prompt('Preset name', defaultName || 'My preset'); if(!name || !name.trim()) return; try{ await savePresetRequest(name.trim(), jobs); }catch(err){ alert(err.message || 'Preset could not be saved.'); } }

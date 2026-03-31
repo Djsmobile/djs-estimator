@@ -453,8 +453,10 @@
                         {% if part.get('enabled_quality', part.get('quality', 0)|float > 0 or not enabled) %}{% set _ = enabled.append('quality') %}{% endif %}
                         {% if part.get('enabled_economy', part.get('economy', 0)|float > 0) %}{% set _ = enabled.append('economy') %}{% endif %}
                         {% if enabled|length == 0 %}{% set _ = enabled.append('quality') %}{% endif %}
-                        {% set chosen = namespace(tier='quality') %}
-                        {% if 'quality' not in enabled %}{% set chosen.tier = enabled[0] %}{% endif %}
+                        {% set chosen = namespace(tier=part.get('selected_tier', 'quality')) %}
+                        {% if chosen.tier not in enabled %}
+                          {% if 'quality' in enabled %}{% set chosen.tier = 'quality' %}{% else %}{% set chosen.tier = enabled[0] %}{% endif %}
+                        {% endif %}
                         {% for saved_part in selected_parts %}
                           {% if saved_part.get('part_index') == part_index and saved_part.get('tier') in enabled %}
                             {% set chosen.tier = saved_part.get('tier') %}
