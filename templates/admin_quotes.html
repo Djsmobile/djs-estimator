@@ -96,13 +96,15 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
   <div class="card">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <div style="margin-bottom:14px;">
+        <div class="flash-holder" style="margin-bottom:14px;">
           {% for message in messages %}
             <div class="flash">{{ message }}</div>
           {% endfor %}
         </div>
       {% endif %}
     {% endwith %}
+
+    <div class="flash-holder" style="margin-bottom:14px;"></div>
 
     <div class="table-wrap">
       <table>
@@ -112,6 +114,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
             <th>Customer</th>
             <th>Vehicle</th>
             <th>Phone</th>
+            <th>Quote Link</th>
             <th>Created</th>
             <th>Signed</th>
             <th>Invoice</th>
@@ -137,7 +140,19 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
               <div class="small">{{ row.vin or '' }}</div>
             </td>
 
-            <td>{{ row.customer_phone or '-' }}</td>
+            <td>
+              <div>{{ row.customer_phone_display or row.customer_phone or '-' }}</div>
+              {% if row.customer_phone_e164 %}<div class="small">{{ row.customer_phone_e164 }}</div>{% endif %}
+            </td>
+
+            <td>
+              {% if row.quote_token %}
+                <a href="{{ row.quote_url_external }}" target="_blank" class="link">Open live quote</a>
+                <div class="small">{{ row.quote_url_external }}</div>
+              {% else %}
+                <span class="small">No quote link</span>
+              {% endif %}
+            </td>
             <td>{{ row.created_at or '-' }}</td>
 
             <td>
@@ -157,9 +172,8 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 {% if row.quote_token %}
                   <a href="/quote/{{ row.quote_token }}" target="_blank" class="link">Open quote</a>
 
-                  <form method="POST" action="/send_quote_sms/{{ row.quote_token }}" class="inline-form">
-                    <button type="submit" class="btn btn-blue">Text quote</button>
-                  </form>
+                  <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy text</button>
+                  <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy link</button>
                 {% else %}
                   <span class="small">No quote link</span>
                 {% endif %}
@@ -193,5 +207,77 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
     </div>
   </div>
 </div>
+<script>
+async function copyToClipboard(text){
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'absolute';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(ta);
+  return ok;
+}
+
+function showBanner(message){
+  const holder = document.querySelector('.flash-holder');
+  if (!holder) return;
+  const div = document.createElement('div');
+  div.className = 'flash';
+  div.textContent = message;
+  holder.prepend(div);
+  setTimeout(() => {
+    div.style.opacity = '0';
+    setTimeout(() => div.remove(), 250);
+  }, 2600);
+}
+
+document.querySelectorAll('.copy-text-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const original = btn.textContent;
+    btn.disabled = true;
+    try {
+      const res = await fetch(btn.dataset.copyUrl, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+      if (!res.ok) throw new Error('Unable to build text message');
+      const data = await res.json();
+      await copyToClipboard(data.message);
+      btn.textContent = 'Copied';
+      showBanner(`Text copied${data.phone_display ? ` for ${data.phone_display}` : ''}. Paste it into your phone.`);
+    } catch (err) {
+      showBanner(err.message || 'Could not copy the text message.');
+    } finally {
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1500);
+    }
+  });
+});
+
+document.querySelectorAll('.copy-link-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const original = btn.textContent;
+    btn.disabled = true;
+    try {
+      await copyToClipboard(btn.dataset.quoteLink);
+      btn.textContent = 'Copied';
+      showBanner('Quote link copied.');
+    } catch (err) {
+      showBanner('Could not copy the quote link.');
+    } finally {
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1500);
+    }
+  });
+});
+</script>
 </body>
 </html>

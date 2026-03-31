@@ -118,6 +118,62 @@ def normalize_preset_jobs(jobs):
 
 
 
+
+
+def normalize_phone_number(value):
+    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
+    if not digits:
+        return ''
+    if len(digits) == 11 and digits.startswith('1'):
+        return f'+{digits}'
+    if len(digits) == 10:
+        return f'+1{digits}'
+    if str(value).strip().startswith('+'):
+        return str(value).strip()
+    return f'+{digits}'
+
+
+def display_phone_number(value):
+    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
+    if len(digits) == 11 and digits.startswith('1'):
+        digits = digits[1:]
+    if len(digits) == 10:
+        return f'({digits[:3]}) {digits[3:6]}-{digits[6:]}'
+    return str(value or '').strip()
+
+
+def get_public_base_url():
+    configured = (os.environ.get('PUBLIC_BASE_URL') or '').strip()
+    if configured:
+        return configured.rstrip('/')
+    try:
+        return request.url_root.rstrip('/')
+    except RuntimeError:
+        return ''
+
+
+def build_quote_url_external(token):
+    base = get_public_base_url()
+    return f"{base}/quote/{token}" if base else f"/quote/{token}"
+
+
+def build_copy_text_message(quote):
+    customer_name = (quote['customer_name'] or '').strip()
+    first_name = customer_name.split()[0] if customer_name else 'there'
+    vehicle = (quote['vehicle'] or 'your vehicle').strip()
+    quote_url = build_quote_url_external(quote['quote_token'])
+
+    lines = [
+        "DJ's Mobile Mechanic",
+        '',
+        f"Hi {first_name}, your quote for {vehicle} is ready:",
+        quote_url,
+        '',
+        'Let me know if you would like to move forward or if you have any questions.',
+    ]
+    return '\n'.join(lines)
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -383,6 +439,7 @@ def normalize_job_parts(job):
                 "enabled_oem": enabled_oem,
                 "enabled_quality": enabled_quality,
                 "enabled_economy": enabled_economy,
+                "selected_tier": selected_tier,
             })
         return normalized
 
@@ -405,6 +462,11 @@ def normalize_job_parts(job):
             "enabled_oem": old_oem > 0,
             "enabled_quality": old_quality > 0,
             "enabled_economy": old_economy > 0,
+            "selected_tier": sanitize_selected_tier({
+                "enabled_oem": old_oem > 0,
+                "enabled_quality": old_quality > 0,
+                "enabled_economy": old_economy > 0,
+            }, "quality", default_tier="quality"),
         }]
     return []
 
@@ -466,7 +528,7 @@ def get_job_parts_total_from_selections(job, selected_parts=None, default_tier="
 
 
 def get_default_selected_parts(job, default_tier="quality"):
-    return [{"part_index": idx, "tier": sanitize_selected_tier(part, default_tier, default_tier)} for idx, part in enumerate(normalize_job_parts(job))]
+    return [{"part_index": idx, "tier": sanitize_selected_tier(part, part.get("selected_tier"), default_tier)} for idx, part in enumerate(normalize_job_parts(job))]
 
 
 def parse_approved_map(approved_json):
@@ -798,14 +860,15 @@ def save_quote():
         enabled_oems = request.form.getlist(f"part_enabled_oem_{i}[]")
         enabled_qualities = request.form.getlist(f"part_enabled_quality_{i}[]")
         enabled_economies = request.form.getlist(f"part_enabled_economy_{i}[]")
+        selected_tiers = request.form.getlist(f"part_selected_tier_{i}[]")
 
         parts = []
         part_max_len = max(
             len(part_descs), len(part_qtys), len(part_oems), len(part_qualities), len(part_economies),
             len(part_list_oems), len(part_list_qualities), len(part_list_economies),
             len(part_markup_oems), len(part_markup_qualities), len(part_markup_economies),
-            len(enabled_oems), len(enabled_qualities), len(enabled_economies)
-        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies]) else 0
+            len(enabled_oems), len(enabled_qualities), len(enabled_economies), len(selected_tiers)
+        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies, selected_tiers]) else 0
 
         for p in range(part_max_len):
             part_desc = part_descs[p].strip() if p < len(part_descs) else ""
@@ -823,6 +886,12 @@ def save_quote():
             enabled_oem = (enabled_oems[p].strip() == "1") if p < len(enabled_oems) else (oem > 0)
             enabled_quality = (enabled_qualities[p].strip() == "1") if p < len(enabled_qualities) else (quality > 0 or (not enabled_oem and economy <= 0))
             enabled_economy = (enabled_economies[p].strip() == "1") if p < len(enabled_economies) else (economy > 0)
+            selected_tier = selected_tiers[p].strip().lower() if p < len(selected_tiers) else "quality"
+            selected_tier = sanitize_selected_tier({
+                "enabled_oem": enabled_oem,
+                "enabled_quality": enabled_quality,
+                "enabled_economy": enabled_economy,
+            }, selected_tier, default_tier="quality")
 
             if not part_desc and qty == 1 and oem == 0 and quality == 0 and economy == 0 and list_oem == 0 and list_quality == 0 and list_economy == 0:
                 continue
@@ -842,6 +911,7 @@ def save_quote():
                 "enabled_oem": enabled_oem,
                 "enabled_quality": enabled_quality,
                 "enabled_economy": enabled_economy,
+                "selected_tier": selected_tier,
             })
 
         if not desc and labor_hours == 0 and not notes and not parts:
@@ -1116,8 +1186,17 @@ def admin():
         ORDER BY quotes.created_at DESC
         """
     )
-    rows = cur.fetchall()
+    raw_rows = cur.fetchall()
     conn.close()
+
+    rows = []
+    for row in raw_rows:
+        row_dict = dict(row)
+        row_dict["quote_url_external"] = build_quote_url_external(row["quote_token"]) if row["quote_token"] else ""
+        row_dict["customer_phone_display"] = display_phone_number(row["customer_phone"])
+        row_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
+        rows.append(row_dict)
+
     return render_template("admin_quotes.html", rows=rows)
 
 
@@ -1140,6 +1219,25 @@ def mark_paid(invoice_number):
     return redirect(url_for("view_invoice", invoice_number=invoice_number))
 
 
+@app.route("/admin/copy_quote_text/<token>", methods=["GET"])
+def copy_quote_text(token):
+    conn = get_db()
+    quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
+    conn.close()
+    if not quote:
+        abort(404)
+
+    return jsonify({
+        "ok": True,
+        "message": build_copy_text_message(quote),
+        "quote_url": build_quote_url_external(token),
+        "phone": normalize_phone_number(quote["customer_phone"]),
+        "phone_display": display_phone_number(quote["customer_phone"]),
+        "customer_name": quote["customer_name"] or "",
+        "vehicle": quote["vehicle"] or "",
+    })
+
+
 @app.route("/send_quote_sms/<token>", methods=["POST"])
 def send_quote_sms(token):
     conn = get_db()
@@ -1147,7 +1245,7 @@ def send_quote_sms(token):
     conn.close()
     if not quote:
         abort(404)
-    flash("Text quote is not wired up in this build yet. Your custom quote link is live from the quote page.")
+    flash("SMS sending is paused in this build. Use Copy Text to send the quote link manually.")
     return redirect(url_for("admin"))
 
 
