@@ -212,84 +212,85 @@
       font-size:13px;
       margin-bottom:10px;
     }
-    .part-row{
-      display:grid;
-      grid-template-columns:minmax(0,1.7fr) 76px 140px 110px;
-      gap:8px;
-      align-items:center;
-      padding:9px 0;
-      border-bottom:1px dashed #2d3139;
-    }
-    .part-row:last-child{border-bottom:none}
-    .part-name{font-weight:700}
-    .qty-badge{
-      display:inline-flex;
-      justify-content:center;
-      align-items:center;
-      min-width:56px;
-      padding:8px 10px;
-      background:#0f1115;
-      border:1px solid #3a3f49;
-      border-radius:999px;
-      font-weight:800;
-      font-size:12px;
-    }
-    .select{
-      width:100%;
-      background:#0f1115;
-      color:var(--text);
-      border:1px solid #3a3f49;
-      border-radius:12px;
-      padding:10px 12px;
-      font-weight:800;
-    }
-    .part-price{
-      font-weight:900;
-      color:var(--accent);
-      text-align:right;
-      white-space:nowrap;
-    }
-
-    .tier-options{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-    .tier-radio{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 12px;
-      background:#0f1115;
-      border:1px solid #3a3f49;
-      border-radius:12px;
-      cursor:pointer;
-    }
-    .tier-radio-left{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    .tier-radio input[type="radio"]{
-      width:18px;
-      height:18px;
-      margin:0;
-      accent-color: var(--accent);
-      cursor:pointer;
-      flex:0 0 auto;
-    }
-    .tier-radio-label{
-      font-weight:800;
-      letter-spacing:.02em;
-    }
-    .tier-radio-price{
-      font-weight:900;
-      color:var(--accent);
-      white-space:nowrap;
-      flex:0 0 auto;
-    }
+    
+.part-row{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) 88px minmax(260px,420px);
+  gap:12px;
+  align-items:start;
+  padding:12px 0;
+  border-bottom:1px dashed #2d3139;
+}
+.part-row:last-child{border-bottom:none}
+.part-name{
+  font-weight:800;
+  font-size:15px;
+  padding-top:12px;
+}
+.qty-badge{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  min-width:64px;
+  padding:10px 12px;
+  background:#0f1115;
+  border:1px solid #3a3f49;
+  border-radius:999px;
+  font-weight:800;
+  font-size:12px;
+}
+.tier-options{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  width:100%;
+}
+.tier-radio{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  padding:11px 14px;
+  background:#0f1115;
+  border:1px solid #3a3f49;
+  border-radius:14px;
+  cursor:pointer;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.tier-radio.selected{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px rgba(212,175,55,.55);
+  background:#15171d;
+}
+.tier-radio-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.tier-radio input[type="radio"]{
+  width:18px;
+  height:18px;
+  margin:0;
+  accent-color:var(--accent);
+  flex:0 0 auto;
+  cursor:pointer;
+}
+.tier-radio-label{
+  font-weight:900;
+  letter-spacing:.02em;
+  line-height:1;
+}
+.tier-radio-price{
+  font-weight:900;
+  color:var(--accent);
+  white-space:nowrap;
+  line-height:1;
+}
+.part-price{
+  display:none;
+}
 
     .approve-row{
       display:flex;
@@ -365,8 +366,7 @@
       .service-top{grid-template-columns:1fr}
       .service-money{text-align:left}
       .part-row{grid-template-columns:1fr}
-      .tier-radio{align-items:flex-start}
-      .part-price{text-align:left}
+      .part-name{padding-top:0}
       .line-grid{grid-template-columns:1fr}
     }
     @media (max-width: 640px){
@@ -453,8 +453,62 @@
                 <div class="service-controls">
                   <button type="button" class="mini-btn active" data-toggle="expand">Details</button>
                   <button type="button" class="mini-btn {% if not notes %}disabled-btn{% endif %}" data-toggle="notes">Notes</button>
-                  <button type="button" class="mini-btn active {% if not parts or parts|length == 0 %}disabled-btn{% endif %}" data-toggle="parts">Parts</button>
-                </div>
+                                  </div>
+
+{% if parts and parts|length > 0 %}
+<div class="parts-box" style="margin-top:14px;">
+  <div class="help">Select the parts option for this service below.</div>
+  {% for part in parts %}
+    {% set part_index = loop.index0 %}
+    {% set qty = part.get('qty', 1)|float %}
+    {% set enabled = [] %}
+    {% if part.get('enabled_oem', part.get('oem', 0)|float > 0) %}{% set _ = enabled.append('oem') %}{% endif %}
+    {% if part.get('enabled_quality', part.get('quality', 0)|float > 0 or not enabled) %}{% set _ = enabled.append('quality') %}{% endif %}
+    {% if part.get('enabled_economy', part.get('economy', 0)|float > 0) %}{% set _ = enabled.append('economy') %}{% endif %}
+    {% if enabled|length == 0 %}{% set _ = enabled.append('quality') %}{% endif %}
+    {% set chosen = namespace(tier=part.get('selected_tier', 'quality')) %}
+    {% if chosen.tier not in enabled %}
+      {% if 'quality' in enabled %}{% set chosen.tier = 'quality' %}{% else %}{% set chosen.tier = enabled[0] %}{% endif %}
+    {% endif %}
+    {% for saved_part in selected_parts %}
+      {% if saved_part.get('part_index') == part_index and saved_part.get('tier') in enabled %}
+        {% set chosen.tier = saved_part.get('tier') %}
+      {% endif %}
+    {% endfor %}
+    <div class="part-row" data-part-row>
+      <div class="part-name">{{ part.get('part_desc') or 'Part' }}</div>
+      <div><span class="qty-badge">Qty {{ '%.2f'|format(qty) }}</span></div>
+      <div>
+        {% if quote.status == 'approved' or quote.status == 'invoiced' or enabled|length == 1 %}
+          <input type="hidden" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ chosen.tier if enabled|length > 1 else enabled[0] }}">
+          <span class="pill approved-pill">{{ (chosen.tier if enabled|length > 1 else enabled[0])|upper }}</span>
+        {% else %}
+          <div class="tier-options">
+            {% for tier in enabled %}
+              <label class="tier-radio">
+                <span class="tier-radio-left">
+                  <input class="part-line-choice" type="radio" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ tier }}" {% if chosen.tier == tier %}checked{% endif %}>
+                  <span class="tier-radio-label">{{ tier|upper }}</span>
+                </span>
+                <span class="tier-radio-price">${{ '%.2f'|format(qty * (part.get(tier, 0)|float)) }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      <div class="part-price-wrap">
+        {% set start_tier = chosen.tier if enabled|length > 1 else enabled[0] %}
+        <span class="part-price"
+              data-price-oem="{{ '%.2f'|format(qty * (part.get('oem', 0)|float)) }}"
+              data-price-quality="{{ '%.2f'|format(qty * (part.get('quality', 0)|float)) }}"
+              data-price-economy="{{ '%.2f'|format(qty * (part.get('economy', 0)|float)) }}">
+              ${{ '%.2f'|format(qty * (part.get(start_tier, 0)|float)) }}
+        </span>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
 
                 <div class="service-collapse open" data-section="expand">
                   <div class="line-grid">
@@ -483,7 +537,7 @@
                     </div>
                   </div>
 
-                  <div class="section-block open" data-section="parts">
+                  <div class="section-block" data-section="parts">
                     <div class="parts-box">
                       {% if parts and parts|length > 0 %}
                       <div class="help">Only enabled parts options are shown. Your selections update the total instantly, including Economy when it is enabled on the estimate.</div>
@@ -512,17 +566,11 @@
                               <input type="hidden" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ chosen.tier if enabled|length > 1 else enabled[0] }}">
                               <span class="pill approved-pill">{{ (chosen.tier if enabled|length > 1 else enabled[0])|upper }}</span>
                             {% else %}
-                              <div class="tier-options">
+                              <select class="select part-line-choice" name="part_tier_{{ job_index }}_{{ part_index }}">
                                 {% for tier in enabled %}
-                                  <label class="tier-radio">
-                                    <span class="tier-radio-left">
-                                      <input class="part-line-choice" type="radio" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ tier }}" {% if chosen.tier == tier %}checked{% endif %}>
-                                      <span class="tier-radio-label">{{ tier|upper }}</span>
-                                    </span>
-                                    <span class="tier-radio-price">${{ '%.2f'|format(qty * (part.get(tier, 0)|float)) }}</span>
-                                  </label>
+                                  <option value="{{ tier }}" {% if chosen.tier == tier %}selected{% endif %}>{{ tier|upper }}</option>
                                 {% endfor %}
-                              </div>
+                              </select>
                             {% endif %}
                           </div>
                           <div class="part-price-wrap">
@@ -631,6 +679,13 @@
         }
       }
 
+      function updateRadioHighlight(scope){
+        (scope || document).querySelectorAll('.tier-radio').forEach(label=>{
+          const input = label.querySelector('input[type="radio"]');
+          label.classList.toggle('selected', !!(input && input.checked));
+        });
+      }
+
       function updateJob(jobEl){
         Array.from(jobEl.querySelectorAll('[data-part-row]')).forEach(updateRowPrice);
         const labor = Number(jobEl.dataset.laborTotal || 0);
@@ -661,15 +716,17 @@
 
       jobs.forEach(job=>{
         job.querySelectorAll('.approve-job, .part-line-choice').forEach(el=>{
-          el.addEventListener('change', updateSummary);
+          el.addEventListener('change', ()=>{
+            updateSummary();
+      updateRadioHighlight();
+            updateRadioHighlight(job);
+          });
         });
 
         const detailBtn = job.querySelector('[data-toggle="expand"]');
         const notesBtn = job.querySelector('[data-toggle="notes"]');
-        const partsBtn = job.querySelector('[data-toggle="parts"]');
         const detailsSection = job.querySelector('[data-section="expand"]');
         const notesSection = job.querySelector('[data-section="notes"]');
-        const partsSection = job.querySelector('[data-section="parts"]');
 
         if(detailBtn && detailsSection){
           detailBtn.addEventListener('click', ()=>{
@@ -683,17 +740,10 @@
             notesBtn.classList.toggle('active');
           });
         }
-        if(partsBtn && partsSection && !partsBtn.classList.contains('disabled-btn')){
-          partsSection.classList.remove('open');
-          partsBtn.classList.remove('active');
-          partsBtn.addEventListener('click', ()=>{
-            partsSection.classList.toggle('open');
-            partsBtn.classList.toggle('active');
-          });
-        }
       });
 
       updateSummary();
+      updateRadioHighlight();
 
       const canvas = document.getElementById('signaturePad');
       const hiddenInput = document.getElementById('signature_data');
