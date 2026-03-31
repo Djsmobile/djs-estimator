@@ -250,6 +250,47 @@
       white-space:nowrap;
     }
 
+    .tier-options{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .tier-radio{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      background:#0f1115;
+      border:1px solid #3a3f49;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    .tier-radio-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .tier-radio input[type="radio"]{
+      width:18px;
+      height:18px;
+      margin:0;
+      accent-color: var(--accent);
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+    .tier-radio-label{
+      font-weight:800;
+      letter-spacing:.02em;
+    }
+    .tier-radio-price{
+      font-weight:900;
+      color:var(--accent);
+      white-space:nowrap;
+      flex:0 0 auto;
+    }
+
     .approve-row{
       display:flex;
       align-items:center;
@@ -324,6 +365,7 @@
       .service-top{grid-template-columns:1fr}
       .service-money{text-align:left}
       .part-row{grid-template-columns:1fr}
+      .tier-radio{align-items:flex-start}
       .part-price{text-align:left}
       .line-grid{grid-template-columns:1fr}
     }
@@ -411,7 +453,7 @@
                 <div class="service-controls">
                   <button type="button" class="mini-btn active" data-toggle="expand">Details</button>
                   <button type="button" class="mini-btn {% if not notes %}disabled-btn{% endif %}" data-toggle="notes">Notes</button>
-                  <button type="button" class="mini-btn {% if not parts or parts|length == 0 %}disabled-btn{% endif %}" data-toggle="parts">Parts</button>
+                  <button type="button" class="mini-btn active {% if not parts or parts|length == 0 %}disabled-btn{% endif %}" data-toggle="parts">Parts</button>
                 </div>
 
                 <div class="service-collapse open" data-section="expand">
@@ -441,7 +483,7 @@
                     </div>
                   </div>
 
-                  <div class="section-block" data-section="parts">
+                  <div class="section-block open" data-section="parts">
                     <div class="parts-box">
                       {% if parts and parts|length > 0 %}
                       <div class="help">Only enabled parts options are shown. Your selections update the total instantly, including Economy when it is enabled on the estimate.</div>
@@ -470,16 +512,17 @@
                               <input type="hidden" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ chosen.tier if enabled|length > 1 else enabled[0] }}">
                               <span class="pill approved-pill">{{ (chosen.tier if enabled|length > 1 else enabled[0])|upper }}</span>
                             {% else %}
-                              
-<div class="radio-group">
-  {% for tier in enabled %}
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-      <input type="radio" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ tier }}" {% if chosen.tier == tier %}checked{% endif %}>
-      <strong>{{ tier|upper }}</strong>
-    </label>
-  {% endfor %}
-</div>
-
+                              <div class="tier-options">
+                                {% for tier in enabled %}
+                                  <label class="tier-radio">
+                                    <span class="tier-radio-left">
+                                      <input class="part-line-choice" type="radio" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ tier }}" {% if chosen.tier == tier %}checked{% endif %}>
+                                      <span class="tier-radio-label">{{ tier|upper }}</span>
+                                    </span>
+                                    <span class="tier-radio-price">${{ '%.2f'|format(qty * (part.get(tier, 0)|float)) }}</span>
+                                  </label>
+                                {% endfor %}
+                              </div>
                             {% endif %}
                           </div>
                           <div class="part-price-wrap">
@@ -570,19 +613,22 @@
 
       function getSelectedPartsTotal(jobEl){
         return Array.from(jobEl.querySelectorAll('[data-part-row]')).reduce((sum,row)=>{
-          const selected = row.querySelector('input[type="radio"]:checked');
+          const selectedRadio = row.querySelector('.part-line-choice:checked');
+          const hiddenTier = row.querySelector('input[type="hidden"][name^="part_tier_"]');
           const priceEl = row.querySelector('.part-price');
-          const tier = (selected ? selected.value : (row.querySelector('input[type="hidden"][name^="part_tier_"]')?.value || 'quality')).toLowerCase();
+          const tier = ((selectedRadio ? selectedRadio.value : (hiddenTier ? hiddenTier.value : 'quality')) || 'quality').toLowerCase();
           return sum + Number(priceEl?.getAttribute(`data-price-${tier}`) || 0);
         },0);
       }
 
       function updateRowPrice(row){
-        const selected = row.querySelector('input[type="radio"]:checked');
-        if(!select) return;
-        const tier = select.value.toLowerCase();
+        const selectedRadio = row.querySelector('.part-line-choice:checked');
+        if(!selectedRadio) return;
+        const tier = selectedRadio.value.toLowerCase();
         const priceEl = row.querySelector('.part-price');
-        priceEl.textContent = '$' + money(Number(priceEl.getAttribute(`data-price-${tier}`) || 0));
+        if(priceEl){
+          priceEl.textContent = '$' + money(Number(priceEl.getAttribute(`data-price-${tier}`) || 0));
+        }
       }
 
       function updateJob(jobEl){
