@@ -423,6 +423,11 @@ def normalize_job_parts(job):
             enabled_oem = safe_bool(part.get("enabled_oem"), oem > 0)
             enabled_quality = safe_bool(part.get("enabled_quality"), quality > 0 or (not enabled_oem and economy <= 0))
             enabled_economy = safe_bool(part.get("enabled_economy"), economy > 0)
+            selected_tier = sanitize_selected_tier({
+                "enabled_oem": enabled_oem,
+                "enabled_quality": enabled_quality,
+                "enabled_economy": enabled_economy,
+            }, part.get("selected_tier"), default_tier="quality")
 
             normalized.append({
                 "part_desc": (part.get("part_desc") or "").strip(),
