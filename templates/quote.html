@@ -1,5 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJ's Estimate Review</title>
+  <style>
+    :root{
+      --bg:#0b0b0d;
+      --panel:#141519;
+      --panel-2:#1b1d22;
+      --panel-3:#111318;
+      --text:#f3f4f6;
+      --muted:#a1a1aa;
+      --line:#2c2f36;
+      --accent:#d4af37;
+      --green:#86efac;
+      --green-bg:#16351f;
+      --yellow:#fde68a;
+      --yellow-bg:#3b2a11;
+      --red:#fca5a5;
+      --red-bg:#3a1818;
+      --blue:#3b82f6;
+    }
 
-<h1>Quote</h1>
-{% for job in jobs %}
-<div>{{ job }}</div>
-{% endfor %}
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.45;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 34px}
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px;
+      margin-bottom:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.22);
+    }
+    h1,h2,h3{margin:0 0 10px}
+    h1{font-size:28px}
+    h2{font-size:20px;color:var(--accent)}
+    h3{font-size:18px}
+    .muted{color:var(--muted)}
+    .meta{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:10px;
+      margin-top:14px;
+    }
+    .meta div{
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      min-height:68px;
+    }
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:16px;
+    }
+    .btn{
+      appearance:none;
+      border:none;
+      border-radius:12px;
+      padding:11px 16px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .btn-primary{background:var(--accent);color:#111}
+    .btn-secondary{background:#20242b;color:var(--text);border:1px solid var(--line)}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:12px;
+      border:1px solid var(--line);
+      background:var(--panel-3);
+      color:var(--muted);
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+    }
+    .approved-pill{
+      color:#052e16;
+      background:var(--green);
+      border-color:var(--green);
+    }
+
+    .inspection-item{
+      border:1px solid var(--line);
+      background:var(--panel-3);
+      border-radius:12px;
+      padding:12px;
+      margin-top:10px;
+    }
+    .inspection-status{
+      display:inline-flex;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      text-transform:uppercase;
+    }
+    .status-good{background:var(--green-bg);color:var(--green)}
+    .status-monitor{background:var(--yellow-bg);color:var(--yellow)}
+    .status-needs_attention{background:var(--red-bg);color:var(--red)}
+
+    .service-card{
+      border:1px solid var(--line);
+      background:var(--panel-2);
+      border-radius:14px;
+      margin-top:12px;
+      overflow:hidden;
+    }
+    .service-shell{
+      padding:12px;
+    }
+    .service-top{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:12px;
+      align-items:start;
+    }
+    .service-title{
+      font-size:18px;
+      font-weight:900;
+      margin:0;
+    }
+    .service-sub{
+      color:var(--muted);
+      font-size:13px;
+      margin-top:4px;
+    }
+    .service-money{
+      font-weight:900;
+      color:var(--accent);
+      font-size:22px;
+      white-space:nowrap;
+    }
+    .service-controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      margin-top:10px;
+    }
+    .mini-btn{
+      appearance:none;
+      border:1px solid var(--line);
+      background:var(--panel-3);
+      color:var(--text);
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .mini-btn.active{
+      background:#232833;
+      border-color:#3a4150;
+    }
+    .disabled-btn{opacity:.55}
+
+    .service-collapse{
+      display:none;
+      margin-top:14px;
+      border-top:1px solid var(--line);
+      padding-top:14px;
+    }
+    .service-collapse.open{display:block}
+    .section-block{
+      display:none;
+      margin-top:12px;
+    }
+    .section-block.open{display:block}
+    .line-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(160px,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .line-grid .box{
+      background:var(--panel-3);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .box .k{color:var(--muted);font-size:12px}
+    .box .v{font-size:18px;font-weight:800;margin-top:4px}
+
+    .parts-box{
+      margin-top:4px;
+      padding:10px;
+      background:var(--panel-3);
+      border:1px solid var(--line);
+      border-radius:12px;
+    }
+    .parts-box .help{
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:10px;
+    }
+    
+.part-row{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) 88px minmax(260px,420px);
+  gap:12px;
+  align-items:start;
+  padding:12px 0;
+  border-bottom:1px dashed #2d3139;
+}
+.part-row:last-child{border-bottom:none}
+.part-name{
+  font-weight:800;
+  font-size:15px;
+  padding-top:12px;
+}
+.qty-badge{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  min-width:64px;
+  padding:10px 12px;
+  background:#0f1115;
+  border:1px solid #3a3f49;
+  border-radius:999px;
+  font-weight:800;
+  font-size:12px;
+}
+.tier-options{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  width:100%;
+}
+.tier-radio{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  padding:11px 14px;
+  background:#0f1115;
+  border:1px solid #3a3f49;
+  border-radius:14px;
+  cursor:pointer;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.tier-radio.selected{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px rgba(212,175,55,.55);
+  background:#15171d;
+}
+.tier-radio-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.tier-radio input[type="radio"]{
+  width:18px;
+  height:18px;
+  margin:0;
+  accent-color:var(--accent);
+  flex:0 0 auto;
+  cursor:pointer;
+}
+.tier-radio-label{
+  font-weight:900;
+  letter-spacing:.02em;
+  line-height:1;
+}
+.tier-radio-price{
+  font-weight:900;
+  color:var(--accent);
+  white-space:nowrap;
+  line-height:1;
+}
+.part-price{
+  display:none;
+}
+
+    .approve-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top:14px;
+      padding-top:12px;
+      border-top:1px solid var(--line);
+      flex-wrap:wrap;
+    }
+    .approve-row input[type="checkbox"]{
+      width:18px;
+      height:18px;
+    }
+
+    .summary{
+      display:grid;
+      gap:8px;
+      max-width:460px;
+      margin-left:auto;
+      margin-top:14px;
+    }
+    .summary-row{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding:8px 0;
+      border-bottom:1px solid var(--line);
+    }
+    .summary-row.total{
+      font-size:22px;
+      font-weight:900;
+      color:var(--accent);
+      border-bottom:none;
+      padding-top:12px;
+    }
+
+    .signature-wrap{margin-top:14px}
+    .signature-pad-wrap{
+      margin-top:10px;
+      background:var(--panel-3);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+    }
+    canvas{
+      width:100%;
+      height:220px;
+      background:#fff;
+      border-radius:10px;
+      display:block;
+      touch-action:none;
+    }
+    input[type="text"]{
+      width:100%;
+      background:var(--panel-3);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:12px;
+      font-size:15px;
+    }
+
+    .empty{
+      padding:14px;
+      border:1px dashed var(--line);
+      border-radius:12px;
+      color:var(--muted);
+      background:var(--panel-3);
+    }
+
+    @media (max-width: 760px){
+      .service-top{grid-template-columns:1fr}
+      .service-money{text-align:left}
+      .part-row{grid-template-columns:1fr}
+      .part-name{padding-top:0}
+      .line-grid{grid-template-columns:1fr}
+    }
+    @media (max-width: 640px){
+      .wrap{padding:16px 12px 28px}
+      .card{padding:16px}
+      h1{font-size:24px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>DJ's Estimate Review</h1>
+      <div class="muted">Please review the estimate details below. Inspection notes and photos are view-only here and stay locked after the estimate is saved.</div>
+      <div class="meta">
+        <div><strong>Customer</strong><br>{{ quote.customer_name or '-' }}</div>
+        <div><strong>Email</strong><br>{{ quote.customer_email or '-' }}</div>
+        <div><strong>Phone</strong><br>{{ quote.customer_phone or '-' }}</div>
+        <div><strong>Vehicle</strong><br>{{ quote.vehicle or '-' }}</div>
+        <div><strong>VIN</strong><br>{{ quote.vin or '-' }}</div>
+        <div><strong>Status</strong><br>{{ quote.status or '-' }}</div>
+        <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
+      </div>
+      <div class="actions">
+        {% if quote.status == 'approved' %}<a class="btn btn-secondary" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>{% endif %}
+      </div>
+    </div>
+
+    {% if inspection and inspection["items"] %}
+    <div class="card">
+      <h2>Inspection Notes</h2>
+      <div class="muted" style="margin-bottom:10px;">Captured during estimate build. Editing is locked once the quote is saved.</div>
+      {% for item in inspection["items"] %}
+      <div class="inspection-item">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;">
+          <strong>{{ item.label or 'Inspection Item' }}</strong>
+          <span class="inspection-status status-{{ item.status }}">{{ item.status.replace('_', ' ') }}</span>
+        </div>
+        {% if item.notes %}<div class="muted" style="margin-top:8px;white-space:pre-wrap;">{{ item.notes }}</div>{% endif %}
+        {% if item.photo %}<div style="margin-top:10px;"><img src="{{ item.photo }}" alt="Inspection photo" style="max-width:100%;border-radius:12px;border:1px solid var(--line);"></div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+    <div class="card">
+      <h2>Estimate Approved</h2>
+      <span class="pill approved-pill">Signed / Approved</span>
+      <div class="meta" style="margin-top:12px;">
+        <div><strong>Signed By</strong><br>{{ quote.signed_name or 'Customer' }}</div>
+        <div><strong>Signed At</strong><br>{{ quote.signed_at or '-' }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% set tax_rate = quote.tax_rate|default(0)|float %}
+    {% set service_fee = quote.service_fee|default(0)|float %}
+    {% set labor_rate = quote.labor_rate|default(0)|float %}
+
+    <form method="POST" action="/approve_quote/{{ quote.quote_token }}" id="quoteForm">
+      <div class="card">
+        <h2>Services</h2>
+        {% if jobs and jobs|length > 0 %}
+          {% for job in jobs %}
+            {% set job_index = loop.index0 %}
+            {% set desc = job.get('desc') or 'Service Item' %}
+            {% set notes = job.get('notes') or '' %}
+            {% set labor_hours = job.get('labor_hours', 0)|float %}
+            {% set labor_total = labor_hours * labor_rate %}
+            {% set parts = job.get('parts', []) %}
+            {% set approved_item = approved_map.get(job_index, {}) if approved_map is defined else {} %}
+            {% set selected_parts = approved_item.get('selected_parts', []) %}
+            <div class="service-card job" data-job-index="{{ job_index }}" data-labor-total="{{ '%.2f'|format(labor_total) }}">
+              <div class="service-shell">
+                <div class="service-top">
+                  <div>
+                    <div class="service-title">{{ desc }}</div>
+                    <div class="service-sub">{{ '%.2f'|format(labor_hours) }} hr labor • ${{ '%.2f'|format(labor_rate) }}/hr</div>
+                  </div>
+                  <div class="service-money job-total-display">$0.00</div>
+                </div>
+
+                <div class="service-controls">
+                  <button type="button" class="mini-btn active" data-toggle="expand">Details</button>
+                  <button type="button" class="mini-btn {% if not notes %}disabled-btn{% endif %}" data-toggle="notes">Notes</button>
+                                  </div>
+
+{% if parts and parts|length > 0 %}
+<div class="parts-box" style="margin-top:14px;">
+  <div class="help">Select the parts option for this service below.</div>
+  {% for part in parts %}
+    {% set part_index = loop.index0 %}
+    {% set qty = part.get('qty', 1)|float %}
+    {% set enabled = [] %}
+    {% if part.get('enabled_oem', part.get('oem', 0)|float > 0) %}{% set _ = enabled.append('oem') %}{% endif %}
+    {% if part.get('enabled_quality', part.get('quality', 0)|float > 0 or not enabled) %}{% set _ = enabled.append('quality') %}{% endif %}
+    {% if part.get('enabled_economy', part.get('economy', 0)|float > 0) %}{% set _ = enabled.append('economy') %}{% endif %}
+    {% if enabled|length == 0 %}{% set _ = enabled.append('quality') %}{% endif %}
+    {% set chosen = namespace(tier=part.get('selected_tier', 'quality')) %}
+    {% if chosen.tier not in enabled %}
+      {% if 'quality' in enabled %}{% set chosen.tier = 'quality' %}{% else %}{% set chosen.tier = enabled[0] %}{% endif %}
+    {% endif %}
+    {% for saved_part in selected_parts %}
+      {% if saved_part.get('part_index') == part_index and saved_part.get('tier') in enabled %}
+        {% set chosen.tier = saved_part.get('tier') %}
+      {% endif %}
+    {% endfor %}
+    <div class="part-row" data-part-row>
+      <div class="part-name">{{ part.get('part_desc') or 'Part' }}</div>
+      <div><span class="qty-badge">Qty {{ '%.2f'|format(qty) }}</span></div>
+      <div>
+        {% if quote.status == 'approved' or quote.status == 'invoiced' or enabled|length == 1 %}
+          <input type="hidden" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ chosen.tier if enabled|length > 1 else enabled[0] }}">
+          <span class="pill approved-pill">{{ (chosen.tier if enabled|length > 1 else enabled[0])|upper }}</span>
+        {% else %}
+          <div class="tier-options">
+            {% for tier in enabled %}
+              <label class="tier-radio">
+                <span class="tier-radio-left">
+                  <input class="part-line-choice" type="radio" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ tier }}" {% if chosen.tier == tier %}checked{% endif %}>
+                  <span class="tier-radio-label">{{ tier|upper }}</span>
+                </span>
+                <span class="tier-radio-price">${{ '%.2f'|format(qty * (part.get(tier, 0)|float)) }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      <div class="part-price-wrap">
+        {% set start_tier = chosen.tier if enabled|length > 1 else enabled[0] %}
+        <span class="part-price"
+              data-price-oem="{{ '%.2f'|format(qty * (part.get('oem', 0)|float)) }}"
+              data-price-quality="{{ '%.2f'|format(qty * (part.get('quality', 0)|float)) }}"
+              data-price-economy="{{ '%.2f'|format(qty * (part.get('economy', 0)|float)) }}">
+              ${{ '%.2f'|format(qty * (part.get(start_tier, 0)|float)) }}
+        </span>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+                <div class="service-collapse open" data-section="expand">
+                  <div class="line-grid">
+                    <div class="box">
+                      <div class="k">Labor Hours</div>
+                      <div class="v">{{ '%.2f'|format(labor_hours) }}</div>
+                    </div>
+                    <div class="box">
+                      <div class="k">Labor Rate</div>
+                      <div class="v">${{ '%.2f'|format(labor_rate) }}</div>
+                    </div>
+                    <div class="box">
+                      <div class="k">Labor Total</div>
+                      <div class="v">$<span class="job-labor-total">{{ '%.2f'|format(labor_total) }}</span></div>
+                    </div>
+                  </div>
+
+                  <div class="section-block" data-section="notes">
+                    <div class="parts-box">
+                      <div class="help">Service notes</div>
+                      {% if notes %}
+                      <div class="muted" style="white-space:pre-wrap;">{{ notes }}</div>
+                      {% else %}
+                      <div class="muted">No notes added for this service.</div>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="section-block" data-section="parts">
+                    <div class="parts-box">
+                      {% if parts and parts|length > 0 %}
+                      <div class="help">Only enabled parts options are shown. Your selections update the total instantly, including Economy when it is enabled on the estimate.</div>
+                      {% for part in parts %}
+                        {% set part_index = loop.index0 %}
+                        {% set qty = part.get('qty', 1)|float %}
+                        {% set enabled = [] %}
+                        {% if part.get('enabled_oem', part.get('oem', 0)|float > 0) %}{% set _ = enabled.append('oem') %}{% endif %}
+                        {% if part.get('enabled_quality', part.get('quality', 0)|float > 0 or not enabled) %}{% set _ = enabled.append('quality') %}{% endif %}
+                        {% if part.get('enabled_economy', part.get('economy', 0)|float > 0) %}{% set _ = enabled.append('economy') %}{% endif %}
+                        {% if enabled|length == 0 %}{% set _ = enabled.append('quality') %}{% endif %}
+                        {% set chosen = namespace(tier=part.get('selected_tier', 'quality')) %}
+                        {% if chosen.tier not in enabled %}
+                          {% if 'quality' in enabled %}{% set chosen.tier = 'quality' %}{% else %}{% set chosen.tier = enabled[0] %}{% endif %}
+                        {% endif %}
+                        {% for saved_part in selected_parts %}
+                          {% if saved_part.get('part_index') == part_index and saved_part.get('tier') in enabled %}
+                            {% set chosen.tier = saved_part.get('tier') %}
+                          {% endif %}
+                        {% endfor %}
+                        <div class="part-row" data-part-row>
+                          <div class="part-name">{{ part.get('part_desc') or 'Part' }}</div>
+                          <div><span class="qty-badge">Qty {{ '%.2f'|format(qty) }}</span></div>
+                          <div>
+                            {% if quote.status == 'approved' or quote.status == 'invoiced' or enabled|length == 1 %}
+                              <input type="hidden" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ chosen.tier if enabled|length > 1 else enabled[0] }}">
+                              <span class="pill approved-pill">{{ (chosen.tier if enabled|length > 1 else enabled[0])|upper }}</span>
+                            {% else %}
+                              <select class="select part-line-choice" name="part_tier_{{ job_index }}_{{ part_index }}">
+                                {% for tier in enabled %}
+                                  <option value="{{ tier }}" {% if chosen.tier == tier %}selected{% endif %}>{{ tier|upper }}</option>
+                                {% endfor %}
+                              </select>
+                            {% endif %}
+                          </div>
+                          <div class="part-price-wrap">
+                            {% set start_tier = chosen.tier if enabled|length > 1 else enabled[0] %}
+                            <span class="part-price"
+                                  data-price-oem="{{ '%.2f'|format(qty * (part.get('oem', 0)|float)) }}"
+                                  data-price-quality="{{ '%.2f'|format(qty * (part.get('quality', 0)|float)) }}"
+                                  data-price-economy="{{ '%.2f'|format(qty * (part.get('economy', 0)|float)) }}">
+                                  ${{ '%.2f'|format(qty * (part.get(start_tier, 0)|float)) }}
+                            </span>
+                          </div>
+                        </div>
+                      {% endfor %}
+                      {% else %}
+                      <div class="muted">No parts were added for this service.</div>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="approve-row">
+                    {% if quote.status == 'approved' or quote.status == 'invoiced' %}
+                      <input type="checkbox" name="approve_job[]" value="{{ job_index }}" checked disabled>
+                      <span class="pill approved-pill">Approved service</span>
+                    {% else %}
+                      <input type="checkbox" class="approve-job" name="approve_job[]" value="{{ job_index }}" checked>
+                      <span>Approve this service</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty">No services found on this quote.</div>
+        {% endif %}
+
+        <div class="summary">
+          <div class="summary-row"><span>Labor</span><span>$<span id="summaryLabor">0.00</span></span></div>
+          <div class="summary-row"><span>Parts</span><span>$<span id="summaryParts">0.00</span></span></div>
+          <div class="summary-row"><span>Tax ({{ '%.2f'|format(tax_rate) }}%)</span><span>$<span id="summaryTax">0.00</span></span></div>
+          <div class="summary-row"><span>Service Call Fee</span><span>${{ '%.2f'|format(service_fee) }}</span></div>
+          <div class="summary-row total"><span>Total</span><span>$<span id="summaryGrandTotal">0.00</span></span></div>
+        </div>
+      </div>
+
+      {% if quote.status != 'approved' and quote.status != 'invoiced' %}
+      <div class="card">
+        <h2>Approval</h2>
+        <div style="margin-bottom:12px;padding:12px;background:var(--panel-3);border:1px solid var(--line);border-radius:12px;">
+          <strong>Work Location Disclaimer</strong>
+          <div style="margin-top:6px;font-size:13px;color:var(--muted);">Customer is responsible for obtaining permission to perform mobile diagnostic or repair services at the vehicle location.</div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:flex-start;background:var(--panel-3);border:1px solid var(--line);border-radius:12px;padding:12px;">
+          <input type="checkbox" id="location_permission_confirm" name="location_permission_confirm" value="yes" style="width:18px;height:18px;margin-top:2px;flex:0 0 auto;">
+          <label for="location_permission_confirm" style="margin:0;cursor:pointer;"><strong>I confirm I have permission for on-site mobile service at this vehicle location.</strong></label>
+        </div>
+
+        <label for="signed_name" style="margin-top:16px;display:block;"><strong>Printed Name</strong></label>
+        <div style="margin-top:8px;"><input type="text" id="signed_name" name="signed_name" placeholder="Enter your name"></div>
+
+        <div class="signature-wrap">
+          <strong>Signature</strong>
+          <div class="muted">Sign below to approve the selected services and selected parts option.</div>
+          <div class="signature-pad-wrap"><canvas id="signaturePad"></canvas></div>
+          <input type="hidden" name="signature_data" id="signature_data">
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" id="clearSignature">Clear Signature</button>
+            <button type="submit" class="btn btn-primary">Approve Selected Services</button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+
+  <script>
+    (function(){
+      const taxRate = {{ tax_rate|tojson }};
+      const serviceFee = {{ service_fee|tojson }};
+      const jobs = Array.from(document.querySelectorAll('.job'));
+
+      function money(n){ return Number(n || 0).toFixed(2); }
+
+      function isApproved(jobEl){
+        const cb = jobEl.querySelector('.approve-job');
+        return cb ? cb.checked : true;
+      }
+
+      function getSelectedPartsTotal(jobEl){
+        return Array.from(jobEl.querySelectorAll('[data-part-row]')).reduce((sum,row)=>{
+          const selectedRadio = row.querySelector('.part-line-choice:checked');
+          const hiddenTier = row.querySelector('input[type="hidden"][name^="part_tier_"]');
+          const priceEl = row.querySelector('.part-price');
+          const tier = ((selectedRadio ? selectedRadio.value : (hiddenTier ? hiddenTier.value : 'quality')) || 'quality').toLowerCase();
+          return sum + Number(priceEl?.getAttribute(`data-price-${tier}`) || 0);
+        },0);
+      }
+
+      function updateRowPrice(row){
+        const selectedRadio = row.querySelector('.part-line-choice:checked');
+        if(!selectedRadio) return;
+        const tier = selectedRadio.value.toLowerCase();
+        const priceEl = row.querySelector('.part-price');
+        if(priceEl){
+          priceEl.textContent = '$' + money(Number(priceEl.getAttribute(`data-price-${tier}`) || 0));
+        }
+      }
+
+      function updateRadioHighlight(scope){
+        (scope || document).querySelectorAll('.tier-radio').forEach(label=>{
+          const input = label.querySelector('input[type="radio"]');
+          label.classList.toggle('selected', !!(input && input.checked));
+        });
+      }
+
+      function updateJob(jobEl){
+        Array.from(jobEl.querySelectorAll('[data-part-row]')).forEach(updateRowPrice);
+        const labor = Number(jobEl.dataset.laborTotal || 0);
+        const parts = getSelectedPartsTotal(jobEl);
+        const active = isApproved(jobEl);
+        const effectiveLabor = active ? labor : 0;
+        const effectiveParts = active ? parts : 0;
+        const total = effectiveLabor + effectiveParts;
+        const display = jobEl.querySelector('.job-total-display');
+        if(display) display.textContent = '$' + money(total);
+        return {labor:effectiveLabor, parts:effectiveParts};
+      }
+
+      function updateSummary(){
+        let labor = 0, parts = 0;
+        jobs.forEach(job=>{
+          const vals = updateJob(job);
+          labor += vals.labor;
+          parts += vals.parts;
+        });
+        const tax = parts * (Number(taxRate || 0) / 100);
+        const grand = labor + parts + tax + Number(serviceFee || 0);
+        document.getElementById('summaryLabor').textContent = money(labor);
+        document.getElementById('summaryParts').textContent = money(parts);
+        document.getElementById('summaryTax').textContent = money(tax);
+        document.getElementById('summaryGrandTotal').textContent = money(grand);
+      }
+
+      jobs.forEach(job=>{
+        job.querySelectorAll('.approve-job, .part-line-choice').forEach(el=>{
+          el.addEventListener('change', ()=>{
+            updateSummary();
+      updateRadioHighlight();
+            updateRadioHighlight(job);
+          });
+        });
+
+        const detailBtn = job.querySelector('[data-toggle="expand"]');
+        const notesBtn = job.querySelector('[data-toggle="notes"]');
+        const detailsSection = job.querySelector('[data-section="expand"]');
+        const notesSection = job.querySelector('[data-section="notes"]');
+
+        if(detailBtn && detailsSection){
+          detailBtn.addEventListener('click', ()=>{
+            detailsSection.classList.toggle('open');
+            detailBtn.classList.toggle('active');
+          });
+        }
+        if(notesBtn && notesSection && !notesBtn.classList.contains('disabled-btn')){
+          notesBtn.addEventListener('click', ()=>{
+            notesSection.classList.toggle('open');
+            notesBtn.classList.toggle('active');
+          });
+        }
+      });
+
+      updateSummary();
+      updateRadioHighlight();
+
+      const canvas = document.getElementById('signaturePad');
+      const hiddenInput = document.getElementById('signature_data');
+      const clearBtn = document.getElementById('clearSignature');
+
+      if(canvas && hiddenInput){
+        const ctx = canvas.getContext('2d');
+        let drawing = false, hasSigned = false;
+
+        function resizeCanvas(){
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          const rect = canvas.getBoundingClientRect();
+          canvas.width = rect.width * ratio;
+          canvas.height = rect.height * ratio;
+          ctx.setTransform(1,0,0,1,0,0);
+          ctx.scale(ratio,ratio);
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = '#111';
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0,0,rect.width,rect.height);
+          hasSigned = false;
+          hiddenInput.value = '';
+        }
+
+        function getPos(e){
+          const rect = canvas.getBoundingClientRect();
+          if(e.touches && e.touches.length){
+            return {x:e.touches[0].clientX-rect.left,y:e.touches[0].clientY-rect.top};
+          }
+          return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+        }
+
+        function startDraw(e){
+          drawing = true;
+          hasSigned = true;
+          const pos = getPos(e);
+          ctx.beginPath();
+          ctx.moveTo(pos.x,pos.y);
+          e.preventDefault();
+        }
+
+        function draw(e){
+          if(!drawing) return;
+          const pos = getPos(e);
+          ctx.lineTo(pos.x,pos.y);
+          ctx.stroke();
+          e.preventDefault();
+        }
+
+        function endDraw(){
+          drawing = false;
+          if(hasSigned) hiddenInput.value = canvas.toDataURL('image/png');
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('mouseleave', endDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive:false});
+        canvas.addEventListener('touchmove', draw, {passive:false});
+        canvas.addEventListener('touchend', endDraw);
+        if(clearBtn) clearBtn.addEventListener('click', ()=>resizeCanvas());
+      }
+
+      const form = document.getElementById('quoteForm');
+      if(form){
+        form.addEventListener('submit', function(e){
+          const approvedAny = Array.from(document.querySelectorAll('.approve-job')).some(cb=>cb.checked);
+          const signedName = document.getElementById('signed_name');
+          const signatureData = document.getElementById('signature_data');
+          const locationPermissionConfirm = document.getElementById('location_permission_confirm');
+
+          if(document.querySelectorAll('.approve-job').length && !approvedAny){
+            e.preventDefault();
+            alert('Please approve at least one service before submitting.');
+            return;
+          }
+          if(locationPermissionConfirm && !locationPermissionConfirm.checked){
+            e.preventDefault();
+            alert('Please confirm you have permission for on-site mobile service before approving.');
+            return;
+          }
+          if(signedName && !signedName.value.trim()){
+            e.preventDefault();
+            alert('Please enter your name before approving.');
+            return;
+          }
+          if(signatureData && !signatureData.value){
+            e.preventDefault();
+            alert('Please sign before approving.');
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
