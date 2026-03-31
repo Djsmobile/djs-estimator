@@ -470,11 +470,16 @@
                               <input type="hidden" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ chosen.tier if enabled|length > 1 else enabled[0] }}">
                               <span class="pill approved-pill">{{ (chosen.tier if enabled|length > 1 else enabled[0])|upper }}</span>
                             {% else %}
-                              <select class="select part-line-choice" name="part_tier_{{ job_index }}_{{ part_index }}">
-                                {% for tier in enabled %}
-                                  <option value="{{ tier }}" {% if chosen.tier == tier %}selected{% endif %}>{{ tier|upper }}</option>
-                                {% endfor %}
-                              </select>
+                              
+<div class="radio-group">
+  {% for tier in enabled %}
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <input type="radio" name="part_tier_{{ job_index }}_{{ part_index }}" value="{{ tier }}" {% if chosen.tier == tier %}checked{% endif %}>
+      <strong>{{ tier|upper }}</strong>
+    </label>
+  {% endfor %}
+</div>
+
                             {% endif %}
                           </div>
                           <div class="part-price-wrap">
@@ -565,15 +570,15 @@
 
       function getSelectedPartsTotal(jobEl){
         return Array.from(jobEl.querySelectorAll('[data-part-row]')).reduce((sum,row)=>{
-          const select = row.querySelector('.part-line-choice');
+          const selected = row.querySelector('input[type="radio"]:checked');
           const priceEl = row.querySelector('.part-price');
-          const tier = (select ? select.value : (row.querySelector('input[type="hidden"][name^="part_tier_"]')?.value || 'quality')).toLowerCase();
+          const tier = (selected ? selected.value : (row.querySelector('input[type="hidden"][name^="part_tier_"]')?.value || 'quality')).toLowerCase();
           return sum + Number(priceEl?.getAttribute(`data-price-${tier}`) || 0);
         },0);
       }
 
       function updateRowPrice(row){
-        const select = row.querySelector('.part-line-choice');
+        const selected = row.querySelector('input[type="radio"]:checked');
         if(!select) return;
         const tier = select.value.toLowerCase();
         const priceEl = row.querySelector('.part-price');
