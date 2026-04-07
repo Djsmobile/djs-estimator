@@ -164,12 +164,13 @@ def build_copy_text_message(quote):
     quote_url = build_quote_url_external(quote['quote_token'])
 
     lines = [
-        "DJ's Mobile Mechanic",
+        f"Hey {first_name}, this is DJ with DJ's Mobile Mechanic.",
         '',
-        f"Hi {first_name}, your quote for {vehicle} is ready:",
+        f"Here is the quote for {vehicle}:",
         quote_url,
         '',
-        'Let me know if you would like to move forward or if you have any questions.',
+        "You can review it and approve it right from the link.",
+        "Let me know if you have any questions.",
     ]
     return '\n'.join(lines)
 

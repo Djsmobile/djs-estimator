@@ -76,14 +76,14 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
           <div>
             <div class="kicker">Shop Control Center</div>
             <h1>DJ's Quotes Admin</h1>
-            <div class="sub">Manage quotes, approvals, invoice conversion, texting, and cleanup from one place.</div>
+            <div class="sub">Manage quotes, approvals, manual send links, invoice conversion, and cleanup from one place.</div>
           </div>
         </div>
       </div>
       <div class="pill-row">
         <span class="pill">Live quote management</span>
         <span class="pill">Approval tracking</span>
-        <span class="pill">Invoice cleanup tools</span>
+        <span class="pill">Manual send workflow</span>
       </div>
     </div>
 
@@ -114,7 +114,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
             <th>Customer</th>
             <th>Vehicle</th>
             <th>Phone</th>
-            <th>Quote Link</th>
+            <th>Send Link</th>
             <th>Created</th>
             <th>Signed</th>
             <th>Invoice</th>
@@ -147,8 +147,9 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 
             <td>
               {% if row.quote_token %}
+                <div style="font-weight:800;color:var(--accent);margin-bottom:4px;">Send this link</div>
                 <a href="{{ row.quote_url_external }}" target="_blank" class="link">Open live quote</a>
-                <div class="small">{{ row.quote_url_external }}</div>
+                <div class="small" style="margin-top:4px;word-break:break-all;">{{ row.quote_url_external }}</div>
               {% else %}
                 <span class="small">No quote link</span>
               {% endif %}
@@ -175,8 +176,8 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                   <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
                   {% endif %}
 
-                  <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy text</button>
-                  <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy link</button>
+                  <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy ready-to-send text</button>
+                  <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
                 {% else %}
                   <span class="small">No quote link</span>
                 {% endif %}
@@ -251,7 +252,7 @@ document.querySelectorAll('.copy-text-btn').forEach(btn => {
       const data = await res.json();
       await copyToClipboard(data.message);
       btn.textContent = 'Copied';
-      showBanner(`Text copied${data.phone_display ? ` for ${data.phone_display}` : ''}. Paste it into your phone.`);
+      showBanner(`Ready-to-send text copied${data.phone_display ? ` for ${data.phone_display}` : ''}. Paste it into your phone and send it.`);
     } catch (err) {
       showBanner(err.message || 'Could not copy the text message.');
     } finally {
@@ -270,7 +271,7 @@ document.querySelectorAll('.copy-link-btn').forEach(btn => {
     try {
       await copyToClipboard(btn.dataset.quoteLink);
       btn.textContent = 'Copied';
-      showBanner('Quote link copied.');
+      showBanner('Quote link copied. You can paste it into a text or email.');
     } catch (err) {
       showBanner('Could not copy the quote link.');
     } finally {

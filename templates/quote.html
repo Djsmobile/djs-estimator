@@ -91,6 +91,10 @@
     .tier-radio-label{font-weight:900;letter-spacing:.02em;line-height:1}
     .tier-radio-price{font-weight:900;color:var(--accent);white-space:nowrap;line-height:1}
     .part-price{display:none}
+    .part-price-wrap{display:flex;align-items:center;justify-content:flex-end}
+    .customer-price-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:linear-gradient(180deg, rgba(212,175,55,.12), rgba(212,175,55,.05));border:1px solid rgba(212,175,55,.22);font-weight:900;color:var(--accent);white-space:nowrap}
+    .customer-price-badge small{display:block;font-size:11px;color:var(--muted);font-weight:700}
+    .link-help{margin-top:8px;color:var(--muted);font-size:13px}
     .approve-row{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap}
     .approve-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent)}
     .summary{display:grid;gap:8px;max-width:480px;margin-left:auto;margin-top:14px;padding:14px 14px 10px;border-radius:18px;background:linear-gradient(180deg, rgba(212,175,55,.08), rgba(255,255,255,.02));border:1px solid rgba(212,175,55,.18)}
@@ -132,8 +136,11 @@
         <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
       </div>
       <div class="actions">
+        <button type="button" class="btn btn-secondary" id="copyQuoteLinkBtn">Copy quote link</button>
+        <a class="btn btn-secondary" href="{{ request.path }}" target="_blank" rel="noopener">Open quote link</a>
         {% if quote.status == 'approved' %}<a class="btn btn-secondary" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>{% endif %}
       </div>
+      <div class="link-help">Use this quote link to text or email the customer manually. It opens this live quote page directly.</div>
     </div>
 
     {% if inspection and inspection["items"] %}
@@ -244,6 +251,10 @@
               data-price-quality="{{ '%.2f'|format(qty * (part.get('quality', 0)|float)) }}"
               data-price-economy="{{ '%.2f'|format(qty * (part.get('economy', 0)|float)) }}">
               ${{ '%.2f'|format(qty * (part.get(start_tier, 0)|float)) }}
+        </span>
+        <span class="customer-price-badge">
+          <small>Customer price</small>
+          <span class="customer-price-value">${{ '%.2f'|format(qty * (part.get(start_tier, 0)|float)) }}</span>
         </span>
       </div>
     </div>
@@ -401,7 +412,9 @@
       }
 
       function getSelectedPartsTotal(jobEl){
-        return Array.from(jobEl.querySelectorAll('[data-part-row]')).reduce((sum,row)=>{
+        const primaryPartsBox = jobEl.querySelector('.parts-box');
+        const rows = primaryPartsBox ? Array.from(primaryPartsBox.querySelectorAll('[data-part-row]')) : [];
+        return rows.reduce((sum,row)=>{
           const selectedRadio = row.querySelector('.part-line-choice:checked');
           const hiddenTier = row.querySelector('input[type="hidden"][name^="part_tier_"]');
           const priceEl = row.querySelector('.part-price');
@@ -416,7 +429,10 @@
         const tier = selectedRadio.value.toLowerCase();
         const priceEl = row.querySelector('.part-price');
         if(priceEl){
-          priceEl.textContent = '$' + money(Number(priceEl.getAttribute(`data-price-${tier}`) || 0));
+          const value = Number(priceEl.getAttribute(`data-price-${tier}`) || 0);
+          priceEl.textContent = '$' + money(value);
+          const visibleValue = row.querySelector('.customer-price-value');
+          if(visibleValue) visibleValue.textContent = '$' + money(value);
         }
       }
 
@@ -485,6 +501,19 @@
 
       updateSummary();
       updateRadioHighlight();
+      const copyQuoteLinkBtn = document.getElementById('copyQuoteLinkBtn');
+      if(copyQuoteLinkBtn){
+        copyQuoteLinkBtn.addEventListener('click', async ()=>{
+          const link = window.location.href;
+          try{
+            await navigator.clipboard.writeText(link);
+            copyQuoteLinkBtn.textContent = 'Link copied';
+            setTimeout(()=>{ copyQuoteLinkBtn.textContent = 'Copy quote link'; }, 1800);
+          }catch(_err){
+            window.prompt('Copy this quote link:', link);
+          }
+        });
+      }
 
       const canvas = document.getElementById('signaturePad');
       const hiddenInput = document.getElementById('signature_data');
