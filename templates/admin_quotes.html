@@ -9,6 +9,7 @@
 :root{
   --bg:#090a0d;
   --panel:#141922;
+  --panel2:#10141b;
   --text:#f3f4f6;
   --muted:#a1a1aa;
   --line:#2c2f36;
@@ -55,6 +56,11 @@ h1{margin:0;}
   gap:10px;
 }
 a{color:var(--accent);text-decoration:none;font-weight:700;}
+.empty{
+  text-align:center;
+  color:var(--muted);
+  margin-top:40px;
+}
 </style>
 </head>
 
@@ -68,21 +74,26 @@ a{color:var(--accent);text-decoration:none;font-weight:700;}
     </a>
   </div>
 
-  {% for req in requests %}
-  <div class="card">
-    <div class="row">
-      <div>
-        <div><strong>{{ req.customer_name }}</strong></div>
-        <div class="small">{{ req.vehicle }}</div>
-        <div class="small">{{ req.customer_phone }}</div>
-      </div>
+  {% if requests and requests|length > 0 %}
+    {% for req in requests %}
+    <div class="card">
+      <div class="row">
+        <div>
+          <div><strong>{{ req.customer_name or 'No Name' }}</strong></div>
+          <div class="small">{{ req.vehicle or '' }}</div>
+          <div class="small">{{ req.customer_phone or '' }}</div>
+          <div class="small">{{ req.requested_service or '' }}</div>
+        </div>
 
-      <div>
-        <a href="/?request_id={{ req.id }}">Use in estimator</a>
+        <div>
+          <a href="/?request_id={{ req.id }}">Use in estimator</a>
+        </div>
       </div>
     </div>
-  </div>
-  {% endfor %}
+    {% endfor %}
+  {% else %}
+    <div class="empty">No leads yet</div>
+  {% endif %}
 
 </div>
 </body>
