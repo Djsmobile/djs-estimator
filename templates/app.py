@@ -3,9 +3,7 @@ import json
 import sqlite3
 import secrets
 from datetime import datetime
-from functools import wraps
-from urllib.parse import urlparse
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -20,8 +18,7 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(16))
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or "DJs2025!"
+app.secret_key = secrets.token_hex(16)
 
 DEFAULT_LABOR_RATE = 150.00
 DEFAULT_TAX_RATE = 7.25
@@ -95,51 +92,6 @@ JOB_PRESETS = {
     },
 }
 
-
-
-def is_safe_next_url(target):
-    if not target:
-        return False
-    parsed = urlparse(target)
-    return parsed.scheme == '' and parsed.netloc == '' and target.startswith('/')
-
-
-def admin_login_required(view_func):
-    @wraps(view_func)
-    def wrapped_view(*args, **kwargs):
-        if session.get("is_admin_authenticated"):
-            return view_func(*args, **kwargs)
-        next_url = request.full_path if request.query_string else request.path
-        next_url = next_url.rstrip('?')
-        return redirect(url_for("login", next=next_url))
-    return wrapped_view
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    next_url = request.values.get("next", "").strip()
-    if not is_safe_next_url(next_url):
-        next_url = url_for("admin")
-
-    if session.get("is_admin_authenticated"):
-        return redirect(next_url)
-
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        if password == ADMIN_PASSWORD:
-            session["is_admin_authenticated"] = True
-            flash("Logged in successfully.")
-            return redirect(next_url)
-        flash("Incorrect password.")
-
-    return render_template("login.html", next_url=next_url)
-
-
-@app.route("/logout", methods=["GET", "POST"])
-def logout():
-    session.clear()
-    flash("Logged out.")
-    return redirect(url_for("login"))
 
 def slugify(value):
     cleaned = ''.join(ch.lower() if ch.isalnum() else '_' for ch in (value or '').strip())
@@ -915,7 +867,6 @@ def build_estimate_builder_context(conn, quote_row=None, request_prefill=None):
 
 
 @app.route("/", methods=["GET"])
-@admin_login_required
 def index():
     conn = get_db()
     request_prefill = get_request_quote(conn, request.args.get("request_id")) if request.args.get("request_id") else None
@@ -925,7 +876,6 @@ def index():
 
 
 @app.route("/edit_quote/<token>", methods=["GET"])
-@admin_login_required
 def edit_quote(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -945,7 +895,6 @@ def edit_quote(token):
 
 
 @app.route("/save_preset", methods=["POST"])
-@admin_login_required
 def save_preset():
     data = request.get_json(silent=True) or {}
     preset_name = (data.get("name") or "").strip()
@@ -972,7 +921,6 @@ def save_preset():
 
 
 @app.route("/save_quote", methods=["POST"])
-@admin_login_required
 def save_quote():
     quote_token_input = request.form.get("quote_token", "").strip()
     existing_quote = None
@@ -1259,7 +1207,6 @@ def approve_quote(token):
 
 
 @app.route("/convert_invoice/<token>", methods=["GET"])
-@admin_login_required
 def convert_invoice(token):
     conn = get_db()
     cur = conn.cursor()
@@ -1311,7 +1258,6 @@ def convert_invoice(token):
 
 
 @app.route("/inspection/<token>", methods=["GET", "POST"])
-@admin_login_required
 def inspection(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1324,14 +1270,12 @@ def inspection(token):
 
 
 @app.route("/inspection_add_to_estimate/<token>/<int:item_index>", methods=["POST"])
-@admin_login_required
 def inspection_add_to_estimate(token, item_index):
     flash("Inspection items can only be added or edited from the estimator before the quote is saved.")
     return redirect(url_for("view_quote", token=token))
 
 
 @app.route("/invoice/<invoice_number>", methods=["GET"])
-@admin_login_required
 def view_invoice(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1373,7 +1317,6 @@ def view_invoice(invoice_number):
 
 
 @app.route("/admin", methods=["GET"])
-@admin_login_required
 def admin():
     conn = get_db()
     cur = conn.cursor()
@@ -1458,7 +1401,6 @@ def request_quote():
 
 
 @app.route("/admin/request/<int:request_id>/status", methods=["POST"])
-@admin_login_required
 def update_request_quote_status(request_id):
     new_status = (request.form.get("status") or "new").strip().lower()
     allowed_statuses = {"new", "contacted", "quoted", "closed"}
@@ -1479,7 +1421,6 @@ def update_request_quote_status(request_id):
 
 
 @app.route("/admin/request/<int:request_id>/delete", methods=["POST"])
-@admin_login_required
 def delete_request_quote(request_id):
     conn = get_db()
     row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
@@ -1495,7 +1436,6 @@ def delete_request_quote(request_id):
 
 
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])
-@admin_login_required
 def mark_paid(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1515,7 +1455,6 @@ def mark_paid(invoice_number):
 
 
 @app.route("/admin/copy_quote_text/<token>", methods=["GET"])
-@admin_login_required
 def copy_quote_text(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1535,7 +1474,6 @@ def copy_quote_text(token):
 
 
 @app.route("/send_quote_sms/<token>", methods=["POST"])
-@admin_login_required
 def send_quote_sms(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1547,7 +1485,6 @@ def send_quote_sms(token):
 
 
 @app.route("/admin/delete_invoice/<invoice_number>", methods=["POST"])
-@admin_login_required
 def delete_invoice(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1566,7 +1503,6 @@ def delete_invoice(invoice_number):
 
 
 @app.route("/admin/clear_approval/<token>", methods=["POST"])
-@admin_login_required
 def clear_approval(token):
     conn = get_db()
     cur = conn.cursor()
@@ -1600,7 +1536,6 @@ def clear_approval(token):
 
 
 @app.route("/admin/delete_quote/<int:quote_id>", methods=["POST"])
-@admin_login_required
 def delete_quote(quote_id):
     conn = get_db()
     cur = conn.cursor()

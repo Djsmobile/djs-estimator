@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DJ's Mobile Mechanic Login</title>
+  <style>
+    :root{
+      --bg:#090a0d;--panel:rgba(19,22,29,.98);--text:#f3f4f6;--muted:#a1a1aa;
+      --line:rgba(255,255,255,.10);--accent:#d4af37;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--text);
+      background:radial-gradient(circle at top left, rgba(212,175,55,.08), transparent 24%),linear-gradient(180deg,#0d1016 0%,#090a0d 58%,#06070a 100%);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;
+    }
+    .card{
+      width:min(100%, 460px);background:linear-gradient(180deg, rgba(20,24,33,.98), rgba(14,17,24,.98));
+      border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:24px;box-shadow:0 18px 40px rgba(0,0,0,.30);
+    }
+    .kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+    h1{margin:0 0 10px;font-size:30px;line-height:1.05}
+    p{margin:0 0 18px;color:var(--muted);line-height:1.45}
+    label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
+    input{
+      width:100%;padding:12px;border-radius:14px;border:1px solid var(--line);
+      background:linear-gradient(180deg,#121722,#0f141c);color:var(--text);outline:none;
+    }
+    input:focus{border-color:rgba(212,175,55,.5);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
+    button{
+      appearance:none;border:none;border-radius:14px;padding:12px 18px;font-size:14px;font-weight:900;cursor:pointer;
+      background:linear-gradient(180deg,#ebc85b,var(--accent));color:#111;box-shadow:0 10px 24px rgba(212,175,55,.18);width:100%;margin-top:16px;
+    }
+    .flash{padding:12px 14px;border-radius:14px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:14px}
+    .help{margin-top:12px;font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="kicker">Protected Access</div>
+    <h1>Estimator Login</h1>
+    <p>Enter your password to open the estimator and admin tools.</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <input type="hidden" name="next" value="{{ next_url or url_for('admin') }}">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>
+      <button type="submit">Unlock</button>
+    </form>
+
+    <div class="help">Customers can still use your public request form and live quote links without this password.</div>
+  </div>
+</body>
+</html>
