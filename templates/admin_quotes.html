@@ -3,98 +3,272 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin - DJ's Mobile Mechanic</title>
-
+<title>DJ's Quotes Admin</title>
 <style>
 :root{
-  --bg:#090a0d;
-  --panel:#141922;
-  --panel2:#10141b;
+  --bg:#0b0b0d;
+  --panel:#141519;
+  --panel-2:#1b1d22;
   --text:#f3f4f6;
   --muted:#a1a1aa;
   --line:#2c2f36;
   --accent:#d4af37;
+  --green:#22c55e;
   --red:#ef4444;
+  --blue:#3b82f6;
 }
+*{box-sizing:border-box}
 body{
   margin:0;
   font-family:Arial,Helvetica,sans-serif;
-  background:linear-gradient(180deg,#0d1016,#06070a);
+  background:radial-gradient(circle at top left, rgba(212,175,55,.07), transparent 22%),linear-gradient(180deg, #0d1016 0%, var(--bg) 58%, #06070a 100%);
   color:var(--text);
+  line-height:1.45
 }
-.wrap{max-width:1100px;margin:0 auto;padding:20px;}
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:20px;
+.wrap{max-width:1380px;margin:auto;padding:22px 16px 32px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 32px rgba(0,0,0,.24)}
+.hero{
+  margin-bottom:16px;
+  background:
+    radial-gradient(circle at top right, rgba(212,175,55,.14), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
 }
-h1{margin:0;}
-.btn{
-  border:none;
-  padding:10px 14px;
-  border-radius:12px;
-  cursor:pointer;
-  font-weight:700;
+.hero-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.brand{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.logo{width:86px;height:86px;object-fit:contain;border-radius:18px;padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.kicker{color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;margin-bottom:6px}
+h1,h2{margin:0}
+h1{font-size:30px;line-height:1.05}
+h2{font-size:24px}
+.sub{color:var(--muted);margin-top:6px}
+.pill-row,.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.pill, .stat{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;border:1px solid var(--line);background:#111318;color:var(--muted);font-size:13px;font-weight:800}
+.table-wrap{overflow:auto;margin-top:14px}
+table{width:100%;border-collapse:separate;border-spacing:0 10px;font-size:14px;min-width:1100px}
+thead th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;padding:0 12px 8px;text-align:left}
+tbody td{padding:14px 12px;vertical-align:top;background:var(--panel-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:14px;border-bottom-left-radius:14px}
+tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:14px;border-bottom-right-radius:14px}
+.small{color:var(--muted);font-size:12px}
+.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--line);background:#111318}
+.status.approved{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.status.invoiced{background:#172554;color:#93c5fd;border-color:rgba(147,197,253,.25)}
+.status.quote{background:#2a2a2a;color:#d4d4d8}
+.actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.btn, a.btn{
+  display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
+  padding:8px 12px;border-radius:12px;font-weight:800;border:1px solid rgba(255,255,255,.10);cursor:pointer;
+  background:#20242b;color:var(--text)
 }
-.btn-logout{
-  background:var(--red);
-  color:#fff;
-}
-.card{
-  background:var(--panel);
-  padding:16px;
-  border-radius:16px;
-  margin-bottom:14px;
-  border:1px solid var(--line);
-}
-.small{color:var(--muted);font-size:13px;}
-.row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:10px;
-}
-a{color:var(--accent);text-decoration:none;font-weight:700;}
-.empty{
-  text-align:center;
-  color:var(--muted);
-  margin-top:40px;
+.btn:hover, a.btn:hover{filter:brightness(1.08)}
+.btn-blue{background:#1d4ed8}
+.btn-green{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.btn-red{background:#3a1111;color:#fecaca;border-color:rgba(248,113,113,.25)}
+.btn-amber{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
+.link{color:#fff;text-decoration:none;font-weight:700}
+.flash{padding:12px 14px;border-radius:12px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:10px}
+.inline-form{margin:0}
+.header-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.empty{padding:16px;border-radius:12px;background:#111318;border:1px dashed var(--line);color:var(--muted);margin-top:14px}
+@media (max-width:900px){
+  .wrap{padding:16px 12px 24px}
+  h1{font-size:26px}
 }
 </style>
 </head>
-
 <body>
 <div class="wrap">
-
-  <div class="header">
-    <h1>Admin Dashboard</h1>
-    <a href="/logout">
-      <button class="btn btn-logout">Logout</button>
-    </a>
-  </div>
-
-  {% if requests and requests|length > 0 %}
-    {% for req in requests %}
-    <div class="card">
-      <div class="row">
-        <div>
-          <div><strong>{{ req.customer_name or 'No Name' }}</strong></div>
-          <div class="small">{{ req.vehicle or '' }}</div>
-          <div class="small">{{ req.customer_phone or '' }}</div>
-          <div class="small">{{ req.requested_service or '' }}</div>
-        </div>
-
-        <div>
-          <a href="/?request_id={{ req.id }}">Use in estimator</a>
+  <div class="card hero">
+    <div class="hero-top">
+      <div style="flex:1 1 760px">
+        <div class="brand">
+          <img src="/static/logo.png" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
+          <div>
+            <div class="kicker">Shop Control Center</div>
+            <h1>DJ's Quotes Admin</h1>
+            <div class="sub">Manage website leads, quotes, approvals, invoice conversion, and cleanup from one place.</div>
+          </div>
         </div>
       </div>
+      <div class="header-actions">
+        <a class="btn btn-blue" href="/request-quote" target="_blank">Open public form</a>
+        <a class="btn btn-red" href="/logout">Logout</a>
+      </div>
     </div>
-    {% endfor %}
-  {% else %}
-    <div class="empty">No leads yet</div>
-  {% endif %}
 
+    <div class="stats">
+      <span class="stat">Quotes: {{ rows|length if rows is defined else 0 }}</span>
+      <span class="stat">Website leads: {{ request_rows|length if request_rows is defined else 0 }}</span>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-holder" style="margin-bottom:14px;">
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <div class="kicker">Website Leads</div>
+        <h2>Request a Quote</h2>
+        <div class="sub">Website requests come in here first. Click “Use in estimator” to start the real quote.</div>
+      </div>
+    </div>
+
+    {% if request_rows and request_rows|length > 0 %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Vehicle</th>
+            <th>Requested Service</th>
+            <th>Concern</th>
+            <th>Schedule</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for req in request_rows %}
+          <tr>
+            <td><span class="status">{{ req.status or 'new' }}</span></td>
+            <td>
+              <div style="font-weight:800;">{{ req.customer_name or '-' }}</div>
+              <div class="small">{{ req.customer_phone_display or req.customer_phone or '' }}</div>
+              <div class="small">{{ req.customer_email or '' }}</div>
+            </td>
+            <td>
+              <div style="font-weight:800;">{{ req.vehicle or '-' }}</div>
+              <div class="small">{{ req.vin or '' }}</div>
+            </td>
+            <td>{{ req.requested_service or '-' }}</td>
+            <td><div style="max-width:260px;white-space:pre-wrap;">{{ req.concern_details or '-' }}</div></td>
+            <td><div style="max-width:210px;white-space:pre-wrap;">{{ req.preferred_schedule or '-' }}</div></td>
+            <td>{{ req.created_at or '-' }}</td>
+            <td>
+              <div class="actions">
+                <a class="btn btn-amber" href="/?request_id={{ req.id }}">Use in estimator</a>
+                <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                  <input type="hidden" name="status" value="contacted">
+                  <button type="submit" class="btn">Mark contacted</button>
+                </form>
+                <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                  <input type="hidden" name="status" value="closed">
+                  <button type="submit" class="btn btn-green">Close request</button>
+                </form>
+                <form method="POST" action="/admin/request/{{ req.id }}/delete" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?');">
+                  <button type="submit" class="btn btn-red">Delete request</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">No website leads yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div>
+      <div class="kicker">Quotes</div>
+      <h2>Saved Quotes</h2>
+      <div class="sub">Open, edit, convert to invoice, or delete saved quotes.</div>
+    </div>
+
+    {% if rows and rows|length > 0 %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Vehicle</th>
+            <th>Phone</th>
+            <th>Send Link</th>
+            <th>Created</th>
+            <th>Signed</th>
+            <th>Invoice</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">
+                {{ row.status or 'quote' }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight:800;">{{ row.customer_name or '-' }}</div>
+              <div class="small">{{ row.customer_email or '' }}</div>
+            </td>
+            <td>
+              <div style="font-weight:800;">{{ row.vehicle or '-' }}</div>
+              <div class="small">{{ row.vin or '' }}</div>
+            </td>
+            <td>
+              <div>{{ row.customer_phone_display or row.customer_phone or '-' }}</div>
+              {% if row.customer_phone_e164 %}<div class="small">{{ row.customer_phone_e164 }}</div>{% endif %}
+            </td>
+            <td>
+              {% if row.quote_token %}
+                <a href="{{ row.quote_url_external }}" target="_blank" class="link">Open live quote</a>
+                <div class="small" style="margin-top:4px;word-break:break-all;">{{ row.quote_url_external }}</div>
+              {% else %}
+                <span class="small">No quote link</span>
+              {% endif %}
+            </td>
+            <td>{{ row.created_at or '-' }}</td>
+            <td>
+              <div>{{ row.signed_name or '-' }}</div>
+              <div class="small">{{ row.signed_at or '' }}</div>
+            </td>
+            <td>
+              <div style="font-weight:800;">{{ row.invoice_number or '-' }}</div>
+            </td>
+            <td>
+              <div class="actions">
+                {% if row.quote_token %}
+                  <a href="/quote/{{ row.quote_token }}" target="_blank" class="link">Open quote</a>
+                  {% if row.status not in ['approved', 'invoiced'] %}
+                  <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
+                  {% endif %}
+                {% endif %}
+
+                {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
+                  <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
+                {% endif %}
+
+                {% if row.invoice_number %}
+                  <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="link">Open invoice</a>
+                {% endif %}
+
+                <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote and any linked invoice? This cannot be undone.');">
+                  <button type="submit" class="btn btn-red">Delete quote</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">No saved quotes yet.</div>
+    {% endif %}
+  </div>
 </div>
 </body>
 </html>
