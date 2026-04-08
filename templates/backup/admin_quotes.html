@@ -90,9 +90,81 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
     <div class="stats">
       <span class="stat">Total records: {{ rows|length }}</span>
       <span class="stat">Quotes / approvals / invoices at a glance</span>
+      <span class="stat">Quote requests: {{ request_rows|length }}</span>
     </div>
   </div>
 
+
+
+  <div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <div class="kicker">Website Leads</div>
+        <h2 style="margin:0 0 6px;font-size:24px;">Request a Quote</h2>
+        <div class="sub">Use the public request form on your website, then open a request in the estimator when you are ready to build the real quote.</div>
+      </div>
+      <div class="actions" style="align-items:flex-end;">
+        <a class="btn btn-blue" href="/request-quote" target="_blank">Open public form</a>
+      </div>
+    </div>
+
+    {% if request_rows and request_rows|length > 0 %}
+    <div class="table-wrap">
+      <table style="min-width:1100px;">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Vehicle</th>
+            <th>Requested Service</th>
+            <th>Concern</th>
+            <th>Schedule</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for req in request_rows %}
+          <tr>
+            <td><span class="status">{{ req.status or 'new' }}</span></td>
+            <td>
+              <div style="font-weight:800;">{{ req.customer_name or '-' }}</div>
+              <div class="small">{{ req.customer_phone_display or req.customer_phone or '' }}</div>
+              <div class="small">{{ req.customer_email or '' }}</div>
+            </td>
+            <td>
+              <div style="font-weight:800;">{{ req.vehicle or '-' }}</div>
+              <div class="small">{{ req.vin or '' }}</div>
+            </td>
+            <td>{{ req.requested_service or '-' }}</td>
+            <td><div style="max-width:260px;white-space:pre-wrap;">{{ req.concern_details or '-' }}</div></td>
+            <td><div style="max-width:210px;white-space:pre-wrap;">{{ req.preferred_schedule or '-' }}</div></td>
+            <td>{{ req.created_at or '-' }}</td>
+            <td>
+              <div class="actions">
+                <a class="btn btn-amber" href="/?request_id={{ req.id }}">Use in estimator</a>
+                <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                  <input type="hidden" name="status" value="contacted">
+                  <button type="submit" class="btn">Mark contacted</button>
+                </form>
+                <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                  <input type="hidden" name="status" value="closed">
+                  <button type="submit" class="btn btn-green">Close request</button>
+                </form>
+                <form method="POST" action="/admin/request/{{ req.id }}/delete" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?');">
+                  <button type="submit" class="btn btn-red">Delete request</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="flash" style="margin-top:14px;">No website quote requests yet.</div>
+    {% endif %}
+  </div>
   <div class="card">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
