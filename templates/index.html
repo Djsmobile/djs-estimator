@@ -134,13 +134,13 @@
           </div>
         </div>
         <div class="row" style="margin-top:12px;">
-          <div class="grow"><label>Customer name</label><input type="text" id="customer_name" name="customer_name" value="{{ existing_quote.customer_name if existing_quote else '' }}" required /></div>
-          <div class="grow"><label>Phone</label><input type="text" id="customer_phone" name="customer_phone" value="{{ existing_quote.customer_phone if existing_quote else '' }}" /></div>
-          <div class="grow"><label>Email</label><input type="email" id="customer_email" name="customer_email" value="{{ existing_quote.customer_email if existing_quote else '' }}" /></div>
+          <div class="grow"><label>Customer name</label><input type="text" id="customer_name" name="customer_name" value="{{ existing_quote.customer_name if existing_quote else (request_prefill.customer_name if request_prefill else '') }}" required /></div>
+          <div class="grow"><label>Phone</label><input type="text" id="customer_phone" name="customer_phone" value="{{ existing_quote.customer_phone if existing_quote else (request_prefill.customer_phone if request_prefill else '') }}" /></div>
+          <div class="grow"><label>Email</label><input type="email" id="customer_email" name="customer_email" value="{{ existing_quote.customer_email if existing_quote else (request_prefill.customer_email if request_prefill else '') }}" /></div>
         </div>
         <div class="row" style="margin-top:12px;">
-          <div class="grow"><label>Vehicle</label><input type="text" id="vehicle" name="vehicle" value="{{ existing_quote.vehicle if existing_quote else '' }}" required /></div>
-          <div class="grow"><label>VIN</label><input type="text" id="vin" name="vin" value="{{ existing_quote.vin if existing_quote else '' }}" /></div>
+          <div class="grow"><label>Vehicle</label><input type="text" id="vehicle" name="vehicle" value="{{ existing_quote.vehicle if existing_quote else (request_prefill.vehicle if request_prefill else '') }}" required /></div>
+          <div class="grow"><label>VIN</label><input type="text" id="vin" name="vin" value="{{ existing_quote.vin if existing_quote else (request_prefill.vin if request_prefill else '') }}" /></div>
         </div>
         <div class="pill-row" style="margin-top:12px;"><div class="pill">Saved customers: {{ customers|length }}</div><div class="pill">Saved vehicles: {{ vehicles|length }}</div></div>
       </div>
@@ -202,6 +202,7 @@
     const INITIAL_EDIT_JOBS = {{ initial_jobs_json|safe if initial_jobs_json is defined else "[]" }};
     const INITIAL_INSPECTION_ITEMS = {{ initial_inspection_items_json|safe if initial_inspection_items_json is defined else "[]" }};
     const INITIAL_REQUEST_SERVICE = {{ initial_request_service|tojson }};
+    const INITIAL_REQUEST_CONCERN = {{ (request_prefill.concern_details if request_prefill else '')|tojson }};
     const TIER_META = [
       {key:'oem', label:'OEM'},
       {key:'quality', label:'Quality'},
@@ -399,6 +400,15 @@
 
     function addJob(jobData=null){ const services=document.getElementById('services'); const idx=serviceCount(); const wrap=document.createElement('div'); wrap.innerHTML=jobHtml(idx, jobData || {}); services.appendChild(wrap.firstElementChild); renumberJobs(); }
     function addBlankService(){ addJob({desc:'', labor_hours:0, notes:'', parts:[]}); }
+    function buildRequestLeadJob(){
+      const service = String(INITIAL_REQUEST_SERVICE || '').trim();
+      const concern = String(INITIAL_REQUEST_CONCERN || '').trim();
+      const pieces = [];
+      if (service) pieces.push(service);
+      else pieces.push('Requested Service');
+      const notes = concern || (service ? `Customer requested: ${service}` : '');
+      return {desc: pieces.join(' - '), labor_hours: 0, notes, parts: []};
+    }
     function addPresetToQuote(){ const presetKey=document.getElementById('preset_select').value; if(!presetKey || !JOB_PRESETS[presetKey]) return; (JOB_PRESETS[presetKey].jobs || []).forEach(job=>addJob(job)); calcAll(); }
     function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); const defaults={qty:1,oem:0,quality:0,economy:0,list_oem:0,list_quality:0,list_economy:0,markup_oem:1.4,markup_quality:1.4,markup_economy:1.4,enabled_oem:true,enabled_quality:true,enabled_economy:true}; const partIndex=0; wrap.innerHTML=partRowHtml(idx, partIndex, Object.assign(defaults, partData || {})); const newRow=wrap.firstElementChild; if(partsList.firstElementChild){ partsList.insertBefore(newRow, partsList.firstElementChild); } else { partsList.appendChild(newRow); } renumberJobs(); }
     function deleteService(btn){ const job=btn.closest('.job'); if(job) job.remove(); if(serviceCount()===0) addBlankService(); renumberJobs(); }
@@ -458,11 +468,22 @@
       populatePresets();
       if (Array.isArray(INITIAL_EDIT_JOBS) && INITIAL_EDIT_JOBS.length) {
         INITIAL_EDIT_JOBS.forEach(job => addJob(job));
+      } else if (String(INITIAL_REQUEST_SERVICE || '').trim() || String(INITIAL_REQUEST_CONCERN || '').trim()) {
+        addJob(buildRequestLeadJob());
       } else {
         addBlankService();
       }
       if (Array.isArray(INITIAL_INSPECTION_ITEMS) && INITIAL_INSPECTION_ITEMS.length) {
         INITIAL_INSPECTION_ITEMS.forEach(item => addInspectionItem(item));
+      }
+      if ((!Array.isArray(INITIAL_EDIT_JOBS) || !INITIAL_EDIT_JOBS.length) && (String(INITIAL_REQUEST_SERVICE || '').trim() || String(INITIAL_REQUEST_CONCERN || '').trim())) {
+        const firstJob = document.querySelector('#services .job');
+        if (firstJob) {
+          firstJob.querySelector('[data-section="notes"]')?.classList.add('open');
+          firstJob.querySelector('[data-section="main"]')?.classList.add('open');
+          const toggleBtn = firstJob.querySelector('[data-action="toggle-main"]');
+          if (toggleBtn) toggleBtn.textContent = '▲ Collapse';
+        }
       }
 
       document.getElementById('addPresetBtn').addEventListener('click',e=>{e.preventDefault(); addPresetToQuote();});

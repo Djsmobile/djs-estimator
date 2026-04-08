@@ -112,12 +112,14 @@
     <div class="page-header">
       <div>
         <h1>{% if edit_mode %}Edit Quote{% else %}DJ's Estimate Builder{% endif %}</h1>
+        {% if request_prefill and not edit_mode %}<div class="pill-row" style="margin-top:8px;"><div class="pill" style="border-color:rgba(212,175,55,.35);color:#fff;">Prefilled from website request #{{ request_prefill.id }}</div>{% if request_prefill.requested_service %}<div class="pill">Requested: {{ request_prefill.requested_service }}</div>{% endif %}</div>{% endif %}
         <div class="subtle">{% if edit_mode %}Update the quote below. The same live quote link stays active until the customer approves it.{% else %}List + retail markup builder, custom presets, and hidden cost tracking.{% endif %}</div>
       </div>
       <a class="inspection-link" href="/admin">Admin</a>
     </div>
 
     <form method="POST" action="/save_quote" onsubmit="return beforeSave()" enctype="multipart/form-data">
+      <input type="hidden" name="request_quote_id" value="{{ initial_request_id or "" }}">
       <input type="hidden" name="quote_token" value="{{ quote_token or '' }}">
       <div class="card">
         <div class="section-title">Customer & Vehicle</div>
@@ -199,6 +201,7 @@
     const JOB_PRESETS = {{ job_presets_json|safe }};
     const INITIAL_EDIT_JOBS = {{ initial_jobs_json|safe if initial_jobs_json is defined else "[]" }};
     const INITIAL_INSPECTION_ITEMS = {{ initial_inspection_items_json|safe if initial_inspection_items_json is defined else "[]" }};
+    const INITIAL_REQUEST_SERVICE = {{ initial_request_service|tojson }};
     const TIER_META = [
       {key:'oem', label:'OEM'},
       {key:'quality', label:'Quality'},
