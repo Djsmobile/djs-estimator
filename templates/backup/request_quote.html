@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request a Quote | DJ's Mobile Mechanic</title>
+  <style>
+    :root{--bg:#090a0d;--panel:#141922;--panel2:#10141b;--text:#f3f4f6;--muted:#a1a1aa;--line:#2c2f36;--accent:#d4af37;--green:#86efac;--greenbg:#16351f}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:radial-gradient(circle at top left, rgba(212,175,55,.08), transparent 24%),linear-gradient(180deg,#0d1016 0%,#090a0d 58%,#06070a 100%)}
+    .wrap{max-width:920px;margin:0 auto;padding:24px 14px 40px} .card{background:linear-gradient(180deg, rgba(20,24,33,.98), rgba(14,17,24,.98));border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:22px;margin-bottom:16px;box-shadow:0 18px 40px rgba(0,0,0,.30)}
+    .hero{position:relative;overflow:hidden}.hero:after{content:'';position:absolute;right:-45px;bottom:-65px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle, rgba(212,175,55,.16), transparent 68%)}
+    .kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+    h1,h2{margin:0 0 10px} h1{font-size:31px;line-height:1.05} h2{font-size:20px;color:var(--accent)} .muted{color:var(--muted);line-height:1.5}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.full{grid-column:1/-1}
+    label{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:6px} input,textarea,select{width:100%;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,#121722,#0f141c);color:var(--text);outline:none} textarea{min-height:120px;resize:vertical}
+    input:focus,textarea:focus,select:focus{border-color:rgba(212,175,55,.5);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
+    .btn{appearance:none;border:none;border-radius:14px;padding:12px 18px;font-size:14px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ebc85b,var(--accent));color:#111;box-shadow:0 10px 24px rgba(212,175,55,.18)}
+    .btn-secondary{background:linear-gradient(180deg,#242a35,#1a1f28);color:var(--text);border:1px solid var(--line);box-shadow:none}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.success{background:var(--greenbg);color:var(--green);border:1px solid rgba(134,239,172,.2);padding:14px 16px;border-radius:16px;font-weight:800}
+    .list{display:grid;gap:10px;margin-top:10px}.item{padding:12px;border-radius:14px;background:var(--panel2);border:1px solid rgba(255,255,255,.08)}
+    @media (max-width:700px){.wrap{padding:16px 12px 28px}.card{padding:16px}.grid{grid-template-columns:1fr} h1{font-size:26px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card hero">
+      <div class="kicker">DJ's Mobile Mechanic</div>
+      <h1>Request a Quote</h1>
+      <div class="muted">Send over your vehicle info and what you need. I’ll review it and get back to you with the next step or a quote.</div>
+    </div>
+
+    {% if submitted %}
+    <div class="card">
+      <div class="success">Your request was sent successfully.</div>
+      <div class="list">
+        <div class="item">I received your request and can now review the vehicle info and service details.</div>
+        <div class="item">If I need anything else before quoting it, I’ll reach out using the phone number or email you entered.</div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-secondary" href="/request-quote">Submit another request</a>
+      </div>
+    </div>
+    {% else %}
+    <form method="POST" class="card">
+      <h2>Vehicle & Contact Info</h2>
+      <div class="grid">
+        <div>
+          <label>Customer name</label>
+          <input type="text" name="customer_name" required>
+        </div>
+        <div>
+          <label>Phone</label>
+          <input type="text" name="customer_phone" required>
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" name="customer_email">
+        </div>
+        <div>
+          <label>Vehicle</label>
+          <input type="text" name="vehicle" placeholder="2017 Honda Civic" required>
+        </div>
+        <div>
+          <label>VIN (optional)</label>
+          <input type="text" name="vin">
+        </div>
+        <div>
+          <label>Requested service</label>
+          <input type="text" name="requested_service" placeholder="Brakes, alternator, diagnostic, A/C, etc.">
+        </div>
+        <div class="full">
+          <label>What would you like looked at?</label>
+          <textarea name="concern_details" placeholder="Tell me what the vehicle is doing, what work you think it needs, or any symptoms you're noticing." required></textarea>
+        </div>
+        <div class="full">
+          <label>Best time or availability</label>
+          <textarea name="preferred_schedule" placeholder="Example: weekday afternoons, Saturday morning, ASAP, etc."></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn">Send quote request</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

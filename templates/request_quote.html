@@ -5,20 +5,142 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Request a Quote | DJ's Mobile Mechanic</title>
   <style>
-    :root{--bg:#090a0d;--panel:#141922;--panel2:#10141b;--text:#f3f4f6;--muted:#a1a1aa;--line:#2c2f36;--accent:#d4af37;--green:#86efac;--greenbg:#16351f}
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:radial-gradient(circle at top left, rgba(212,175,55,.08), transparent 24%),linear-gradient(180deg,#0d1016 0%,#090a0d 58%,#06070a 100%)}
-    .wrap{max-width:920px;margin:0 auto;padding:24px 14px 40px} .card{background:linear-gradient(180deg, rgba(20,24,33,.98), rgba(14,17,24,.98));border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:22px;margin-bottom:16px;box-shadow:0 18px 40px rgba(0,0,0,.30)}
-    .hero{position:relative;overflow:hidden}.hero:after{content:'';position:absolute;right:-45px;bottom:-65px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle, rgba(212,175,55,.16), transparent 68%)}
-    .kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-    h1,h2{margin:0 0 10px} h1{font-size:31px;line-height:1.05} h2{font-size:20px;color:var(--accent)} .muted{color:var(--muted);line-height:1.5}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.full{grid-column:1/-1}
-    label{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:6px} input,textarea,select{width:100%;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,#121722,#0f141c);color:var(--text);outline:none} textarea{min-height:120px;resize:vertical}
+    :root{
+      --bg:#090a0d;
+      --panel:#141922;
+      --panel2:#10141b;
+      --text:#f3f4f6;
+      --muted:#a1a1aa;
+      --line:#2c2f36;
+      --accent:#d4af37;
+      --green:#86efac;
+      --greenbg:#16351f;
+      --info:#93c5fd;
+      --infobg:rgba(59,130,246,.10);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(212,175,55,.08), transparent 24%),
+        linear-gradient(180deg,#0d1016 0%,#090a0d 58%,#06070a 100%);
+    }
+    .wrap{max-width:920px;margin:0 auto;padding:24px 14px 40px}
+    .card{
+      background:linear-gradient(180deg, rgba(20,24,33,.98), rgba(14,17,24,.98));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:22px;
+      padding:22px;
+      margin-bottom:16px;
+      box-shadow:0 18px 40px rgba(0,0,0,.30)
+    }
+    .hero{position:relative;overflow:hidden}
+    .hero:after{
+      content:'';
+      position:absolute;
+      right:-45px;
+      bottom:-65px;
+      width:210px;
+      height:210px;
+      border-radius:50%;
+      background:radial-gradient(circle, rgba(212,175,55,.16), transparent 68%)
+    }
+    .kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 11px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:10px
+    }
+    h1,h2{margin:0 0 10px}
+    h1{font-size:31px;line-height:1.05}
+    h2{font-size:20px;color:var(--accent)}
+    .muted{color:var(--muted);line-height:1.5}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .full{grid-column:1/-1}
+    label{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:6px}
+    input,textarea,select{
+      width:100%;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:linear-gradient(180deg,#121722,#0f141c);
+      color:var(--text);
+      outline:none
+    }
+    textarea{min-height:120px;resize:vertical}
     input:focus,textarea:focus,select:focus{border-color:rgba(212,175,55,.5);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
-    .btn{appearance:none;border:none;border-radius:14px;padding:12px 18px;font-size:14px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ebc85b,var(--accent));color:#111;box-shadow:0 10px 24px rgba(212,175,55,.18)}
-    .btn-secondary{background:linear-gradient(180deg,#242a35,#1a1f28);color:var(--text);border:1px solid var(--line);box-shadow:none}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.success{background:var(--greenbg);color:var(--green);border:1px solid rgba(134,239,172,.2);padding:14px 16px;border-radius:16px;font-weight:800}
-    .list{display:grid;gap:10px;margin-top:10px}.item{padding:12px;border-radius:14px;background:var(--panel2);border:1px solid rgba(255,255,255,.08)}
-    @media (max-width:700px){.wrap{padding:16px 12px 28px}.card{padding:16px}.grid{grid-template-columns:1fr} h1{font-size:26px}}
+    .btn{
+      appearance:none;
+      border:none;
+      border-radius:14px;
+      padding:12px 18px;
+      font-size:14px;
+      font-weight:900;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg,#ebc85b,var(--accent));
+      color:#111;
+      box-shadow:0 10px 24px rgba(212,175,55,.18)
+    }
+    .btn-secondary{
+      background:linear-gradient(180deg,#242a35,#1a1f28);
+      color:var(--text);
+      border:1px solid var(--line);
+      box-shadow:none
+    }
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .success{
+      background:var(--greenbg);
+      color:var(--green);
+      border:1px solid rgba(134,239,172,.2);
+      padding:14px 16px;
+      border-radius:16px;
+      font-weight:800
+    }
+    .list{display:grid;gap:10px;margin-top:10px}
+    .item{padding:12px;border-radius:14px;background:var(--panel2);border:1px solid rgba(255,255,255,.08)}
+    .helper{
+      margin-top:7px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .schedule-note{
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(147,197,253,.18);
+      background:var(--infobg);
+      color:#dbeafe;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .trust-line{
+      margin-top:16px;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+    @media (max-width:700px){
+      .wrap{padding:16px 12px 28px}
+      .card{padding:16px}
+      .grid{grid-template-columns:1fr}
+      h1{font-size:26px}
+    }
   </style>
 </head>
 <body>
@@ -26,7 +148,7 @@
     <div class="card hero">
       <div class="kicker">DJ's Mobile Mechanic</div>
       <h1>Request a Quote</h1>
-      <div class="muted">Send over your vehicle info and what you need. I’ll review it and get back to you with the next step or a quote.</div>
+      <div class="muted">Send over your vehicle info and what you're experiencing. I'll take a look and get back to you with the next step or a quote.</div>
     </div>
 
     {% if submitted %}
@@ -42,7 +164,7 @@
     </div>
     {% else %}
     <form method="POST" class="card">
-      <h2>Vehicle & Contact Info</h2>
+      <h2>Vehicle &amp; Contact Info</h2>
       <div class="grid">
         <div>
           <label>Customer name</label>
@@ -57,7 +179,7 @@
           <input type="email" name="customer_email">
         </div>
         <div>
-          <label>Vehicle</label>
+          <label>Vehicle details</label>
           <input type="text" name="vehicle" placeholder="2017 Honda Civic" required>
         </div>
         <div>
@@ -65,20 +187,22 @@
           <input type="text" name="vin">
         </div>
         <div>
-          <label>Requested service</label>
+          <label>Service (if known)</label>
           <input type="text" name="requested_service" placeholder="Brakes, alternator, diagnostic, A/C, etc.">
         </div>
         <div class="full">
-          <label>What would you like looked at?</label>
-          <textarea name="concern_details" placeholder="Tell me what the vehicle is doing, what work you think it needs, or any symptoms you're noticing." required></textarea>
+          <label>Concern / Symptoms</label>
+          <textarea name="concern_details" placeholder="What is the vehicle doing? Any noises, warning lights, or recent work?" required></textarea>
         </div>
         <div class="full">
-          <label>Best time or availability</label>
-          <textarea name="preferred_schedule" placeholder="Example: weekday afternoons, Saturday morning, ASAP, etc."></textarea>
+          <label>Preferred time (weekends &amp; evenings)</label>
+          <textarea name="preferred_schedule" placeholder="Evenings after 5:30, weekends, ASAP, etc."></textarea>
+          <div class="schedule-note"><strong>Availability:</strong> Weekend appointments + limited evening diagnostics after 5:30pm.</div>
         </div>
       </div>
+      <div class="trust-line">No pressure — I’ll just point you in the right direction.</div>
       <div class="actions">
-        <button type="submit" class="btn">Send quote request</button>
+        <button type="submit" class="btn">Request Quote</button>
       </div>
     </form>
     {% endif %}
