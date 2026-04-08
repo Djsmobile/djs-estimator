@@ -95,8 +95,6 @@ JOB_PRESETS = {
     },
 }
 
-
-
 def is_safe_next_url(target):
     if not target:
         return False
@@ -140,6 +138,7 @@ def logout():
     session.clear()
     flash("Logged out.")
     return redirect(url_for("login"))
+
 
 def slugify(value):
     cleaned = ''.join(ch.lower() if ch.isalnum() else '_' for ch in (value or '').strip())
@@ -1331,7 +1330,6 @@ def inspection_add_to_estimate(token, item_index):
 
 
 @app.route("/invoice/<invoice_number>", methods=["GET"])
-@admin_login_required
 def view_invoice(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1455,6 +1453,17 @@ def request_quote():
         return render_template("request_quote.html", submitted=True)
 
     return render_template("request_quote.html", submitted=False)
+
+
+@app.route("/admin/request/<int:request_id>/use-in-estimator", methods=["GET"])
+@admin_login_required
+def use_request_in_estimator(request_id):
+    conn = get_db()
+    row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
+    conn.close()
+    if not row:
+        abort(404)
+    return redirect(url_for("index", request_id=request_id))
 
 
 @app.route("/admin/request/<int:request_id>/status", methods=["POST"])
