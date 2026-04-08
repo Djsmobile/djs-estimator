@@ -760,6 +760,18 @@ def get_all_job_presets(conn):
     return presets
 
 
+def get_request_quote(conn, request_id):
+    try:
+        request_id_int = int(request_id)
+    except (TypeError, ValueError):
+        return None
+
+    return conn.execute(
+        "SELECT * FROM request_quotes WHERE id = ?",
+        (request_id_int,),
+    ).fetchone()
+
+
 def upsert_saved_preset(conn, preset_name, jobs):
     preset_name = (preset_name or '').strip()
     normalized_jobs = normalize_preset_jobs(jobs)
