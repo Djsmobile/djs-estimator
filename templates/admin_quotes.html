@@ -9,6 +9,7 @@
   --bg:#0b0b0d;
   --panel:#141519;
   --panel-2:#1b1d22;
+  --panel-3:#111318;
   --text:#f3f4f6;
   --muted:#a1a1aa;
   --line:#2c2f36;
@@ -21,48 +22,63 @@
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(circle at top left, rgba(212,175,55,.07), transparent 22%),linear-gradient(180deg, #0d1016 0%, var(--bg) 58%, #06070a 100%);color:var(--text);line-height:1.45}
 .wrap{max-width:1380px;margin:auto;padding:22px 16px 32px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 32px rgba(0,0,0,.24)}
-.hero{
-  margin-bottom:16px;
-  background:
-    radial-gradient(circle at top right, rgba(212,175,55,.14), transparent 30%),
-    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
-}
-.hero-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.hero{margin-bottom:16px;background:radial-gradient(circle at top right, rgba(212,175,55,.14), transparent 30%),linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));}
+.hero-top,.section-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .brand{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .logo{width:86px;height:86px;object-fit:contain;border-radius:18px;padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
 .kicker{color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;margin-bottom:6px}
-h1{margin:0;font-size:30px;line-height:1.05}
+h1,h2{margin:0}
+h1{font-size:30px;line-height:1.05}
+h2{font-size:24px}
 .sub{color:var(--muted);margin-top:6px}
-.pill-row,.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.pill, .stat{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;border:1px solid var(--line);background:#111318;color:var(--muted);font-size:13px;font-weight:800}
+.pill-row,.stats,.section-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stats{margin-top:12px}
+.pill,.stat,.mini-stat{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;border:1px solid var(--line);background:#111318;color:var(--muted);font-size:13px;font-weight:800}
+.mini-stat{padding:7px 10px;font-size:12px}
+.btn,a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:9px 12px;border-radius:12px;font-weight:800;border:1px solid rgba(255,255,255,.10);cursor:pointer;background:#20242b;color:var(--text)}
+.btn:hover,a.btn:hover{filter:brightness(1.08)}
+.btn-blue{background:#1d4ed8}
+.btn-green{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.btn-red{background:#3a1111;color:#fecaca;border-color:rgba(248,113,113,.25)}
+.btn-amber{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
+.btn-soft{background:#171a20}
+.link{color:#fff;text-decoration:none;font-weight:700}
+.flash{padding:12px 14px;border-radius:12px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:10px}
+.inline-form{margin:0}
+.small{color:var(--muted);font-size:12px}
+.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--line);background:#111318}
+.status.approved{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.status.invoiced{background:#172554;color:#93c5fd;border-color:rgba(147,197,253,.25)}
+.status.quote{background:#2a2a2a;color:#d4d4d8}
+.status.new{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
+.status.contacted{background:#172554;color:#93c5fd;border-color:rgba(147,197,253,.25)}
+.status.quoted{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.status.closed{background:#27272a;color:#d4d4d8;border-color:rgba(255,255,255,.12)}
 .table-wrap{overflow:auto;margin-top:14px}
 table{width:100%;border-collapse:separate;border-spacing:0 10px;font-size:14px;min-width:1200px}
 thead th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;padding:0 12px 8px;text-align:left}
 tbody td{padding:14px 12px;vertical-align:top;background:var(--panel-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:14px;border-bottom-left-radius:14px}
 tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:14px;border-bottom-right-radius:14px}
-.small{color:var(--muted);font-size:12px}
-.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--line);background:#111318}
-.status.approved{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
-.status.invoiced{background:#172554;color:#93c5fd;border-color:rgba(147,197,253,.25)}
-.status.quote{background:#2a2a2a;color:#d4d4d8}
 .actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.btn, a.btn{
-  display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
-  padding:8px 12px;border-radius:12px;font-weight:800;border:1px solid rgba(255,255,255,.10);cursor:pointer;
-  background:#20242b;color:var(--text)
-}
-.btn:hover, a.btn:hover{filter:brightness(1.08)}
-.btn-blue{background:#1d4ed8}
-.btn-green{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
-.btn-red{background:#3a1111;color:#fecaca;border-color:rgba(248,113,113,.25)}
-.btn-amber{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
-.link{color:#fff;text-decoration:none;font-weight:700}
-.flash{padding:12px 14px;border-radius:12px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:10px}
-.inline-form{margin:0}
-@media (max-width:900px){
+.leads-grid,.quotes-grid{display:none}
+.lead-card,.quote-card{margin-top:12px;border:1px solid var(--line);border-radius:16px;background:var(--panel-2);padding:14px}
+.lead-head,.quote-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}
+.lead-name,.quote-name{font-size:17px;font-weight:900;line-height:1.15}
+.lead-vehicle,.quote-vehicle{font-weight:800;margin-top:3px}
+.lead-grid,.quote-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.detail-box{border:1px solid rgba(255,255,255,.08);border-radius:12px;background:var(--panel-3);padding:10px}
+.detail-box .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
+.detail-box .value{font-size:14px;font-weight:700;white-space:pre-wrap;word-break:break-word}
+.lead-actions,.quote-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.empty{padding:16px;border-radius:12px;background:#111318;border:1px dashed var(--line);color:var(--muted);margin-top:14px}
+.section-divider{height:1px;background:var(--line);margin:14px 0}
+@media (max-width:980px){
   .wrap{padding:16px 12px 24px}
   h1{font-size:26px}
+  .desktop-table{display:none}
+  .leads-grid,.quotes-grid{display:block}
+  .lead-grid,.quote-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -76,282 +92,375 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
           <div>
             <div class="kicker">Shop Control Center</div>
             <h1>DJ's Quotes Admin</h1>
-            <div class="sub">Manage quotes, approvals, manual send links, invoice conversion, and cleanup from one place.</div>
+            <div class="sub">Manage website leads, quotes, approvals, invoice conversion, and cleanup from one place.</div>
           </div>
         </div>
       </div>
-      <div class="pill-row">
-        <span class="pill">Live quote management</span>
-        <span class="pill">Approval tracking</span>
-        <span class="pill">Manual send workflow</span>
+      <div class="section-actions">
+        <a class="btn btn-blue" href="/request-quote" target="_blank">Open public form</a>
+        <a class="btn btn-red" href="/logout">Logout</a>
       </div>
     </div>
 
     <div class="stats">
-      <span class="stat">Total records: {{ rows|length }}</span>
-      <span class="stat">Quotes / approvals / invoices at a glance</span>
-      <span class="stat">Quote requests: {{ request_rows|length }}</span>
+      <span class="stat">Quotes: {{ rows|length if rows is defined else 0 }}</span>
+      <span class="stat">Website leads: {{ request_rows|length if request_rows is defined else 0 }}</span>
+      <span class="stat">Premium mobile admin</span>
     </div>
   </div>
 
-
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div style="margin-bottom:14px;">
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
   <div class="card" style="margin-bottom:16px;">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+    <div class="section-top">
       <div>
         <div class="kicker">Website Leads</div>
-        <h2 style="margin:0 0 6px;font-size:24px;">Request a Quote</h2>
-        <div class="sub">Use the public request form on your website, then open a request in the estimator when you are ready to build the real quote.</div>
+        <h2>Request a Quote</h2>
+        <div class="sub">Fast lead intake up top. One tap opens the estimator with customer info already filled in and keeps the workflow feeling like real shop software.</div>
       </div>
-      <div class="actions" style="align-items:flex-end;">
-        <a class="btn btn-blue" href="/request-quote" target="_blank">Open public form</a>
+      <div class="pill-row">
+        <span class="mini-stat">New / Contacted / Quoted / Closed</span>
       </div>
     </div>
 
     {% if request_rows and request_rows|length > 0 %}
-    <div class="table-wrap">
-      <table style="min-width:1100px;">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>Customer</th>
-            <th>Vehicle</th>
-            <th>Requested Service</th>
-            <th>Concern</th>
-            <th>Schedule</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      <div class="desktop-table table-wrap">
+        <table style="min-width:1100px;">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Customer</th>
+              <th>Vehicle</th>
+              <th>Requested Service</th>
+              <th>Concern</th>
+              <th>Schedule</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for req in request_rows %}
+            <tr>
+              <td><span class="status {{ (req.status or 'new')|lower }}">{{ req.status or 'new' }}</span></td>
+              <td>
+                <div style="font-weight:800;">{{ req.customer_name or '-' }}</div>
+                <div class="small">{{ req.customer_phone_display or req.customer_phone or '' }}</div>
+                <div class="small">{{ req.customer_email or '' }}</div>
+              </td>
+              <td>
+                <div style="font-weight:800;">{{ req.vehicle or '-' }}</div>
+                <div class="small">{{ req.vin or '' }}</div>
+              </td>
+              <td>{{ req.requested_service or '-' }}</td>
+              <td><div style="max-width:260px;white-space:pre-wrap;">{{ req.concern_details or '-' }}</div></td>
+              <td><div style="max-width:210px;white-space:pre-wrap;">{{ req.preferred_schedule or '-' }}</div></td>
+              <td>{{ req.created_at or '-' }}</td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn-amber" href="/admin/request/{{ req.id }}/use-in-estimator">Use in estimator</a>
+                  {% if (req.status or 'new')|lower != 'contacted' %}
+                  <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                    <input type="hidden" name="status" value="contacted">
+                    <button type="submit" class="btn btn-soft">Mark contacted</button>
+                  </form>
+                  {% endif %}
+                  {% if (req.status or 'new')|lower != 'closed' %}
+                  <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                    <input type="hidden" name="status" value="closed">
+                    <button type="submit" class="btn btn-green">Close request</button>
+                  </form>
+                  {% endif %}
+                  <form method="POST" action="/admin/request/{{ req.id }}/delete" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?');">
+                    <button type="submit" class="btn btn-red">Delete request</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="leads-grid">
         {% for req in request_rows %}
-          <tr>
-            <td><span class="status">{{ req.status or 'new' }}</span></td>
-            <td>
-              <div style="font-weight:800;">{{ req.customer_name or '-' }}</div>
-              <div class="small">{{ req.customer_phone_display or req.customer_phone or '' }}</div>
-              <div class="small">{{ req.customer_email or '' }}</div>
-            </td>
-            <td>
-              <div style="font-weight:800;">{{ req.vehicle or '-' }}</div>
-              <div class="small">{{ req.vin or '' }}</div>
-            </td>
-            <td>{{ req.requested_service or '-' }}</td>
-            <td><div style="max-width:260px;white-space:pre-wrap;">{{ req.concern_details or '-' }}</div></td>
-            <td><div style="max-width:210px;white-space:pre-wrap;">{{ req.preferred_schedule or '-' }}</div></td>
-            <td>{{ req.created_at or '-' }}</td>
-            <td>
-              <div class="actions">
-                <a class="btn btn-amber" href="/?request_id={{ req.id }}">Use in estimator</a>
-                <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
-                  <input type="hidden" name="status" value="contacted">
-                  <button type="submit" class="btn">Mark contacted</button>
-                </form>
-                <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
-                  <input type="hidden" name="status" value="closed">
-                  <button type="submit" class="btn btn-green">Close request</button>
-                </form>
-                <form method="POST" action="/admin/request/{{ req.id }}/delete" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?');">
-                  <button type="submit" class="btn btn-red">Delete request</button>
-                </form>
+          <div class="lead-card">
+            <div class="lead-head">
+              <div>
+                <div class="lead-name">{{ req.customer_name or 'No customer name' }}</div>
+                <div class="lead-vehicle">{{ req.vehicle or '-' }}</div>
               </div>
-            </td>
-          </tr>
+              <span class="status {{ (req.status or 'new')|lower }}">{{ req.status or 'new' }}</span>
+            </div>
+
+            <div class="lead-grid">
+              <div class="detail-box">
+                <div class="label">Phone</div>
+                <div class="value">{{ req.customer_phone_display or req.customer_phone or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Email</div>
+                <div class="value">{{ req.customer_email or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Requested service</div>
+                <div class="value">{{ req.requested_service or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Created</div>
+                <div class="value">{{ req.created_at or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Concern</div>
+                <div class="value">{{ req.concern_details or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Availability</div>
+                <div class="value">{{ req.preferred_schedule or '-' }}</div>
+              </div>
+              {% if req.vin %}
+              <div class="detail-box">
+                <div class="label">VIN</div>
+                <div class="value">{{ req.vin }}</div>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="lead-actions">
+              <a class="btn btn-amber" href="/admin/request/{{ req.id }}/use-in-estimator">Use in estimator</a>
+              {% if (req.status or 'new')|lower != 'contacted' %}
+              <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                <input type="hidden" name="status" value="contacted">
+                <button type="submit" class="btn btn-soft">Mark contacted</button>
+              </form>
+              {% endif %}
+              {% if (req.status or 'new')|lower != 'closed' %}
+              <form method="POST" action="/admin/request/{{ req.id }}/status" class="inline-form">
+                <input type="hidden" name="status" value="closed">
+                <button type="submit" class="btn btn-green">Close request</button>
+              </form>
+              {% endif %}
+              <form method="POST" action="/admin/request/{{ req.id }}/delete" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?');">
+                <button type="submit" class="btn btn-red">Delete request</button>
+              </form>
+            </div>
+          </div>
         {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      </div>
     {% else %}
-      <div class="flash" style="margin-top:14px;">No website quote requests yet.</div>
+      <div class="empty">No website leads yet.</div>
     {% endif %}
   </div>
+
   <div class="card">
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="flash-holder" style="margin-bottom:14px;">
-          {% for message in messages %}
-            <div class="flash">{{ message }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    <div class="section-top">
+      <div>
+        <div class="kicker">Quotes</div>
+        <h2>Saved Quotes</h2>
+        <div class="sub">Open, edit, convert to invoice, or copy your send text without digging through long rows.</div>
+      </div>
+    </div>
 
-    <div class="flash-holder" style="margin-bottom:14px;"></div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>Customer</th>
-            <th>Vehicle</th>
-            <th>Phone</th>
-            <th>Send Link</th>
-            <th>Created</th>
-            <th>Signed</th>
-            <th>Invoice</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for row in rows %}
-          <tr>
-            <td>
-              <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">
-                {{ row.status or 'quote' }}
-              </span>
-            </td>
-
-            <td>
-              <div style="font-weight:800;">{{ row.customer_name or '-' }}</div>
-              <div class="small">{{ row.customer_email or '' }}</div>
-            </td>
-
-            <td>
-              <div style="font-weight:800;">{{ row.vehicle or '-' }}</div>
-              <div class="small">{{ row.vin or '' }}</div>
-            </td>
-
-            <td>
-              <div>{{ row.customer_phone_display or row.customer_phone or '-' }}</div>
-              {% if row.customer_phone_e164 %}<div class="small">{{ row.customer_phone_e164 }}</div>{% endif %}
-            </td>
-
-            <td>
-              {% if row.quote_token %}
-                <div style="font-weight:800;color:var(--accent);margin-bottom:4px;">Send this link</div>
-                <a href="{{ row.quote_url_external }}" target="_blank" class="link">Open live quote</a>
-                <div class="small" style="margin-top:4px;word-break:break-all;">{{ row.quote_url_external }}</div>
-                {% if row.quote_public_key and row.quote_public_key != row.quote_token %}<div class="small" style="margin-top:4px;">Personal link key: <strong>{{ row.quote_public_key }}</strong></div>{% endif %}
-              {% else %}
-                <span class="small">No quote link</span>
-              {% endif %}
-            </td>
-            <td>{{ row.created_at or '-' }}</td>
-
-            <td>
-              <div>{{ row.signed_name or '-' }}</div>
-              <div class="small">{{ row.signed_at or '' }}</div>
-            </td>
-
-            <td>
-              <div style="font-weight:800;">{{ row.invoice_number or '-' }}</div>
-              <div class="small">
-                Quote link ready
-              </div>
-            </td>
-
-            <td>
-              <div class="actions">
+    {% if rows and rows|length > 0 %}
+      <div class="desktop-table table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Customer</th>
+              <th>Vehicle</th>
+              <th>Phone</th>
+              <th>Send Link</th>
+              <th>Created</th>
+              <th>Signed</th>
+              <th>Invoice</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>
+                <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">
+                  {{ row.status or 'quote' }}
+                </span>
+              </td>
+              <td>
+                <div style="font-weight:800;">{{ row.customer_name or '-' }}</div>
+                <div class="small">{{ row.customer_email or '' }}</div>
+              </td>
+              <td>
+                <div style="font-weight:800;">{{ row.vehicle or '-' }}</div>
+                <div class="small">{{ row.vin or '' }}</div>
+              </td>
+              <td>
+                <div>{{ row.customer_phone_display or row.customer_phone or '-' }}</div>
+                {% if row.customer_phone_e164 %}<div class="small">{{ row.customer_phone_e164 }}</div>{% endif %}
+              </td>
+              <td>
                 {% if row.quote_token %}
-                  <a href="/quote/{{ row.quote_public_key or row.quote_token }}" target="_blank" class="link">Open quote</a>
-                  {% if row.status not in ['approved', 'invoiced'] %}
-                  <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
-                  {% endif %}
-
-                  <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy ready-to-send text</button>
-                  <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
+                  <div style="font-weight:800;color:var(--accent);margin-bottom:4px;">Send this link</div>
+                  <a href="{{ row.quote_url_external }}" target="_blank" class="link">Open live quote</a>
+                  <div class="small" style="margin-top:4px;word-break:break-all;">{{ row.quote_url_external }}</div>
                 {% else %}
                   <span class="small">No quote link</span>
                 {% endif %}
+              </td>
+              <td>{{ row.created_at or '-' }}</td>
+              <td>
+                <div>{{ row.signed_name or '-' }}</div>
+                <div class="small">{{ row.signed_at or '' }}</div>
+              </td>
+              <td>
+                <div style="font-weight:800;">{{ row.invoice_number or '-' }}</div>
+                <div class="small">Quote link ready</div>
+              </td>
+              <td>
+                <div class="actions">
+                  {% if row.quote_token %}
+                    <a href="/quote/{{ row.quote_token }}" target="_blank" class="link">Open quote</a>
+                    {% if row.status not in ['approved', 'invoiced'] %}
+                    <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
+                    {% endif %}
+                    <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy ready-to-send text</button>
+                    <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
+                  {% else %}
+                    <span class="small">No quote link</span>
+                  {% endif %}
 
-                {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
-                  <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
-                {% endif %}
+                  {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
+                    <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
+                  {% endif %}
 
-                {% if row.invoice_number %}
-                  <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="link">Open invoice</a>
-                  <form method="POST" action="/admin/delete_invoice/{{ row.invoice_number }}" class="inline-form" onsubmit="return confirm('Delete invoice {{ row.invoice_number }}? This keeps the quote but removes the invoice.');">
-                    <button type="submit" class="btn btn-red">Delete invoice</button>
+                  {% if row.invoice_number %}
+                    <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="link">Open invoice</a>
+                  {% endif %}
+
+                  <form method="POST" action="/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote?');">
+                    <button type="submit" class="btn btn-red">Delete quote</button>
                   </form>
-                {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-                {% if row.status in ['approved', 'invoiced'] and row.quote_token %}
-                  <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and signature for this quote?');">
-                    <button type="submit" class="btn btn-amber" {% if row.invoice_number %}disabled title="Delete invoice first" style="opacity:.55;cursor:not-allowed;"{% endif %}>Clear approval</button>
-                  </form>
-                {% endif %}
-
-                <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote and any linked invoice? This cannot be undone.');">
-                  <button type="submit" class="btn btn-red">Delete quote</button>
-                </form>
+      <div class="quotes-grid">
+        {% for row in rows %}
+          <div class="quote-card">
+            <div class="quote-head">
+              <div>
+                <div class="quote-name">{{ row.customer_name or '-' }}</div>
+                <div class="quote-vehicle">{{ row.vehicle or '-' }}</div>
               </div>
-            </td>
-          </tr>
+              <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">{{ row.status or 'quote' }}</span>
+            </div>
+
+            <div class="quote-grid">
+              <div class="detail-box">
+                <div class="label">Phone</div>
+                <div class="value">{{ row.customer_phone_display or row.customer_phone or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Email</div>
+                <div class="value">{{ row.customer_email or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Created</div>
+                <div class="value">{{ row.created_at or '-' }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Signed</div>
+                <div class="value">{{ row.signed_name or '-' }}{% if row.signed_at %}<br><span class="small">{{ row.signed_at }}</span>{% endif %}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Quote link</div>
+                <div class="value">{% if row.quote_token %}Ready to send{% else %}No link{% endif %}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Invoice</div>
+                <div class="value">{{ row.invoice_number or '-' }}</div>
+              </div>
+            </div>
+
+            <div class="quote-actions">
+              {% if row.quote_token %}
+                <a href="/quote/{{ row.quote_token }}" target="_blank" class="btn btn-soft">Open quote</a>
+                {% if row.status not in ['approved', 'invoiced'] %}
+                <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
+                {% endif %}
+                <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy send text</button>
+                <button type="button" class="btn btn-soft copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
+              {% endif %}
+
+              {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
+                <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
+              {% endif %}
+              {% if row.invoice_number %}
+                <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="btn btn-soft">Open invoice</a>
+              {% endif %}
+              <form method="POST" action="/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote?');">
+                <button type="submit" class="btn btn-red">Delete quote</button>
+              </form>
+            </div>
+          </div>
         {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      </div>
+    {% else %}
+      <div class="empty">No saved quotes yet.</div>
+    {% endif %}
   </div>
 </div>
+
 <script>
-async function copyToClipboard(text){
-  if (navigator.clipboard && window.isSecureContext) {
+async function copyText(text){
+  try{
     await navigator.clipboard.writeText(text);
-    return true;
+    alert('Copied.');
+  }catch(err){
+    const area=document.createElement('textarea');
+    area.value=text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    alert('Copied.');
   }
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.setAttribute('readonly', '');
-  ta.style.position = 'absolute';
-  ta.style.left = '-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(ta);
-  return ok;
 }
 
-function showBanner(message){
-  const holder = document.querySelector('.flash-holder');
-  if (!holder) return;
-  const div = document.createElement('div');
-  div.className = 'flash';
-  div.textContent = message;
-  holder.prepend(div);
-  setTimeout(() => {
-    div.style.opacity = '0';
-    setTimeout(() => div.remove(), 250);
-  }, 2600);
-}
-
-document.querySelectorAll('.copy-text-btn').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const original = btn.textContent;
-    btn.disabled = true;
-    try {
-      const res = await fetch(btn.dataset.copyUrl, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
-      if (!res.ok) throw new Error('Unable to build text message');
-      const data = await res.json();
-      await copyToClipboard(data.message);
-      btn.textContent = 'Copied';
-      showBanner(`Ready-to-send text copied${data.phone_display ? ` for ${data.phone_display}` : ''}. Paste it into your phone and send it.`);
-    } catch (err) {
-      showBanner(err.message || 'Could not copy the text message.');
-    } finally {
-      setTimeout(() => {
-        btn.textContent = original;
-        btn.disabled = false;
-      }, 1500);
-    }
+document.querySelectorAll('.copy-link-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const link=btn.getAttribute('data-quote-link') || '';
+    if(link) copyText(link);
   });
 });
 
-document.querySelectorAll('.copy-link-btn').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const original = btn.textContent;
-    btn.disabled = true;
-    try {
-      await copyToClipboard(btn.dataset.quoteLink);
-      btn.textContent = 'Copied';
-      showBanner('Quote link copied. You can paste it into a text or email.');
-    } catch (err) {
-      showBanner('Could not copy the quote link.');
-    } finally {
-      setTimeout(() => {
-        btn.textContent = original;
-        btn.disabled = false;
-      }, 1500);
+document.querySelectorAll('.copy-text-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const url=btn.getAttribute('data-copy-url');
+    if(!url) return;
+    btn.disabled=true;
+    const oldText=btn.textContent;
+    btn.textContent='Copying...';
+    try{
+      const res=await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+      const data=await res.json();
+      if(!res.ok || !data.ok) throw new Error(data.error || 'Could not build message.');
+      await copyText(data.text || '');
+    }catch(err){
+      alert(err.message || 'Could not copy message.');
+    }finally{
+      btn.disabled=false;
+      btn.textContent=oldText;
     }
   });
 });

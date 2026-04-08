@@ -112,7 +112,7 @@
     <div class="page-header">
       <div>
         <h1>{% if edit_mode %}Edit Quote{% else %}DJ's Estimate Builder{% endif %}</h1>
-        {% if request_prefill and not edit_mode %}<div class="pill-row" style="margin-top:8px;"><div class="pill" style="border-color:rgba(212,175,55,.35);color:#fff;">Prefilled from website request #{{ request_prefill.id }}</div>{% if request_prefill.requested_service %}<div class="pill">Requested: {{ request_prefill.requested_service }}</div>{% endif %}</div>{% endif %}
+        {% if request_prefill and not edit_mode %}<div class="pill-row" style="margin-top:8px;"><div class="pill" style="border-color:rgba(212,175,55,.35);color:#fff;">Prefilled from website request #{{ request_prefill.id }}</div>{% if request_prefill.requested_service %}<div class="pill">Requested: {{ request_prefill.requested_service }}</div>{% endif %}{% if request_prefill.preferred_schedule %}<div class="pill">Schedule: {{ request_prefill.preferred_schedule }}</div>{% endif %}</div>{% endif %}
         <div class="subtle">{% if edit_mode %}Update the quote below. The same live quote link stays active until the customer approves it.{% else %}List + retail markup builder, custom presets, and hidden cost tracking.{% endif %}</div>
       </div>
       <a class="inspection-link" href="/admin">Admin</a>
