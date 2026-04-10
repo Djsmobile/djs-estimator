@@ -2,8 +2,9 @@ import os
 import json
 import sqlite3
 import secrets
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash
+from datetime import datetime, timedelta
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -18,7 +19,9 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(16))
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "DJs2025!")
 
 DEFAULT_LABOR_RATE = 150.00
 DEFAULT_TAX_RATE = 7.25
@@ -240,6 +243,67 @@ def safe_bool(value, default=False):
     if text in {"0", "false", "no", "off", ""}:
         return False
     return default
+
+
+def safe_int(value, default=0):
+    try:
+        return int(value if value not in (None, "") else default)
+    except (TypeError, ValueError):
+        return default
+
+
+app.permanent_session_lifetime = timedelta(minutes=max(safe_int(os.environ.get("ADMIN_SESSION_MINUTES"), 120), 15))
+
+
+def admin_login_url():
+    next_url = request.full_path if request.query_string else request.path
+    return url_for("login", next=next_url)
+
+
+def login_admin_session():
+    session.clear()
+    session.permanent = True
+    session["admin_logged_in"] = True
+    session["admin_last_seen"] = datetime.now().isoformat()
+
+
+def clear_admin_session():
+    session.pop("admin_logged_in", None)
+    session.pop("admin_last_seen", None)
+
+
+def admin_session_active():
+    if not session.get("admin_logged_in"):
+        return False
+
+    raw_last_seen = session.get("admin_last_seen")
+    if not raw_last_seen:
+        clear_admin_session()
+        return False
+
+    try:
+        last_seen = datetime.fromisoformat(raw_last_seen)
+    except (TypeError, ValueError):
+        clear_admin_session()
+        return False
+
+    if datetime.now() - last_seen > app.permanent_session_lifetime:
+        clear_admin_session()
+        return False
+
+    session["admin_last_seen"] = datetime.now().isoformat()
+    session.permanent = True
+    return True
+
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        if not admin_session_active():
+            flash("Please log in to access the admin area.")
+            return redirect(admin_login_url())
+        return view_func(*args, **kwargs)
+    return wrapped_view
 
 
 def table_columns(conn, table_name):
@@ -1251,6 +1315,7 @@ def approve_quote(token):
 
 
 @app.route("/convert_invoice/<token>", methods=["GET"])
+@admin_required
 def convert_invoice(token):
     conn = get_db()
     cur = conn.cursor()
@@ -1360,7 +1425,34 @@ def view_invoice(invoice_number):
     )
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if admin_session_active():
+        return redirect(url_for("admin"))
+
+    next_url = request.args.get("next") or request.form.get("next") or url_for("admin")
+    if request.method == "POST":
+        password = (request.form.get("password") or "").strip()
+        if password == ADMIN_PASSWORD:
+            login_admin_session()
+            flash("Admin login successful.")
+            if next_url and next_url.startswith("/"):
+                return redirect(next_url)
+            return redirect(url_for("admin"))
+        flash("Incorrect admin password.")
+
+    return render_template("login.html", next_url=next_url, session_minutes=int(app.permanent_session_lifetime.total_seconds() // 60))
+
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    clear_admin_session()
+    flash("Logged out.")
+    return redirect(url_for("login"))
+
+
 @app.route("/admin", methods=["GET"])
+@admin_required
 def admin():
     conn = get_db()
     cur = conn.cursor()
@@ -1445,7 +1537,19 @@ def request_quote():
     return render_template("request_quote.html", submitted=False)
 
 
+@app.route("/admin/request/<int:request_id>/use-in-estimator", methods=["GET"])
+@admin_required
+def use_request_in_estimator(request_id):
+    conn = get_db()
+    row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
+    conn.close()
+    if not row:
+        abort(404)
+    return redirect(url_for("index", request_id=request_id))
+
+
 @app.route("/admin/request/<int:request_id>/status", methods=["POST"])
+@admin_required
 def update_request_quote_status(request_id):
     new_status = (request.form.get("status") or "new").strip().lower()
     allowed_statuses = {"new", "contacted", "quoted", "closed"}
@@ -1466,6 +1570,7 @@ def update_request_quote_status(request_id):
 
 
 @app.route("/admin/request/<int:request_id>/delete", methods=["POST"])
+@admin_required
 def delete_request_quote(request_id):
     conn = get_db()
     row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
@@ -1481,6 +1586,7 @@ def delete_request_quote(request_id):
 
 
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])
+@admin_required
 def mark_paid(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1500,6 +1606,7 @@ def mark_paid(invoice_number):
 
 
 @app.route("/admin/copy_quote_text/<token>", methods=["GET"])
+@admin_required
 def copy_quote_text(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1510,6 +1617,7 @@ def copy_quote_text(token):
     return jsonify({
         "ok": True,
         "message": build_copy_text_message(quote),
+        "text": build_copy_text_message(quote),
         "quote_url": build_quote_url_external(quote),
         "phone": normalize_phone_number(quote["customer_phone"]),
         "phone_display": display_phone_number(quote["customer_phone"]),
@@ -1519,6 +1627,7 @@ def copy_quote_text(token):
 
 
 @app.route("/send_quote_sms/<token>", methods=["POST"])
+@admin_required
 def send_quote_sms(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1530,6 +1639,7 @@ def send_quote_sms(token):
 
 
 @app.route("/admin/delete_invoice/<invoice_number>", methods=["POST"])
+@admin_required
 def delete_invoice(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1548,6 +1658,7 @@ def delete_invoice(invoice_number):
 
 
 @app.route("/admin/clear_approval/<token>", methods=["POST"])
+@admin_required
 def clear_approval(token):
     conn = get_db()
     cur = conn.cursor()
@@ -1580,7 +1691,9 @@ def clear_approval(token):
     return redirect(url_for("admin"))
 
 
+@app.route("/delete_quote/<int:quote_id>", methods=["POST"])
 @app.route("/admin/delete_quote/<int:quote_id>", methods=["POST"])
+@admin_required
 def delete_quote(quote_id):
     conn = get_db()
     cur = conn.cursor()

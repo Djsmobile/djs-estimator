@@ -2,45 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DJ's Mobile Mechanic Login</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DJ's Admin Login</title>
   <style>
     :root{
-      --bg:#090a0d;--panel:rgba(19,22,29,.98);--text:#f3f4f6;--muted:#a1a1aa;
-      --line:rgba(255,255,255,.10);--accent:#d4af37;
+      --bg:#090b10;
+      --bg-2:#0f131b;
+      --card:rgba(20,24,33,.98);
+      --text:#f3f4f6;
+      --muted:#a1a1aa;
+      --border:rgba(255,255,255,.10);
+      --accent:#d4af37;
+      --danger:#fecaca;
+      --danger-bg:#3a1818;
+      --shadow:0 18px 40px rgba(0,0,0,.30);
     }
     *{box-sizing:border-box}
     body{
-      margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--text);
-      background:radial-gradient(circle at top left, rgba(212,175,55,.08), transparent 24%),linear-gradient(180deg,#0d1016 0%,#090a0d 58%,#06070a 100%);
-      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      font-family:Arial,Helvetica,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(212,175,55,.09), transparent 24%),
+        radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 18%),
+        linear-gradient(180deg, #0d1016 0%, var(--bg) 55%, #06070a 100%);
     }
     .card{
-      width:min(100%, 460px);background:linear-gradient(180deg, rgba(20,24,33,.98), rgba(14,17,24,.98));
-      border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:24px;box-shadow:0 18px 40px rgba(0,0,0,.30);
+      width:min(100%, 460px);
+      background:linear-gradient(180deg, rgba(20,24,33,.98), rgba(14,17,24,.98));
+      border:1px solid var(--border);
+      border-radius:24px;
+      padding:24px;
+      box-shadow:var(--shadow);
     }
-    .kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
-    h1{margin:0 0 10px;font-size:30px;line-height:1.05}
-    p{margin:0 0 18px;color:var(--muted);line-height:1.45}
-    label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
+    .kicker{
+      color:var(--accent);
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.14em;
+      margin-bottom:8px;
+    }
+    h1{
+      margin:0;
+      font-size:30px;
+      line-height:1.03;
+    }
+    .sub{
+      color:var(--muted);
+      margin-top:8px;
+      font-size:14px;
+      line-height:1.5;
+    }
+    .flash{
+      margin-top:16px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:var(--danger-bg);
+      color:var(--danger);
+      border:1px solid rgba(248,113,113,.20);
+      font-weight:700;
+    }
+    form{margin-top:18px}
+    label{
+      display:block;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      margin-bottom:6px;
+      letter-spacing:.03em;
+    }
     input{
-      width:100%;padding:12px;border-radius:14px;border:1px solid var(--line);
-      background:linear-gradient(180deg,#121722,#0f141c);color:var(--text);outline:none;
+      width:100%;
+      padding:13px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.16);
+      background:linear-gradient(180deg, #121722, #0f141c);
+      color:var(--text);
+      outline:none;
     }
-    input:focus{border-color:rgba(212,175,55,.5);box-shadow:0 0 0 3px rgba(212,175,55,.12)}
-    button{
-      appearance:none;border:none;border-radius:14px;padding:12px 18px;font-size:14px;font-weight:900;cursor:pointer;
-      background:linear-gradient(180deg,#ebc85b,var(--accent));color:#111;box-shadow:0 10px 24px rgba(212,175,55,.18);width:100%;margin-top:16px;
+    input:focus{
+      border-color:rgba(212,175,55,.48);
+      box-shadow:0 0 0 3px rgba(212,175,55,.10);
     }
-    .flash{padding:12px 14px;border-radius:14px;background:#1f2937;color:#f9fafb;border:1px solid rgba(255,255,255,.12);margin-bottom:14px}
-    .help{margin-top:12px;font-size:12px;color:var(--muted)}
+    .btn{
+      width:100%;
+      margin-top:16px;
+      padding:13px 16px;
+      border:none;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:900;
+      color:#111;
+      background:linear-gradient(180deg,#ebc85b,var(--accent));
+      box-shadow:0 10px 24px rgba(212,175,55,.18);
+    }
+    .footer{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+    }
+    .footer a{
+      color:#fff;
+      text-decoration:none;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="kicker">Protected Access</div>
-    <h1>Estimator Login</h1>
-    <p>Enter your password to open the estimator and admin tools.</p>
+    <div class="kicker">Shop Control Center</div>
+    <h1>Admin Login</h1>
+    <div class="sub">Enter your admin password to open quotes, leads, invoices, and cleanup tools. Session timeout is set for {{ session_minutes }} minutes.</div>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -50,14 +128,16 @@
       {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('login') }}">
-      <input type="hidden" name="next" value="{{ next_url or url_for('admin') }}">
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>
-      <button type="submit">Unlock</button>
+    <form method="POST" action="/login">
+      <input type="hidden" name="next" value="{{ next_url or '/admin' }}">
+      <label for="password">Admin password</label>
+      <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
+      <button class="btn" type="submit">Open Admin</button>
     </form>
 
-    <div class="help">Customers can still use your public request form and live quote links without this password.</div>
+    <div class="footer">
+      <a href="/">Back to estimator</a>
+    </div>
   </div>
 </body>
 </html>

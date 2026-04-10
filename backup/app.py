@@ -100,6 +100,41 @@ def slugify(value):
     return cleaned.strip('_') or 'preset'
 
 
+def build_quote_slug_base(customer_name, vehicle=''):
+    customer_name = (customer_name or '').strip()
+    vehicle = (vehicle or '').strip()
+    name_parts = [part for part in customer_name.replace(',', ' ').split() if part]
+    last_name = slugify(name_parts[-1]) if name_parts else 'customer'
+    vehicle_words = [part for part in vehicle.replace('-', ' ').split() if part]
+    vehicle_hint = slugify(' '.join(vehicle_words[-2:])) if vehicle_words else ''
+    if vehicle_hint and vehicle_hint != 'preset':
+        return f"{last_name}-{vehicle_hint}"
+    return last_name
+
+
+def generate_quote_public_slug(conn, customer_name, vehicle=''):
+    base = build_quote_slug_base(customer_name, vehicle)
+    for _ in range(50):
+        suffix = secrets.token_hex(2)
+        slug = f"{base}-{suffix}"
+        existing = conn.execute("SELECT id FROM quotes WHERE public_slug = ?", (slug,)).fetchone()
+        if not existing:
+            return slug
+    return f"{base}-{secrets.token_hex(4)}"
+
+
+def get_quote_public_key(quote):
+    if not quote:
+        return ''
+    if isinstance(quote, sqlite3.Row):
+        slug = quote['public_slug'] if 'public_slug' in quote.keys() else ''
+        token = quote['quote_token'] if 'quote_token' in quote.keys() else ''
+    else:
+        slug = quote.get('public_slug', '')
+        token = quote.get('quote_token', '')
+    return (slug or token or '').strip()
+
+
 def normalize_preset_jobs(jobs):
     normalized_jobs = []
     if not isinstance(jobs, list):
@@ -152,16 +187,20 @@ def get_public_base_url():
         return ''
 
 
-def build_quote_url_external(token):
+def build_quote_url_external(quote_or_key):
     base = get_public_base_url()
-    return f"{base}/quote/{token}" if base else f"/quote/{token}"
+    if isinstance(quote_or_key, (sqlite3.Row, dict)):
+        key = get_quote_public_key(quote_or_key)
+    else:
+        key = str(quote_or_key or '').strip()
+    return f"{base}/quote/{key}" if base else f"/quote/{key}"
 
 
 def build_copy_text_message(quote):
     customer_name = (quote['customer_name'] or '').strip()
     first_name = customer_name.split()[0] if customer_name else 'there'
     vehicle = (quote['vehicle'] or 'your vehicle').strip()
-    quote_url = build_quote_url_external(quote['quote_token'])
+    quote_url = build_quote_url_external(quote)
 
     lines = [
         f"Hey {first_name}, this is DJ with DJ's Mobile Mechanic.",
@@ -244,6 +283,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS quotes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         quote_token TEXT UNIQUE,
+        public_slug TEXT UNIQUE,
         created_at TEXT,
         customer_id INTEGER,
         vehicle_id INTEGER,
@@ -292,9 +332,27 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS request_quotes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT,
+        customer_name TEXT,
+        customer_phone TEXT,
+        customer_email TEXT,
+        vehicle TEXT,
+        vin TEXT,
+        requested_service TEXT,
+        concern_details TEXT,
+        preferred_schedule TEXT,
+        status TEXT DEFAULT 'new',
+        source TEXT DEFAULT 'website'
+    )
+    """)
+
     conn.commit()
 
     add_column_if_missing(conn, "quotes", "quote_token", "TEXT")
+    add_column_if_missing(conn, "quotes", "public_slug", "TEXT")
     add_column_if_missing(conn, "quotes", "customer_id", "INTEGER")
     add_column_if_missing(conn, "quotes", "vehicle_id", "INTEGER")
     add_column_if_missing(conn, "quotes", "approved_json", "TEXT")
@@ -307,6 +365,18 @@ def init_db():
     add_column_if_missing(conn, "invoices", "payment_status", "TEXT DEFAULT 'unpaid'")
     add_column_if_missing(conn, "invoices", "payment_method", "TEXT")
     add_column_if_missing(conn, "invoices", "paid_at", "TEXT")
+
+    add_column_if_missing(conn, "request_quotes", "created_at", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "customer_name", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "customer_phone", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "customer_email", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "vehicle", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "vin", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "requested_service", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "concern_details", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "preferred_schedule", "TEXT")
+    add_column_if_missing(conn, "request_quotes", "status", "TEXT DEFAULT 'new'")
+    add_column_if_missing(conn, "request_quotes", "source", "TEXT DEFAULT 'website'")
 
     conn.commit()
     conn.close()
@@ -731,6 +801,18 @@ def get_all_job_presets(conn):
     return presets
 
 
+def get_request_quote(conn, request_id):
+    try:
+        request_id_int = int(request_id)
+    except (TypeError, ValueError):
+        return None
+
+    return conn.execute(
+        "SELECT * FROM request_quotes WHERE id = ?",
+        (request_id_int,),
+    ).fetchone()
+
+
 def upsert_saved_preset(conn, preset_name, jobs):
     preset_name = (preset_name or '').strip()
     normalized_jobs = normalize_preset_jobs(jobs)
@@ -789,11 +871,12 @@ def get_customers_and_vehicles(conn):
 
 
 
-def build_estimate_builder_context(conn, quote_row=None):
+def build_estimate_builder_context(conn, quote_row=None, request_prefill=None):
     customers, vehicles = get_customers_and_vehicles(conn)
     all_job_presets = get_all_job_presets(conn)
 
     existing_quote = dict(quote_row) if quote_row else None
+    request_prefill = dict(request_prefill) if request_prefill else None
     initial_jobs = []
     initial_inspection_items = []
 
@@ -815,6 +898,10 @@ def build_estimate_builder_context(conn, quote_row=None):
         "edit_mode": bool(existing_quote),
         "quote_token": existing_quote.get("quote_token", "") if existing_quote else "",
         "existing_quote": existing_quote,
+        "request_prefill": request_prefill,
+        "initial_request_id": request_prefill.get("id", "") if request_prefill else "",
+        "initial_request_service": request_prefill.get("requested_service", "") if request_prefill else "",
+        "existing_quote": existing_quote,
         "initial_jobs_json": json.dumps(initial_jobs),
         "initial_inspection_items_json": json.dumps(initial_inspection_items),
     }
@@ -823,7 +910,8 @@ def build_estimate_builder_context(conn, quote_row=None):
 @app.route("/", methods=["GET"])
 def index():
     conn = get_db()
-    context = build_estimate_builder_context(conn)
+    request_prefill = get_request_quote(conn, request.args.get("request_id")) if request.args.get("request_id") else None
+    context = build_estimate_builder_context(conn, request_prefill=request_prefill)
     conn.close()
     return render_template("index.html", **context)
 
@@ -978,6 +1066,7 @@ def save_quote():
         })
 
     payload = {"jobs": jobs}
+    request_quote_id = request.form.get("request_quote_id", "").strip()
 
     conn = get_db()
     cur = conn.cursor()
@@ -990,6 +1079,7 @@ def save_quote():
             return redirect(url_for("admin"))
 
     token = existing_quote["quote_token"] if existing_quote else generate_token()
+    public_slug = (existing_quote["public_slug"] if existing_quote and "public_slug" in existing_quote.keys() else "") or generate_quote_public_slug(conn, customer_name, vehicle)
     inspection_data = build_inspection_from_request(request.form, request.files, token=token)
 
     customer_id = find_or_create_customer(conn, customer_name, customer_phone, customer_email)
@@ -1001,7 +1091,7 @@ def save_quote():
             UPDATE quotes
             SET customer_id = ?, vehicle_id = ?, customer_name = ?, customer_phone = ?,
                 customer_email = ?, vehicle = ?, vin = ?, labor_rate = ?, tax_rate = ?,
-                service_fee = ?, payload_json = ?, inspection_json = ?, status = 'quote',
+                service_fee = ?, payload_json = ?, inspection_json = ?, public_slug = ?, status = 'quote',
                 approved_json = NULL, signature_data = NULL, signed_name = NULL, signed_at = NULL
             WHERE quote_token = ?
             """,
@@ -1018,6 +1108,7 @@ def save_quote():
                 service_fee,
                 json.dumps(payload),
                 json.dumps(inspection_data),
+                public_slug,
                 token,
             ),
         )
@@ -1025,13 +1116,14 @@ def save_quote():
         cur.execute(
             """
             INSERT INTO quotes (
-                quote_token, created_at, customer_id, vehicle_id, customer_name, customer_phone,
+                quote_token, public_slug, created_at, customer_id, vehicle_id, customer_name, customer_phone,
                 customer_email, vehicle, vin, labor_rate, tax_rate, service_fee, payload_json, inspection_json, status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 token,
+                public_slug,
                 datetime.now().isoformat(),
                 customer_id,
                 vehicle_id,
@@ -1049,15 +1141,25 @@ def save_quote():
             ),
         )
 
+    if request_quote_id:
+        try:
+            request_quote_id_int = int(request_quote_id)
+            cur.execute(
+                "UPDATE request_quotes SET status = 'quoted' WHERE id = ?",
+                (request_quote_id_int,),
+            )
+        except (TypeError, ValueError):
+            pass
+
     conn.commit()
     conn.close()
-    return redirect(url_for("view_quote", token=token))
+    return redirect(url_for("view_quote", token=public_slug or token))
 
 
 @app.route("/quote/<token>")
 def view_quote(token):
     conn = get_db()
-    row = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
+    row = conn.execute("SELECT * FROM quotes WHERE quote_token = ? OR public_slug = ?", (token, token)).fetchone()
     conn.close()
 
     if row is None:
@@ -1276,17 +1378,106 @@ def admin():
         """
     )
     raw_rows = cur.fetchall()
+    request_rows_raw = cur.execute(
+        "SELECT * FROM request_quotes ORDER BY created_at DESC, id DESC"
+    ).fetchall()
     conn.close()
 
     rows = []
     for row in raw_rows:
         row_dict = dict(row)
-        row_dict["quote_url_external"] = build_quote_url_external(row["quote_token"]) if row["quote_token"] else ""
+        row_dict["quote_public_key"] = get_quote_public_key(row_dict)
+        row_dict["quote_url_external"] = build_quote_url_external(row_dict) if row_dict.get("quote_public_key") else ""
         row_dict["customer_phone_display"] = display_phone_number(row["customer_phone"])
         row_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         rows.append(row_dict)
 
-    return render_template("admin_quotes.html", rows=rows)
+    request_rows = []
+    for row in request_rows_raw:
+        request_dict = dict(row)
+        request_dict["customer_phone_display"] = display_phone_number(row["customer_phone"])
+        request_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
+        request_rows.append(request_dict)
+
+    return render_template("admin_quotes.html", rows=rows, request_rows=request_rows)
+
+
+@app.route("/request-quote", methods=["GET", "POST"])
+@app.route("/request_quote", methods=["GET", "POST"])
+def request_quote():
+    if request.method == "POST":
+        customer_name = request.form.get("customer_name", "").strip()
+        customer_phone = request.form.get("customer_phone", "").strip()
+        customer_email = request.form.get("customer_email", "").strip()
+        vehicle = request.form.get("vehicle", "").strip()
+        vin = request.form.get("vin", "").strip().upper()
+        requested_service = request.form.get("requested_service", "").strip()
+        concern_details = request.form.get("concern_details", "").strip()
+        preferred_schedule = request.form.get("preferred_schedule", "").strip()
+
+        conn = get_db()
+        conn.execute(
+            """
+            INSERT INTO request_quotes (
+                created_at, customer_name, customer_phone, customer_email, vehicle, vin,
+                requested_service, concern_details, preferred_schedule, status, source
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now().isoformat(),
+                customer_name,
+                customer_phone,
+                customer_email,
+                vehicle,
+                vin,
+                requested_service,
+                concern_details,
+                preferred_schedule,
+                "new",
+                "website",
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return render_template("request_quote.html", submitted=True)
+
+    return render_template("request_quote.html", submitted=False)
+
+
+@app.route("/admin/request/<int:request_id>/status", methods=["POST"])
+def update_request_quote_status(request_id):
+    new_status = (request.form.get("status") or "new").strip().lower()
+    allowed_statuses = {"new", "contacted", "quoted", "closed"}
+    if new_status not in allowed_statuses:
+        new_status = "new"
+
+    conn = get_db()
+    row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
+    if not row:
+        conn.close()
+        abort(404)
+
+    conn.execute("UPDATE request_quotes SET status = ? WHERE id = ?", (new_status, request_id))
+    conn.commit()
+    conn.close()
+    flash(f"Request #{request_id} updated to {new_status}.")
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/request/<int:request_id>/delete", methods=["POST"])
+def delete_request_quote(request_id):
+    conn = get_db()
+    row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
+    if not row:
+        conn.close()
+        abort(404)
+
+    conn.execute("DELETE FROM request_quotes WHERE id = ?", (request_id,))
+    conn.commit()
+    conn.close()
+    flash(f"Request #{request_id} deleted.")
+    return redirect(url_for("admin"))
 
 
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])
@@ -1319,7 +1510,7 @@ def copy_quote_text(token):
     return jsonify({
         "ok": True,
         "message": build_copy_text_message(quote),
-        "quote_url": build_quote_url_external(token),
+        "quote_url": build_quote_url_external(quote),
         "phone": normalize_phone_number(quote["customer_phone"]),
         "phone_display": display_phone_number(quote["customer_phone"]),
         "customer_name": quote["customer_name"] or "",
