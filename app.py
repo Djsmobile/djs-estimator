@@ -2,9 +2,11 @@ import os
 import json
 import sqlite3
 import secrets
+import smtplib
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session, make_response
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -20,6 +22,12 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(16))
+
+try:
+    from weasyprint import HTML
+except Exception:
+    HTML = None
+
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "DJs2025!")
 
@@ -215,6 +223,113 @@ def build_copy_text_message(quote):
         "Let me know if you have any questions.",
     ]
     return '\n'.join(lines)
+
+
+def get_email_settings():
+    return {
+        "host": (os.environ.get("SMTP_HOST") or "").strip(),
+        "port": safe_int(os.environ.get("SMTP_PORT"), 587),
+        "username": (os.environ.get("SMTP_USERNAME") or "").strip(),
+        "password": (os.environ.get("SMTP_PASSWORD") or "").strip(),
+        "from_email": (os.environ.get("MAIL_FROM") or os.environ.get("SMTP_USERNAME") or "").strip(),
+        "from_name": (os.environ.get("MAIL_FROM_NAME") or "DJ's Mobile Mechanic").strip(),
+        "use_tls": safe_bool(os.environ.get("SMTP_USE_TLS"), True),
+        "reply_to": (os.environ.get("MAIL_REPLY_TO") or os.environ.get("MAIL_FROM") or os.environ.get("SMTP_USERNAME") or "").strip(),
+    }
+
+
+def email_settings_ready():
+    settings = get_email_settings()
+    return bool(settings["host"] and settings["port"] and settings["username"] and settings["password"] and settings["from_email"])
+
+
+def get_quote_email_subject(quote):
+    customer_name = (quote["customer_name"] or "Customer").strip()
+    vehicle = (quote["vehicle"] or "your vehicle").strip()
+    return f"Your Quote from DJ's Mobile Mechanic - {customer_name} - {vehicle}"
+
+
+def build_quote_email_body(quote):
+    customer_name = (quote["customer_name"] or "").strip()
+    first_name = customer_name.split()[0] if customer_name else "there"
+    vehicle = (quote["vehicle"] or "your vehicle").strip()
+    quote_url = build_quote_url_external(quote)
+
+    return (
+        f"Hi {first_name},\n\n"
+        f"Attached is your quote from DJ's Mobile Mechanic for {vehicle}.\n\n"
+        f"You can also review and approve it online here:\n{quote_url}\n\n"
+        "If you have any questions, just reply to this email or text/call me.\n\n"
+        "Thank you,\n"
+        "DJ's Mobile Mechanic"
+    )
+
+
+def get_quote_for_any_token(conn, token):
+    return conn.execute(
+        "SELECT * FROM quotes WHERE quote_token = ? OR public_slug = ?",
+        (token, token),
+    ).fetchone()
+
+
+def build_quote_template_context(quote_row):
+    quote = dict(quote_row)
+    payload = json.loads(quote["payload_json"] or "{}")
+    jobs = payload.get("jobs", [])
+    jobs = [{**job, "parts": normalize_job_parts(job)} for job in jobs]
+    _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
+    inspection = load_inspection(quote)
+    return {
+        "quote": quote,
+        "jobs": jobs,
+        "approved_map": approved_map,
+        "inspection": inspection,
+    }
+
+
+def make_safe_attachment_name(quote):
+    customer = slugify(quote["customer_name"] or "customer")
+    vehicle = slugify(quote["vehicle"] or "vehicle")
+    return f"quote-{customer}-{vehicle}.pdf"
+
+
+def render_quote_pdf_bytes(quote_row):
+    if HTML is None:
+        raise RuntimeError("WeasyPrint is not installed. Add it to requirements.txt and redeploy.")
+    html = render_template("quote.html", **build_quote_template_context(quote_row))
+    base_url = get_public_base_url() or request.url_root.rstrip("/")
+    return HTML(string=html, base_url=base_url).write_pdf()
+
+
+def send_quote_email_message(quote_row, pdf_bytes):
+    settings = get_email_settings()
+    recipient = (quote_row["customer_email"] or "").strip()
+    if not recipient:
+        raise ValueError("This quote does not have a customer email address.")
+    if not email_settings_ready():
+        raise RuntimeError("Email settings are incomplete. Add SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, and MAIL_FROM in Render.")
+
+    msg = EmailMessage()
+    from_name = settings["from_name"]
+    from_email = settings["from_email"]
+    msg["Subject"] = get_quote_email_subject(quote_row)
+    msg["From"] = f"{from_name} <{from_email}>" if from_name else from_email
+    msg["To"] = recipient
+    if settings["reply_to"]:
+        msg["Reply-To"] = settings["reply_to"]
+    msg.set_content(build_quote_email_body(quote_row))
+
+    attachment_name = make_safe_attachment_name(quote_row)
+    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=attachment_name)
+
+    with smtplib.SMTP(settings["host"], settings["port"]) as server:
+        server.ehlo()
+        if settings["use_tls"]:
+            server.starttls()
+            server.ehlo()
+        server.login(settings["username"], settings["password"])
+        server.send_message(msg)
+
 
 
 def get_db():
@@ -1239,6 +1354,47 @@ def view_quote(token):
     return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map, inspection=inspection)
 
 
+
+
+@app.route("/quote/<token>/pdf", methods=["GET"])
+@app.route("/quote_pdf/<token>", methods=["GET"])
+@app.route("/download_quote_pdf/<token>", methods=["GET"])
+def download_quote_pdf(token):
+    conn = get_db()
+    row = get_quote_for_any_token(conn, token)
+    conn.close()
+
+    if not row:
+        abort(404)
+
+    pdf_bytes = render_quote_pdf_bytes(row)
+    response = make_response(pdf_bytes)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f'attachment; filename="{make_safe_attachment_name(row)}"'
+    return response
+
+
+@app.route("/admin/send_quote_email/<token>", methods=["POST"])
+@app.route("/send_quote_email/<token>", methods=["POST"])
+@admin_required
+def send_quote_email(token):
+    conn = get_db()
+    quote = get_quote_for_any_token(conn, token)
+    conn.close()
+    if not quote:
+        abort(404)
+
+    try:
+        pdf_bytes = render_quote_pdf_bytes(quote)
+        send_quote_email_message(quote, pdf_bytes)
+    except Exception as exc:
+        flash(f"Quote email failed: {exc}")
+        return redirect(url_for("admin"))
+
+    flash(f"Quote emailed to {(quote['customer_email'] or '').strip()}.")
+    return redirect(url_for("admin"))
+
+
 @app.route("/approve_quote/<token>", methods=["POST"])
 def approve_quote(token):
     approved_jobs = request.form.getlist("approve_job[]")
@@ -1491,7 +1647,7 @@ def admin():
         request_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         request_rows.append(request_dict)
 
-    return render_template("admin_quotes.html", rows=rows, request_rows=request_rows)
+    return render_template("admin_quotes.html", rows=rows, request_rows=request_rows, email_enabled=email_settings_ready())
 
 
 @app.route("/request-quote", methods=["GET", "POST"])
