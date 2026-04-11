@@ -81,6 +81,15 @@
       box-shadow:inset 0 1px 0 rgba(255,255,255,.03)
     }
     .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    .no-print{display:flex}
+    @media print{
+      body{background:#fff;color:#111}
+      .card,.service-card,.parts-box,.detail-box,.meta div,.inspection-item{background:#fff !important;color:#111 !important;box-shadow:none !important;border-color:#d1d5db !important}
+      .muted,.service-sub,.hero-help,.parts-box .help,.detail-box .k,.kicker,.pill{color:#4b5563 !important}
+      .actions,.no-print,.hero-help,.mini-btn,.btn,.signature-wrap,.approve-row,#quoteForm .card:last-child{display:none !important}
+      .service-money,.accent-text,h2{color:#111 !important}
+      .logo{background:#fff !important}
+    }
     .btn{
       appearance:none;border:none;border-radius:13px;padding:11px 16px;font-size:14px;font-weight:900;
       cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
@@ -296,9 +305,11 @@
         <div><strong>Created</strong><br>{{ quote.created_at or '-' }}</div>
       </div>
 
-      <div class="actions">
+      <div class="actions no-print">
         <button type="button" class="btn btn-secondary" id="copyQuoteLinkBtn">Copy quote link</button>
         <a class="btn btn-secondary" href="{{ request.path }}" target="_blank" rel="noopener">Open quote link</a>
+        <a class="btn btn-secondary" href="/quote/{{ quote_public_key or quote.quote_token }}/pdf" target="_blank" rel="noopener">Download PDF</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">Print</button>
         {% if quote.status == 'approved' %}
           <a class="btn btn-secondary" href="/convert_invoice/{{ quote.quote_token }}">Convert to Invoice</a>
         {% endif %}

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Quote {{ quote.public_slug or quote.quote_token }}</title>
+  <style>
+    @page { size: Letter; margin: 0.45in; }
+    :root{--text:#111827;--muted:#6b7280;--line:#d1d5db;--soft:#f8fafc;--panel:#ffffff;--accent:#b38710;--green:#166534}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--text);font-size:12px;line-height:1.45;background:#fff}
+    .header,.section,.totals{border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+    .header{padding:16px 18px;margin-bottom:14px}.section{padding:14px 16px;margin-bottom:12px}.totals{padding:14px 16px;margin-top:14px}
+    .brand{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.title{font-size:26px;font-weight:800;line-height:1.05}.sub{color:var(--muted)}
+    .badge{display:inline-block;padding:5px 9px;border-radius:999px;border:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.meta-box{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--soft)}
+    .label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+    .service-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.service-title{font-size:16px;font-weight:800}.money{font-size:20px;font-weight:800;color:var(--accent)}
+    .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.detail{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--soft)}
+    table{width:100%;border-collapse:collapse;margin-top:12px} th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top} th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+    .summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.summary-box{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--soft)}
+    .totals-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0}.grand{font-size:18px;font-weight:800;padding-top:6px;border-top:1px solid var(--line);margin-top:6px}
+    .approved{color:var(--green);font-weight:700}.footer-note{margin-top:14px;color:var(--muted);font-size:11px}.small{font-size:11px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  {% set ns = namespace(labor=0.0, parts=0.0) %}
+  <div class="header">
+    <div class="brand">
+      <div>
+        <div class="badge">Customer Quote</div>
+        <div class="title">DJ's Mobile Mechanic</div>
+        <div class="sub">Professional mobile repair and diagnostics</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="label">Quote Link Key</div>
+        <div><strong>{{ quote.public_slug or quote.quote_token or '-' }}</strong></div>
+        <div class="small">Created {{ quote.created_at or '-' }}</div>
+        <div class="small">Status: {{ quote.status or 'quote' }}</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="meta-box"><div class="label">Customer</div><div><strong>{{ quote.customer_name or '-' }}</strong></div></div>
+      <div class="meta-box"><div class="label">Phone</div><div>{{ quote.customer_phone or '-' }}</div></div>
+      <div class="meta-box"><div class="label">Email</div><div>{{ quote.customer_email or '-' }}</div></div>
+      <div class="meta-box"><div class="label">Vehicle</div><div>{{ quote.vehicle or '-' }}</div></div>
+    </div>
+  </div>
+
+  {% for job in jobs %}
+    {% set job_index = loop.index0 %}
+    {% set approved_item = approved_map.get(job_index, {}) if approved_map is defined else {} %}
+    {% set selected_parts = approved_item.get('selected_parts', []) %}
+    {% set labor_total = (job.labor_hours|default(0)|float) * (quote.labor_rate|default(0)|float) %}
+    {% set ns.labor = ns.labor + labor_total %}
+    {% set job_ns = namespace(parts_total=0.0) %}
+    <div class="section">
+      <div class="service-head">
+        <div>
+          <div class="service-title">{{ job.desc or 'Service Item' }}</div>
+          <div class="small">{{ '%.2f'|format(job.labor_hours|default(0)|float) }} hr labor at ${{ '%.2f'|format(quote.labor_rate|default(0)|float) }}/hr</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="money">${{ '%.2f'|format(labor_total) }}</div>
+          {% if job_index in approved_map %}<div class="approved">Approved</div>{% endif %}
+        </div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail"><div class="label">Labor</div><div>${{ '%.2f'|format(labor_total) }}</div></div>
+        <div class="detail"><div class="label">Notes</div><div>{{ job.notes or '—' }}</div></div>
+        <div class="detail"><div class="label">Parts</div><div>{{ (job.parts or [])|length }} line item(s)</div></div>
+      </div>
+      {% if job.parts %}
+      <table>
+        <thead>
+          <tr><th>Part</th><th>Qty</th><th>Selected Tier</th><th>Unit</th><th>Line Total</th></tr>
+        </thead>
+        <tbody>
+          {% for part in job.parts %}
+            {% set idx = loop.index0 %}
+            {% set qty = part.qty|default(1)|float %}
+            {% set chosen = namespace(tier='quality') %}
+            {% for saved_part in selected_parts %}
+              {% if saved_part.get('part_index') == idx %}
+                {% set chosen.tier = saved_part.get('tier', 'quality') %}
+              {% endif %}
+            {% endfor %}
+            {% set unit_price = part.get(chosen.tier, 0)|float %}
+            {% set line_total = qty * unit_price %}
+            {% set job_ns.parts_total = job_ns.parts_total + line_total %}
+            <tr>
+              <td>{{ part.part_desc or 'Part' }}</td>
+              <td>{{ '%.2f'|format(qty) if qty % 1 else qty|int }}</td>
+              <td>{{ chosen.tier|replace('_',' ')|title }}</td>
+              <td>${{ '%.2f'|format(unit_price) }}</td>
+              <td>${{ '%.2f'|format(line_total) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% set ns.parts = ns.parts + job_ns.parts_total %}
+      <div class="summary-grid">
+        <div class="summary-box"><div class="label">Parts Total</div><div><strong>${{ '%.2f'|format(job_ns.parts_total) }}</strong></div></div>
+        <div class="summary-box"><div class="label">Service Total</div><div><strong>${{ '%.2f'|format(labor_total + job_ns.parts_total) }}</strong></div></div>
+      </div>
+    </div>
+  {% endfor %}
+
+  {% set service_fee = quote.service_fee|default(0)|float %}
+  {% set tax_total = ns.parts * ((quote.tax_rate|default(0)|float) / 100) %}
+  {% set grand_total = ns.labor + ns.parts + service_fee + tax_total %}
+  <div class="totals">
+    <div class="totals-row"><span>Labor Total</span><strong>${{ '%.2f'|format(ns.labor) }}</strong></div>
+    <div class="totals-row"><span>Parts Total</span><strong>${{ '%.2f'|format(ns.parts) }}</strong></div>
+    <div class="totals-row"><span>Service Fee</span><strong>${{ '%.2f'|format(service_fee) }}</strong></div>
+    <div class="totals-row"><span>Parts Tax</span><strong>${{ '%.2f'|format(tax_total) }}</strong></div>
+    <div class="totals-row grand"><span>Estimated Total</span><strong>${{ '%.2f'|format(grand_total) }}</strong></div>
+    <div class="footer-note">Parts pricing shown reflects the currently selected option on each line. Labor coverage for aftermarket parts is only covered when stated in writing.</div>
+  </div>
+</body>
+</html>

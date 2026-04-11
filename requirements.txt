@@ -1,3 +1,4 @@
 Flask==3.1.0
 gunicorn==23.0.0
 twilio
+weasyprint==62.3
