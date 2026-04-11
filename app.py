@@ -1,4 +1,5 @@
 import os
+import base64
 import json
 import sqlite3
 import secrets
@@ -330,6 +331,23 @@ def send_quote_email_message(quote_row, pdf_bytes):
         server.login(settings["username"], settings["password"])
         server.send_message(msg)
 
+
+
+def build_logo_data_uri():
+    logo_path = os.path.join(STATIC_DIR, "logo.png")
+    if not os.path.exists(logo_path):
+        return ""
+    try:
+        with open(logo_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except Exception:
+        return ""
+
+
+@app.context_processor
+def inject_brand_assets():
+    return {"logo_data_uri": build_logo_data_uri()}
 
 
 def get_db():

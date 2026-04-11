@@ -83,182 +83,19 @@
     .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
     .no-print{display:flex}
     @media print{
-      .card:first-of-type{
-        padding:16px 18px 14px !important;
-      }
-      .brandline{
-        display:grid !important;
-        grid-template-columns:minmax(0,1fr) 240px !important;
-        gap:14px !important;
-        align-items:start !important;
-        border-bottom:2px solid #111827 !important;
-        padding-bottom:12px !important;
-        margin-bottom:12px !important;
-      }
-      .brandbox{
-        gap:12px !important;
-        align-items:center !important;
-        flex-wrap:nowrap !important;
-      }
-      .status-box{
-        align-items:flex-end !important;
-        justify-content:flex-start !important;
-      }
-      .meta{
-        display:grid !important;
-        grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-        gap:6px !important;
-        margin-top:12px !important;
-      }
-      .meta div{
-        min-height:auto !important;
-        padding:8px 10px !important;
-        border-radius:8px !important;
-        background:#fafafa !important;
-      }
-
-      .status-box{
-        border:1px solid #d1d5db !important;
-        border-radius:10px !important;
-        padding:10px 12px !important;
-        background:#fafafa !important;
-        min-width:220px !important;
-      }
-      .status-box::before{
-        content:"Customer Estimate";
-        display:block;
-        font-size:11px !important;
-        font-weight:800 !important;
-        letter-spacing:.08em !important;
-        text-transform:uppercase !important;
-        color:#6b7280 !important;
-        margin-bottom:4px !important;
-      }
-      .status-box::after{
-        content:"DJ's Mobile Mechanic";
-        display:block;
-        font-size:13px !important;
-        font-weight:800 !important;
-        color:#111827 !important;
-        margin-top:4px !important;
-      }
-      .meta div strong{
-        display:block !important;
-        font-size:10px !important;
-        letter-spacing:.06em !important;
-        text-transform:uppercase !important;
-        color:#6b7280 !important;
-        margin-bottom:3px !important;
-      }
-
-      .service-card{
-        margin-top:10px !important;
-      }
-      .service-shell{
-        padding:10px !important;
-      }
-      .detail-grid{
-        gap:6px !important;
-        margin-top:8px !important;
-      }
-      .parts-box{
-        margin-top:10px !important;
-        padding:10px !important;
-      }
-      .part-head{
-        margin-bottom:8px !important;
-      }
-      .selected-summary{
-        padding:8px 10px !important;
-        margin-bottom:8px !important;
-      }
-      .choices-grid{
-        gap:8px !important;
-      }
-      .choice-card{
-        padding:10px !important;
-        border-radius:10px !important;
-      }
-      .choice-price{
-        font-size:20px !important;
-        margin-top:6px !important;
-      }
-      .choice-note{
-        font-size:11px !important;
-      }
-      .choice-row{
-        margin-top:8px !important;
-        padding-top:8px !important;
-      }
-      .summary-shell{
-        gap:10px !important;
-        margin-top:12px !important;
-      }
-      .summary-note{
-        padding:10px !important;
-        border-radius:10px !important;
-      }
-      .summary{
-        padding:10px 12px 8px !important;
-        border-radius:10px !important;
-      }
-      .summary-row{
-        padding:6px 0 !important;
-      }
-      .summary-row.total{
-        font-size:22px !important;
-      }
-      .logo{
-        width:44px !important;
-        height:44px !important;
-        padding:4px !important;
-      }
-      h1{
-        font-size:20px !important;
-        margin-bottom:2px !important;
-      }
-      .service-title{
-        font-size:17px !important;
-      }
-      .warranty-note ul{
-        margin:6px 0 0 18px !important;
-        padding:0 !important;
-      }
-      .warranty-note li{
-        margin:2px 0 !important;
-      }
-
-      @page{size:auto;margin:0.5in}
-      html, body{
-        background:#ffffff !important;
-      }
+      @page{size:auto;margin:0.45in}
       body{
+        background:#ffffff !important;
         color:#111827 !important;
         font-size:12px !important;
-        line-height:1.38 !important;
+        line-height:1.35 !important;
         -webkit-print-color-adjust:exact;
         print-color-adjust:exact;
-        position:relative;
-      }
-      body.is-approved::before{
-        content:"APPROVED";
-        position:fixed;
-        top:46%;
-        left:50%;
-        transform:translate(-50%, -50%) rotate(-24deg);
-        font-size:84px;
-        font-weight:900;
-        letter-spacing:.16em;
-        color:rgba(17,24,39,.06);
-        z-index:0;
-        pointer-events:none;
       }
       .wrap{
         max-width:none !important;
         margin:0 !important;
         padding:0 !important;
-        position:relative;
-        z-index:1;
       }
       .card,
       .service-card,
@@ -267,27 +104,16 @@
       .meta div,
       .inspection-item,
       .summary,
-      .summary-note,
-      .locked-choice,
-      .selected-summary,
-      .choice-card{
+      .summary-note{
         background:#ffffff !important;
         color:#111827 !important;
         border:1px solid #d1d5db !important;
         box-shadow:none !important;
       }
-      .card{
-        border-radius:14px !important;
-        margin-bottom:12px !important;
-      }
-      .card:first-child{
-        border-top:4px solid #111827 !important;
-      }
       h1{
         color:#111827 !important;
-        font-size:24px !important;
-        line-height:1.08 !important;
-        letter-spacing:.01em;
+        font-size:22px !important;
+        line-height:1.1 !important;
       }
       h2{
         color:#111827 !important;
@@ -296,7 +122,7 @@
         padding-bottom:6px;
         margin-bottom:8px !important;
       }
-      h3,h4,.service-title,.part-name,.locked-tier,.choice-name,.choice-price{
+      h3,h4,.service-title,.part-name,.locked-tier{
         color:#111827 !important;
       }
       .muted,
@@ -304,22 +130,12 @@
       .hero-help,
       .parts-box .help,
       .detail-box .k,
+      .kicker,
+      .pill,
       .choice-note,
       .choice-row .mini,
-      .selected-summary .label,
-      .warranty-note,
-      .warranty-note p,
-      .warranty-note li{
+      .selected-summary .label{
         color:#6b7280 !important;
-      }
-      .print-subtitle{
-        font-size:12px !important;
-        letter-spacing:.04em !important;
-        text-transform:uppercase !important;
-      }
-      .kicker,
-      .pill{
-        display:none !important;
       }
       .logo{
         background:transparent !important;
@@ -333,27 +149,11 @@
       .btn,
       .signature-wrap,
       .approve-row,
-      #copyQuoteLinkBtn,
       #quoteForm .card:last-child,
       canvas,
       input,
       button{
         display:none !important;
-      }
-      .brandline{
-        padding-bottom:10px;
-        border-bottom:2px solid #111827;
-        margin-bottom:12px;
-      }
-      .meta{
-        grid-template-columns:repeat(4,minmax(0,1fr)) !important;
-        gap:8px !important;
-        margin-top:12px !important;
-      }
-      .meta div{
-        min-height:unset !important;
-        border-radius:10px !important;
-        padding:10px !important;
       }
       .service-card{
         margin-top:12px !important;
@@ -367,7 +167,6 @@
       .service-top{
         grid-template-columns:minmax(0,1fr) auto !important;
         gap:10px !important;
-        align-items:end !important;
       }
       .service-money,
       .accent-text,
@@ -378,7 +177,7 @@
         color:#111827 !important;
       }
       .service-money{
-        font-size:22px !important;
+        font-size:20px !important;
         font-weight:900 !important;
       }
       .detail-grid{
@@ -398,13 +197,12 @@
         padding:12px !important;
       }
       .part-row{
-        padding:10px 0 !important;
+        padding:12px 0 !important;
         border-bottom:1px solid #e5e7eb !important;
         break-inside:avoid;
         page-break-inside:avoid;
       }
-      .qty-badge,
-      .choice-tag{
+      .qty-badge{
         background:#ffffff !important;
         color:#111827 !important;
         border:1px solid #d1d5db !important;
@@ -420,6 +218,24 @@
       }
       .selected-summary .price{
         font-size:18px !important;
+      }
+      .choice-card{
+        background:#ffffff !important;
+        border:1px solid #d1d5db !important;
+        box-shadow:none !important;
+      }
+      .choice-card.selected{
+        background:#f9fafb !important;
+        border:2px solid #111827 !important;
+      }
+      .choice-name,
+      .choice-price{
+        color:#111827 !important;
+      }
+      .choice-tag{
+        background:#e5e7eb !important;
+        color:#374151 !important;
+        border:1px solid #d1d5db !important;
       }
       .locked-choice{
         background:#f3f4f6 !important;
@@ -445,19 +261,6 @@
       }
       .summary-row.total{
         font-size:20px !important;
-      }
-      .warranty-note{
-        margin-top:14px !important;
-        padding-top:10px !important;
-        border-top:1px solid #e5e7eb !important;
-      }
-      .warranty-note h4{
-        margin-bottom:6px !important;
-        color:#111827 !important;
-      }
-      .warranty-note ul{
-        margin:6px 0 0 18px !important;
-        padding:0 !important;
       }
     }
     .btn{
@@ -643,15 +446,16 @@
     }
   </style>
 </head>
-<body class="{% if quote.status in ['approved', 'invoiced'] %}is-approved{% endif %}">
+<body>
   <div class="wrap">
     <div class="card">
       <div class="brandline">
         <div class="brandbox">
-<img src="{{ url_for('static', filename='logo.png', _external=True) }}" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">          <div>
+          <img src="{{ logo_data_uri or url_for('static', filename='logo.png', _external=True) }}" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
+          <div>
             <div class="kicker">Estimate Review</div>
-            <h1>Estimate</h1>
-            <div class="muted print-subtitle">Prepared for customer review and approval</div>
+            <h1>DJ's Estimate Review</h1>
+            <div class="muted">Review the estimate below, choose any available parts option, and approve the services you want completed.</div>
           </div>
         </div>
         <div class="status-box">
@@ -730,7 +534,7 @@
       <div class="card">
         <div class="section-head">
           <div>
-            <h2>Approved / Selected Services</h2>
+            <h2>Services</h2>
             <div class="muted" style="margin-top:6px;">Each service shows labor, parts choices, and your running total clearly.</div>
           </div>
           {% if quote.status == 'approved' or quote.status == 'invoiced' %}
@@ -909,15 +713,6 @@
                 <h4>Before you approve</h4>
                 <div class="muted" style="margin-top:8px;">Review the services you want, confirm you have permission for mobile service at the vehicle location, then sign to approve.</div>
               {% endif %}
-              <div class="warranty-note">
-                <h4>Workmanship Warranty</h4>
-                <div class="muted" style="margin-top:6px;">DJ's Mobile Mechanic backs labor with a workmanship guarantee.</div>
-                <ul class="muted" style="margin-top:8px;padding-left:18px;line-height:1.5;">
-                  <li>OEM parts: labor is covered if a confirmed part failure occurs during the workmanship warranty period.</li>
-                  <li>Aftermarket parts: warranty is handled through the supplier or manufacturer.</li>
-                  <li>Labor for aftermarket warranty replacement is not included unless stated in writing.</li>
-                </ul>
-              </div>
             </div>
 
             <div class="summary">
