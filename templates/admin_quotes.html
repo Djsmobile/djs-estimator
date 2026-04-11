@@ -331,31 +331,19 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                     {% endif %}
                     <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy ready-to-send text</button>
                     <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
-                    <a href="/quote/{{ row.quote_public_key }}/pdf" target="_blank" class="btn btn-soft">Quote PDF</a>
-                    <form method="POST" action="/admin/send_quote_email/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Email this quote PDF to {{ row.customer_email or 'the customer' }}?');">
-                      <button type="submit" class="btn btn-amber">Email PDF</button>
-                    </form>
                   {% else %}
                     <span class="small">No quote link</span>
                   {% endif %}
 
-                  <form method="POST" action="{{ url_for('unapprove_quote', quote_id=quote.id) }}">
-                    <button class="btn btn-red">Unapprove</button>
-                  </form>
-
                   {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
                     <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
-                  {% endif %}
-
-                  {% if quote.status == 'approved' %}
-                  <form method="POST" action="{{ url_for('unapprove_quote', quote_id=quote.id) }}">
-                    <button class="btn btn-red">Unapprove</button>
-                  </form>
-                  {% endif %}
+                    <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and unlock this quote for editing?');">
+                      <button type="submit" class="btn btn-amber">Unapprove</button>
+                    </form>
+                
 
                   {% if row.invoice_number %}
                     <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="link">Open invoice</a>
-                    <div style="margin-top:8px;"><a href="/invoice/{{ row.invoice_number }}/pdf" target="_blank" class="btn btn-soft">Invoice PDF</a></div>
                   {% endif %}
 
                   <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote?');">
@@ -415,18 +403,19 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 {% endif %}
                 <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy send text</button>
                 <button type="button" class="btn btn-soft copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
-                <a href="/quote/{{ row.quote_public_key }}/pdf" target="_blank" class="btn btn-soft">Quote PDF</a>
-                <form method="POST" action="/admin/send_quote_email/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Email this quote PDF to {{ row.customer_email or 'the customer' }}?');">
-                  <button type="submit" class="btn btn-amber">Email PDF</button>
-                </form>
               {% endif %}
 
               {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
                 <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
+                <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and unlock this quote 		for editing?');">
+                  <button type="submit" class="btn btn-amber">Unapprove</button>
+                </form>
+		<form method="POST" action="{{ url_for('clear_approval', token=quote.quote_token) }}">
+   		 <button class="btn btn-red">Unapprove</button>
+		</form>
               {% endif %}
               {% if row.invoice_number %}
                 <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="btn btn-soft">Open invoice</a>
-                <a href="/invoice/{{ row.invoice_number }}/pdf" target="_blank" class="btn btn-soft">Invoice PDF</a>
               {% endif %}
               <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote?');">
                 <button type="submit" class="btn btn-red">Delete quote</button>

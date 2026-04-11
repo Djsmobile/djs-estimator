@@ -4,12 +4,7 @@ import sqlite3
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
-from io import BytesIO
-import smtplib
-from email.message import EmailMessage
-
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session, make_response
-from weasyprint import HTML
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -220,89 +215,6 @@ def build_copy_text_message(quote):
         "Let me know if you have any questions.",
     ]
     return '\n'.join(lines)
-
-
-def smtp_configured():
-    return all((os.environ.get("SMTP_HOST"), os.environ.get("SMTP_USERNAME"), os.environ.get("SMTP_PASSWORD")))
-
-
-def smtp_sender_email():
-    return (os.environ.get("SMTP_FROM") or os.environ.get("SMTP_USERNAME") or "").strip()
-
-
-def send_email_message(message):
-    host = (os.environ.get("SMTP_HOST") or "").strip()
-    username = (os.environ.get("SMTP_USERNAME") or "").strip()
-    password = os.environ.get("SMTP_PASSWORD") or ""
-    sender = smtp_sender_email()
-
-    if not (host and username and password and sender):
-        raise RuntimeError("Email is not configured yet. Set SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, and optionally SMTP_FROM.")
-
-    port = safe_int(os.environ.get("SMTP_PORT"), 465)
-    use_tls = safe_bool(os.environ.get("SMTP_USE_TLS"), port not in (465,))
-
-    if use_tls:
-        with smtplib.SMTP(host, port, timeout=30) as smtp:
-            smtp.starttls()
-            smtp.login(username, password)
-            smtp.send_message(message)
-    else:
-        with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
-            smtp.login(username, password)
-            smtp.send_message(message)
-
-
-def build_quote_pdf_html(quote, jobs, approved_map, inspection=None):
-    return render_template(
-        "quote_pdf.html",
-        quote=quote,
-        jobs=jobs,
-        approved_map=approved_map,
-        inspection=inspection or [],
-    )
-
-
-def build_invoice_pdf_html(row, payload, totals, approved_jobs, approved_map):
-    return render_template(
-        "invoice_pdf.html",
-        row=row,
-        payload=payload,
-        totals=totals,
-        approved_jobs=approved_jobs,
-        approved_map=approved_map,
-    )
-
-
-def render_pdf_bytes(html_text, base_url=None):
-    return HTML(string=html_text, base_url=base_url or get_public_base_url() or request.url_root).write_pdf()
-
-
-def make_pdf_response(pdf_bytes, filename, inline=True):
-    response = make_response(pdf_bytes)
-    response.headers["Content-Type"] = "application/pdf"
-    disposition = "inline" if inline else "attachment"
-    response.headers["Content-Disposition"] = f'{disposition}; filename="{filename}"'
-    return response
-
-
-def build_quote_email_body(quote):
-    customer_name = (quote["customer_name"] or "").strip()
-    first_name = customer_name.split()[0] if customer_name else "there"
-    vehicle = (quote["vehicle"] or "your vehicle").strip()
-    quote_link = build_quote_url_external(quote)
-    return "\n".join([
-        f"Hi {first_name},",
-        "",
-        f"Attached is your quote for {vehicle}.",
-        "You can also review and approve it online here:",
-        quote_link,
-        "",
-        "Reply if you have any questions.",
-        "",
-        "Thank you,",
-        "DJ's Mobile Mechanic",
-    ])
 
 
 def get_db():
@@ -1324,7 +1236,7 @@ def view_quote(token):
 
     _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
     inspection = load_inspection(quote)
-    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map, inspection=inspection, quote_public_key=get_quote_public_key(quote))
+    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map, inspection=inspection)
 
 
 @app.route("/approve_quote/<token>", methods=["POST"])
@@ -1510,106 +1422,7 @@ def view_invoice(invoice_number):
         totals=totals,
         approved_jobs=approved_jobs,
         approved_map=approved_map,
-        quote_public_key=get_quote_public_key(row),
     )
-
-
-@app.route("/quote/<token>/pdf", methods=["GET"])
-def quote_pdf(token):
-    conn = get_db()
-    row = conn.execute("SELECT * FROM quotes WHERE quote_token = ? OR public_slug = ?", (token, token)).fetchone()
-    conn.close()
-
-    if row is None:
-        abort(404)
-
-    quote = dict(row)
-    payload = json.loads(quote["payload_json"] or "{}")
-    jobs = payload.get("jobs", [])
-    jobs = [{**job, "parts": normalize_job_parts(job)} for job in jobs]
-    _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
-    inspection = load_inspection(quote)
-
-    html = build_quote_pdf_html(quote, jobs, approved_map, inspection=inspection)
-    pdf = render_pdf_bytes(html, base_url=request.url_root)
-    filename_key = get_quote_public_key(quote) or quote.get("quote_token") or "quote"
-    return make_pdf_response(pdf, f"quote_{filename_key}.pdf")
-
-
-@app.route("/invoice/<invoice_number>/pdf", methods=["GET"])
-def invoice_pdf(invoice_number):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT
-            invoices.id AS invoice_id,
-            invoices.invoice_number,
-            invoices.created_at AS invoice_created_at,
-            invoices.total AS invoice_total,
-            invoices.payment_status,
-            invoices.payment_method,
-            invoices.paid_at,
-            quotes.*
-        FROM invoices
-        JOIN quotes ON quotes.id = invoices.quote_id
-        WHERE invoices.invoice_number = ?
-        """,
-        (invoice_number,),
-    )
-    row = cur.fetchone()
-    conn.close()
-
-    if not row:
-        abort(404)
-
-    payload = json.loads(row["payload_json"] or "{}")
-    approved_jobs, approved_map = parse_approved_map(row["approved_json"])
-    totals = build_quote_totals(row, payload, approved_map=approved_map)
-    html = build_invoice_pdf_html(row, payload, totals, approved_jobs, approved_map)
-    pdf = render_pdf_bytes(html, base_url=request.url_root)
-    return make_pdf_response(pdf, f"invoice_{invoice_number}.pdf")
-
-
-@app.route("/admin/send_quote_email/<token>", methods=["POST"])
-@admin_required
-def send_quote_email(token):
-    conn = get_db()
-    quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
-    conn.close()
-    if not quote:
-        abort(404)
-
-    recipient = (quote["customer_email"] or "").strip()
-    if not recipient:
-        flash("This quote does not have a customer email yet.")
-        return redirect(url_for("admin"))
-
-    quote_dict = dict(quote)
-    payload = json.loads(quote_dict["payload_json"] or "{}")
-    jobs = payload.get("jobs", [])
-    jobs = [{**job, "parts": normalize_job_parts(job)} for job in jobs]
-    _approved_jobs, approved_map = parse_approved_map(quote_dict.get("approved_json"))
-    inspection = load_inspection(quote_dict)
-
-    try:
-        html = build_quote_pdf_html(quote_dict, jobs, approved_map, inspection=inspection)
-        pdf_bytes = render_pdf_bytes(html, base_url=request.url_root)
-
-        msg = EmailMessage()
-        msg["Subject"] = f"Your Quote - DJ's Mobile Mechanic"
-        msg["From"] = smtp_sender_email()
-        msg["To"] = recipient
-        msg.set_content(build_quote_email_body(quote_dict))
-        filename_key = get_quote_public_key(quote_dict) or quote_dict.get("quote_token") or "quote"
-        msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=f"quote_{filename_key}.pdf")
-        send_email_message(msg)
-    except Exception as exc:
-        flash(f"Quote email was not sent: {exc}")
-        return redirect(url_for("admin"))
-
-    flash(f"Quote emailed to {recipient}.")
-    return redirect(url_for("admin"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -1894,28 +1707,6 @@ def delete_quote(quote_id):
     conn.commit()
     conn.close()
     flash("Quote deleted.")
-    return redirect(url_for("admin"))
-
-    @app.route("/admin/unapprove/<int:quote_id>", methods=["POST"])
-@admin_required
-def unapprove_quote(quote_id):
-    conn = get_db()
-
-    conn.execute("""
-        UPDATE quotes
-        SET
-            approved_json = NULL,
-            signature_data = NULL,
-            signed_name = NULL,
-            signed_at = NULL,
-            status = 'quote'
-        WHERE id = ?
-    """, (quote_id,))
-
-    conn.commit()
-    conn.close()
-
-    flash("Quote unapproved and unlocked.")
     return redirect(url_for("admin"))
 
 
