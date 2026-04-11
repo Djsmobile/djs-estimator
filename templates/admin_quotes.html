@@ -340,7 +340,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                     <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and unlock this quote for editing?');">
                       <button type="submit" class="btn btn-amber">Unapprove</button>
                     </form>
-                
+                  {% endif %}
 
                   {% if row.invoice_number %}
                     <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="link">Open invoice</a>
@@ -407,12 +407,9 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 
               {% if row.status == 'approved' and not row.invoice_number and row.quote_token %}
                 <a href="/convert_invoice/{{ row.quote_token }}" target="_blank" class="btn btn-green">Convert to invoice</a>
-                <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and unlock this quote 		for editing?');">
+                <form method="POST" action="/admin/clear_approval/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Clear approval and unlock this quote for editing?');">
                   <button type="submit" class="btn btn-amber">Unapprove</button>
                 </form>
-		<form method="POST" action="{{ url_for('clear_approval', token=quote.quote_token) }}">
-   		 <button class="btn btn-red">Unapprove</button>
-		</form>
               {% endif %}
               {% if row.invoice_number %}
                 <a href="/invoice/{{ row.invoice_number }}" target="_blank" class="btn btn-soft">Open invoice</a>
