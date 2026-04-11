@@ -648,8 +648,7 @@
     <div class="card">
       <div class="brandline">
         <div class="brandbox">
-          <img src="{{ request.url_root }}static/logo.png" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
-          <div>
+<img src="{{ url_for('static', filename='logo.png', _external=True) }}" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">          <div>
             <div class="kicker">Estimate Review</div>
             <h1>Estimate</h1>
             <div class="muted print-subtitle">Prepared for customer review and approval</div>
