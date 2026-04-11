@@ -1896,6 +1896,28 @@ def delete_quote(quote_id):
     flash("Quote deleted.")
     return redirect(url_for("admin"))
 
+    @app.route("/admin/unapprove/<int:quote_id>", methods=["POST"])
+@admin_required
+def unapprove_quote(quote_id):
+    conn = get_db()
+
+    conn.execute("""
+        UPDATE quotes
+        SET
+            approved_json = NULL,
+            signature_data = NULL,
+            signed_name = NULL,
+            signed_at = NULL,
+            status = 'quote'
+        WHERE id = ?
+    """, (quote_id,))
+
+    conn.commit()
+    conn.close()
+
+    flash("Quote unapproved and unlocked.")
+    return redirect(url_for("admin"))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
