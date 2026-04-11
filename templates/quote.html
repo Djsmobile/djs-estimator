@@ -84,20 +84,31 @@
     .no-print{display:flex}
     @media print{
       .card:first-of-type{
-        padding:14px 16px 12px !important;
+        padding:16px 18px 14px !important;
       }
       .brandline{
+        display:grid !important;
+        grid-template-columns:minmax(0,1fr) 240px !important;
+        gap:14px !important;
+        align-items:start !important;
         border-bottom:2px solid #111827 !important;
-        padding-bottom:10px !important;
-        margin-bottom:10px !important;
+        padding-bottom:12px !important;
+        margin-bottom:12px !important;
       }
       .brandbox{
-        gap:10px !important;
+        gap:12px !important;
         align-items:center !important;
+        flex-wrap:nowrap !important;
+      }
+      .status-box{
+        align-items:flex-end !important;
+        justify-content:flex-start !important;
       }
       .meta{
+        display:grid !important;
+        grid-template-columns:repeat(3,minmax(0,1fr)) !important;
         gap:6px !important;
-        margin-top:10px !important;
+        margin-top:12px !important;
       }
       .meta div{
         min-height:auto !important;
@@ -105,6 +116,41 @@
         border-radius:8px !important;
         background:#fafafa !important;
       }
+
+      .status-box{
+        border:1px solid #d1d5db !important;
+        border-radius:10px !important;
+        padding:10px 12px !important;
+        background:#fafafa !important;
+        min-width:220px !important;
+      }
+      .status-box::before{
+        content:"Customer Estimate";
+        display:block;
+        font-size:11px !important;
+        font-weight:800 !important;
+        letter-spacing:.08em !important;
+        text-transform:uppercase !important;
+        color:#6b7280 !important;
+        margin-bottom:4px !important;
+      }
+      .status-box::after{
+        content:"DJ's Mobile Mechanic";
+        display:block;
+        font-size:13px !important;
+        font-weight:800 !important;
+        color:#111827 !important;
+        margin-top:4px !important;
+      }
+      .meta div strong{
+        display:block !important;
+        font-size:10px !important;
+        letter-spacing:.06em !important;
+        text-transform:uppercase !important;
+        color:#6b7280 !important;
+        margin-bottom:3px !important;
+      }
+
       .service-card{
         margin-top:10px !important;
       }
@@ -605,8 +651,8 @@
           <img src="/static/logo.png" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
           <div>
             <div class="kicker">Estimate Review</div>
-            <h1>DJ's Estimate Review</h1>
-            <div class="muted print-subtitle">Customer Estimate</div>
+            <h1>Estimate</h1>
+            <div class="muted print-subtitle">Prepared for customer review and approval</div>
           </div>
         </div>
         <div class="status-box">
@@ -685,7 +731,7 @@
       <div class="card">
         <div class="section-head">
           <div>
-            <h2>Services</h2>
+            <h2>Approved / Selected Services</h2>
             <div class="muted" style="margin-top:6px;">Each service shows labor, parts choices, and your running total clearly.</div>
           </div>
           {% if quote.status == 'approved' or quote.status == 'invoiced' %}
