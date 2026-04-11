@@ -1,9 +1,13 @@
 import os
+import base64
 import json
 import sqlite3
 import secrets
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash
+import smtplib
+from datetime import datetime, timedelta
+from email.message import EmailMessage
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, flash, session, make_response
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -18,7 +22,15 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(16))
+
+try:
+    from weasyprint import HTML
+except Exception:
+    HTML = None
+
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "DJs2025!")
 
 DEFAULT_LABOR_RATE = 150.00
 DEFAULT_TAX_RATE = 7.25
@@ -100,6 +112,41 @@ def slugify(value):
     return cleaned.strip('_') or 'preset'
 
 
+def build_quote_slug_base(customer_name, vehicle=''):
+    customer_name = (customer_name or '').strip()
+    vehicle = (vehicle or '').strip()
+    name_parts = [part for part in customer_name.replace(',', ' ').split() if part]
+    last_name = slugify(name_parts[-1]) if name_parts else 'customer'
+    vehicle_words = [part for part in vehicle.replace('-', ' ').split() if part]
+    vehicle_hint = slugify(' '.join(vehicle_words[-2:])) if vehicle_words else ''
+    if vehicle_hint and vehicle_hint != 'preset':
+        return f"{last_name}-{vehicle_hint}"
+    return last_name
+
+
+def generate_quote_public_slug(conn, customer_name, vehicle=''):
+    base = build_quote_slug_base(customer_name, vehicle)
+    for _ in range(50):
+        suffix = secrets.token_hex(2)
+        slug = f"{base}-{suffix}"
+        existing = conn.execute("SELECT id FROM quotes WHERE public_slug = ?", (slug,)).fetchone()
+        if not existing:
+            return slug
+    return f"{base}-{secrets.token_hex(4)}"
+
+
+def get_quote_public_key(quote):
+    if not quote:
+        return ''
+    if isinstance(quote, sqlite3.Row):
+        slug = quote['public_slug'] if 'public_slug' in quote.keys() else ''
+        token = quote['quote_token'] if 'quote_token' in quote.keys() else ''
+    else:
+        slug = quote.get('public_slug', '')
+        token = quote.get('quote_token', '')
+    return (slug or token or '').strip()
+
+
 def normalize_preset_jobs(jobs):
     normalized_jobs = []
     if not isinstance(jobs, list):
@@ -152,16 +199,20 @@ def get_public_base_url():
         return ''
 
 
-def build_quote_url_external(token):
+def build_quote_url_external(quote_or_key):
     base = get_public_base_url()
-    return f"{base}/quote/{token}" if base else f"/quote/{token}"
+    if isinstance(quote_or_key, (sqlite3.Row, dict)):
+        key = get_quote_public_key(quote_or_key)
+    else:
+        key = str(quote_or_key or '').strip()
+    return f"{base}/quote/{key}" if base else f"/quote/{key}"
 
 
 def build_copy_text_message(quote):
     customer_name = (quote['customer_name'] or '').strip()
     first_name = customer_name.split()[0] if customer_name else 'there'
     vehicle = (quote['vehicle'] or 'your vehicle').strip()
-    quote_url = build_quote_url_external(quote['quote_token'])
+    quote_url = build_quote_url_external(quote)
 
     lines = [
         f"Hey {first_name}, this is DJ with DJ's Mobile Mechanic.",
@@ -173,6 +224,157 @@ def build_copy_text_message(quote):
         "Let me know if you have any questions.",
     ]
     return '\n'.join(lines)
+
+
+def get_email_settings():
+    return {
+        "host": (os.environ.get("SMTP_HOST") or "").strip(),
+        "port": safe_int(os.environ.get("SMTP_PORT"), 587),
+        "username": (os.environ.get("SMTP_USERNAME") or "").strip(),
+        "password": (os.environ.get("SMTP_PASSWORD") or "").strip(),
+        "from_email": (os.environ.get("MAIL_FROM") or os.environ.get("SMTP_USERNAME") or "").strip(),
+        "from_name": (os.environ.get("MAIL_FROM_NAME") or "DJ's Mobile Mechanic").strip(),
+        "use_tls": safe_bool(os.environ.get("SMTP_USE_TLS"), True),
+        "reply_to": (os.environ.get("MAIL_REPLY_TO") or os.environ.get("MAIL_FROM") or os.environ.get("SMTP_USERNAME") or "").strip(),
+    }
+
+
+def email_settings_ready():
+    settings = get_email_settings()
+    return bool(settings["host"] and settings["port"] and settings["username"] and settings["password"] and settings["from_email"])
+
+
+def get_quote_email_subject(quote):
+    customer_name = (quote["customer_name"] or "Customer").strip()
+    vehicle = (quote["vehicle"] or "your vehicle").strip()
+    return f"Your Quote from DJ's Mobile Mechanic - {customer_name} - {vehicle}"
+
+
+def build_quote_email_body(quote):
+    customer_name = (quote["customer_name"] or "").strip()
+    first_name = customer_name.split()[0] if customer_name else "there"
+    vehicle = (quote["vehicle"] or "your vehicle").strip()
+    quote_url = build_quote_url_external(quote)
+
+    return (
+        f"Hi {first_name},\n\n"
+        f"Attached is your quote from DJ's Mobile Mechanic for {vehicle}.\n\n"
+        f"You can also review and approve it online here:\n{quote_url}\n\n"
+        "If you have any questions, just reply to this email or text/call me.\n\n"
+        "Thank you,\n"
+        "DJ's Mobile Mechanic"
+    )
+
+
+def get_quote_for_any_token(conn, token):
+    return conn.execute(
+        "SELECT * FROM quotes WHERE quote_token = ? OR public_slug = ?",
+        (token, token),
+    ).fetchone()
+
+
+def build_quote_template_context(quote_row, is_pdf=False):
+    quote = dict(quote_row)
+    payload = json.loads(quote["payload_json"] or "{}")
+    jobs = payload.get("jobs", [])
+    jobs = [{**job, "parts": normalize_job_parts(job)} for job in jobs]
+    _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
+    inspection = load_inspection(quote)
+    return {
+        "quote": quote,
+        "jobs": jobs,
+        "approved_map": approved_map,
+        "inspection": inspection,
+        "quote_public_key": get_quote_public_key(quote),
+        "logo_data_uri": build_logo_data_uri(),
+        "is_pdf": is_pdf,
+    }
+
+
+def make_safe_attachment_name(quote):
+    customer = slugify(quote["customer_name"] or "customer")
+    vehicle = slugify(quote["vehicle"] or "vehicle")
+    return f"quote-{customer}-{vehicle}.pdf"
+
+
+def render_quote_pdf_bytes(quote_row):
+    if HTML is None:
+        raise RuntimeError("WeasyPrint is not installed. Add it to requirements.txt and redeploy.")
+    html = render_template("quote.html", **build_quote_template_context(quote_row, is_pdf=True))
+    base_url = get_public_base_url() or request.url_root.rstrip("/") or BASE_DIR
+    return HTML(string=html, base_url=base_url).write_pdf()
+
+
+def build_invoice_template_context(row, is_pdf=False):
+    payload = json.loads(row["payload_json"] or "{}")
+    approved_jobs, approved_map = parse_approved_map(row["approved_json"])
+    totals = build_quote_totals(row, payload, approved_map=approved_map)
+    return {
+        "row": row,
+        "payload": payload,
+        "totals": totals,
+        "approved_jobs": approved_jobs,
+        "approved_map": approved_map,
+        "quote_public_key": get_quote_public_key(row),
+        "logo_data_uri": build_logo_data_uri(),
+        "is_pdf": is_pdf,
+    }
+
+
+def render_invoice_pdf_bytes(row):
+    if HTML is None:
+        raise RuntimeError("WeasyPrint is not installed. Add it to requirements.txt and redeploy.")
+    html = render_template("invoice.html", **build_invoice_template_context(row, is_pdf=True))
+    base_url = get_public_base_url() or request.url_root.rstrip("/") or BASE_DIR
+    return HTML(string=html, base_url=base_url).write_pdf()
+
+
+def send_quote_email_message(quote_row, pdf_bytes):
+    settings = get_email_settings()
+    recipient = (quote_row["customer_email"] or "").strip()
+    if not recipient:
+        raise ValueError("This quote does not have a customer email address.")
+    if not email_settings_ready():
+        raise RuntimeError("Email settings are incomplete. Add SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, and MAIL_FROM in Render.")
+
+    msg = EmailMessage()
+    from_name = settings["from_name"]
+    from_email = settings["from_email"]
+    msg["Subject"] = get_quote_email_subject(quote_row)
+    msg["From"] = f"{from_name} <{from_email}>" if from_name else from_email
+    msg["To"] = recipient
+    if settings["reply_to"]:
+        msg["Reply-To"] = settings["reply_to"]
+    msg.set_content(build_quote_email_body(quote_row))
+
+    attachment_name = make_safe_attachment_name(quote_row)
+    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=attachment_name)
+
+    with smtplib.SMTP(settings["host"], settings["port"]) as server:
+        server.ehlo()
+        if settings["use_tls"]:
+            server.starttls()
+            server.ehlo()
+        server.login(settings["username"], settings["password"])
+        server.send_message(msg)
+
+
+
+def build_logo_data_uri():
+    logo_path = os.path.join(STATIC_DIR, "logo.png")
+    if not os.path.exists(logo_path):
+        return ""
+    try:
+        with open(logo_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except Exception:
+        return ""
+
+
+@app.context_processor
+def inject_brand_assets():
+    return {"logo_data_uri": build_logo_data_uri()}
 
 
 def get_db():
@@ -201,6 +403,67 @@ def safe_bool(value, default=False):
     if text in {"0", "false", "no", "off", ""}:
         return False
     return default
+
+
+def safe_int(value, default=0):
+    try:
+        return int(value if value not in (None, "") else default)
+    except (TypeError, ValueError):
+        return default
+
+
+app.permanent_session_lifetime = timedelta(minutes=max(safe_int(os.environ.get("ADMIN_SESSION_MINUTES"), 120), 15))
+
+
+def admin_login_url():
+    next_url = request.full_path if request.query_string else request.path
+    return url_for("login", next=next_url)
+
+
+def login_admin_session():
+    session.clear()
+    session.permanent = True
+    session["admin_logged_in"] = True
+    session["admin_last_seen"] = datetime.now().isoformat()
+
+
+def clear_admin_session():
+    session.pop("admin_logged_in", None)
+    session.pop("admin_last_seen", None)
+
+
+def admin_session_active():
+    if not session.get("admin_logged_in"):
+        return False
+
+    raw_last_seen = session.get("admin_last_seen")
+    if not raw_last_seen:
+        clear_admin_session()
+        return False
+
+    try:
+        last_seen = datetime.fromisoformat(raw_last_seen)
+    except (TypeError, ValueError):
+        clear_admin_session()
+        return False
+
+    if datetime.now() - last_seen > app.permanent_session_lifetime:
+        clear_admin_session()
+        return False
+
+    session["admin_last_seen"] = datetime.now().isoformat()
+    session.permanent = True
+    return True
+
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        if not admin_session_active():
+            flash("Please log in to access the admin area.")
+            return redirect(admin_login_url())
+        return view_func(*args, **kwargs)
+    return wrapped_view
 
 
 def table_columns(conn, table_name):
@@ -244,6 +507,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS quotes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         quote_token TEXT UNIQUE,
+        public_slug TEXT UNIQUE,
         created_at TEXT,
         customer_id INTEGER,
         vehicle_id INTEGER,
@@ -312,6 +576,7 @@ def init_db():
     conn.commit()
 
     add_column_if_missing(conn, "quotes", "quote_token", "TEXT")
+    add_column_if_missing(conn, "quotes", "public_slug", "TEXT")
     add_column_if_missing(conn, "quotes", "customer_id", "INTEGER")
     add_column_if_missing(conn, "quotes", "vehicle_id", "INTEGER")
     add_column_if_missing(conn, "quotes", "approved_json", "TEXT")
@@ -1038,6 +1303,7 @@ def save_quote():
             return redirect(url_for("admin"))
 
     token = existing_quote["quote_token"] if existing_quote else generate_token()
+    public_slug = (existing_quote["public_slug"] if existing_quote and "public_slug" in existing_quote.keys() else "") or generate_quote_public_slug(conn, customer_name, vehicle)
     inspection_data = build_inspection_from_request(request.form, request.files, token=token)
 
     customer_id = find_or_create_customer(conn, customer_name, customer_phone, customer_email)
@@ -1049,7 +1315,7 @@ def save_quote():
             UPDATE quotes
             SET customer_id = ?, vehicle_id = ?, customer_name = ?, customer_phone = ?,
                 customer_email = ?, vehicle = ?, vin = ?, labor_rate = ?, tax_rate = ?,
-                service_fee = ?, payload_json = ?, inspection_json = ?, status = 'quote',
+                service_fee = ?, payload_json = ?, inspection_json = ?, public_slug = ?, status = 'quote',
                 approved_json = NULL, signature_data = NULL, signed_name = NULL, signed_at = NULL
             WHERE quote_token = ?
             """,
@@ -1066,6 +1332,7 @@ def save_quote():
                 service_fee,
                 json.dumps(payload),
                 json.dumps(inspection_data),
+                public_slug,
                 token,
             ),
         )
@@ -1073,13 +1340,14 @@ def save_quote():
         cur.execute(
             """
             INSERT INTO quotes (
-                quote_token, created_at, customer_id, vehicle_id, customer_name, customer_phone,
+                quote_token, public_slug, created_at, customer_id, vehicle_id, customer_name, customer_phone,
                 customer_email, vehicle, vin, labor_rate, tax_rate, service_fee, payload_json, inspection_json, status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 token,
+                public_slug,
                 datetime.now().isoformat(),
                 customer_id,
                 vehicle_id,
@@ -1109,13 +1377,13 @@ def save_quote():
 
     conn.commit()
     conn.close()
-    return redirect(url_for("view_quote", token=token))
+    return redirect(url_for("view_quote", token=public_slug or token))
 
 
 @app.route("/quote/<token>")
 def view_quote(token):
     conn = get_db()
-    row = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
+    row = conn.execute("SELECT * FROM quotes WHERE quote_token = ? OR public_slug = ?", (token, token)).fetchone()
     conn.close()
 
     if row is None:
@@ -1128,7 +1396,48 @@ def view_quote(token):
 
     _approved_jobs, approved_map = parse_approved_map(quote.get("approved_json"))
     inspection = load_inspection(quote)
-    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map, inspection=inspection)
+    return render_template("quote.html", quote=quote, jobs=jobs, approved_map=approved_map, inspection=inspection, quote_public_key=get_quote_public_key(quote), logo_data_uri=build_logo_data_uri(), is_pdf=False)
+
+
+
+
+@app.route("/quote/<token>/pdf", methods=["GET"])
+@app.route("/quote_pdf/<token>", methods=["GET"])
+@app.route("/download_quote_pdf/<token>", methods=["GET"])
+def download_quote_pdf(token):
+    conn = get_db()
+    row = get_quote_for_any_token(conn, token)
+    conn.close()
+
+    if not row:
+        abort(404)
+
+    pdf_bytes = render_quote_pdf_bytes(row)
+    response = make_response(pdf_bytes)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f'attachment; filename="{make_safe_attachment_name(row)}"'
+    return response
+
+
+@app.route("/admin/send_quote_email/<token>", methods=["POST"])
+@app.route("/send_quote_email/<token>", methods=["POST"])
+@admin_required
+def send_quote_email(token):
+    conn = get_db()
+    quote = get_quote_for_any_token(conn, token)
+    conn.close()
+    if not quote:
+        abort(404)
+
+    try:
+        pdf_bytes = render_quote_pdf_bytes(quote)
+        send_quote_email_message(quote, pdf_bytes)
+    except Exception as exc:
+        flash(f"Quote email failed: {exc}")
+        return redirect(url_for("admin"))
+
+    flash(f"Quote emailed to {(quote['customer_email'] or '').strip()}.")
+    return redirect(url_for("admin"))
 
 
 @app.route("/approve_quote/<token>", methods=["POST"])
@@ -1207,6 +1516,7 @@ def approve_quote(token):
 
 
 @app.route("/convert_invoice/<token>", methods=["GET"])
+@admin_required
 def convert_invoice(token):
     conn = get_db()
     cur = conn.cursor()
@@ -1302,21 +1612,71 @@ def view_invoice(invoice_number):
     if not row:
         abort(404)
 
-    payload = json.loads(row["payload_json"] or "{}")
-    approved_jobs, approved_map = parse_approved_map(row["approved_json"])
-    totals = build_quote_totals(row, payload, approved_map=approved_map)
+    return render_template("invoice.html", **build_invoice_template_context(row, is_pdf=False))
 
-    return render_template(
-        "invoice.html",
-        row=row,
-        payload=payload,
-        totals=totals,
-        approved_jobs=approved_jobs,
-        approved_map=approved_map,
+
+@app.route("/invoice/<invoice_number>/pdf", methods=["GET"])
+def download_invoice_pdf(invoice_number):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+            invoices.id AS invoice_id,
+            invoices.invoice_number,
+            invoices.created_at AS invoice_created_at,
+            invoices.total AS invoice_total,
+            invoices.payment_status,
+            invoices.payment_method,
+            invoices.paid_at,
+            quotes.*
+        FROM invoices
+        JOIN quotes ON quotes.id = invoices.quote_id
+        WHERE invoices.invoice_number = ?
+        """,
+        (invoice_number,),
     )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        abort(404)
+
+    pdf_bytes = render_invoice_pdf_bytes(row)
+    response = make_response(pdf_bytes)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f'attachment; filename="invoice-{row["invoice_number"]}.pdf"'
+    return response
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if admin_session_active():
+        return redirect(url_for("admin"))
+
+    next_url = request.args.get("next") or request.form.get("next") or url_for("admin")
+    if request.method == "POST":
+        password = (request.form.get("password") or "").strip()
+        if password == ADMIN_PASSWORD:
+            login_admin_session()
+            flash("Admin login successful.")
+            if next_url and next_url.startswith("/"):
+                return redirect(next_url)
+            return redirect(url_for("admin"))
+        flash("Incorrect admin password.")
+
+    return render_template("login.html", next_url=next_url, session_minutes=int(app.permanent_session_lifetime.total_seconds() // 60))
+
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    clear_admin_session()
+    flash("Logged out.")
+    return redirect(url_for("login"))
 
 
 @app.route("/admin", methods=["GET"])
+@admin_required
 def admin():
     conn = get_db()
     cur = conn.cursor()
@@ -1342,7 +1702,8 @@ def admin():
     rows = []
     for row in raw_rows:
         row_dict = dict(row)
-        row_dict["quote_url_external"] = build_quote_url_external(row["quote_token"]) if row["quote_token"] else ""
+        row_dict["quote_public_key"] = get_quote_public_key(row_dict)
+        row_dict["quote_url_external"] = build_quote_url_external(row_dict) if row_dict.get("quote_public_key") else ""
         row_dict["customer_phone_display"] = display_phone_number(row["customer_phone"])
         row_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         rows.append(row_dict)
@@ -1354,7 +1715,7 @@ def admin():
         request_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         request_rows.append(request_dict)
 
-    return render_template("admin_quotes.html", rows=rows, request_rows=request_rows)
+    return render_template("admin_quotes.html", rows=rows, request_rows=request_rows, email_enabled=email_settings_ready())
 
 
 @app.route("/request-quote", methods=["GET", "POST"])
@@ -1400,7 +1761,19 @@ def request_quote():
     return render_template("request_quote.html", submitted=False)
 
 
+@app.route("/admin/request/<int:request_id>/use-in-estimator", methods=["GET"])
+@admin_required
+def use_request_in_estimator(request_id):
+    conn = get_db()
+    row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
+    conn.close()
+    if not row:
+        abort(404)
+    return redirect(url_for("index", request_id=request_id))
+
+
 @app.route("/admin/request/<int:request_id>/status", methods=["POST"])
+@admin_required
 def update_request_quote_status(request_id):
     new_status = (request.form.get("status") or "new").strip().lower()
     allowed_statuses = {"new", "contacted", "quoted", "closed"}
@@ -1421,6 +1794,7 @@ def update_request_quote_status(request_id):
 
 
 @app.route("/admin/request/<int:request_id>/delete", methods=["POST"])
+@admin_required
 def delete_request_quote(request_id):
     conn = get_db()
     row = conn.execute("SELECT id FROM request_quotes WHERE id = ?", (request_id,)).fetchone()
@@ -1436,6 +1810,7 @@ def delete_request_quote(request_id):
 
 
 @app.route("/mark_paid/<invoice_number>", methods=["POST"])
+@admin_required
 def mark_paid(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1455,6 +1830,7 @@ def mark_paid(invoice_number):
 
 
 @app.route("/admin/copy_quote_text/<token>", methods=["GET"])
+@admin_required
 def copy_quote_text(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1465,7 +1841,8 @@ def copy_quote_text(token):
     return jsonify({
         "ok": True,
         "message": build_copy_text_message(quote),
-        "quote_url": build_quote_url_external(token),
+        "text": build_copy_text_message(quote),
+        "quote_url": build_quote_url_external(quote),
         "phone": normalize_phone_number(quote["customer_phone"]),
         "phone_display": display_phone_number(quote["customer_phone"]),
         "customer_name": quote["customer_name"] or "",
@@ -1474,6 +1851,7 @@ def copy_quote_text(token):
 
 
 @app.route("/send_quote_sms/<token>", methods=["POST"])
+@admin_required
 def send_quote_sms(token):
     conn = get_db()
     quote = conn.execute("SELECT * FROM quotes WHERE quote_token = ?", (token,)).fetchone()
@@ -1485,6 +1863,7 @@ def send_quote_sms(token):
 
 
 @app.route("/admin/delete_invoice/<invoice_number>", methods=["POST"])
+@admin_required
 def delete_invoice(invoice_number):
     conn = get_db()
     cur = conn.cursor()
@@ -1503,6 +1882,7 @@ def delete_invoice(invoice_number):
 
 
 @app.route("/admin/clear_approval/<token>", methods=["POST"])
+@admin_required
 def clear_approval(token):
     conn = get_db()
     cur = conn.cursor()
@@ -1535,7 +1915,9 @@ def clear_approval(token):
     return redirect(url_for("admin"))
 
 
+@app.route("/delete_quote/<int:quote_id>", methods=["POST"])
 @app.route("/admin/delete_quote/<int:quote_id>", methods=["POST"])
+@admin_required
 def delete_quote(quote_id):
     conn = get_db()
     cur = conn.cursor()

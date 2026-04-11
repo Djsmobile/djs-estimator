@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DJ's Estimate Review</title>
+  <title>Estimate {{ quote_public_key or quote.quote_token or "Review" }}</title>
   <style>
     :root{
       --bg:#090a0d;
@@ -451,10 +451,11 @@
     <div class="card">
       <div class="brandline">
         <div class="brandbox">
-          <img src="{{ logo_data_uri or url_for('static', filename='logo.png', _external=True) }}" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
+          <img src="{{ logo_data_uri if logo_data_uri else url_for('static', filename='logo.png', _external=True) }}" alt="DJ's Mobile Mechanic logo" class="logo" onerror="this.style.display='none'">
           <div>
             <div class="kicker">Estimate Review</div>
-            <h1>DJ's Estimate Review</h1>
+            <h1>Estimate Review</h1>
+            <div class="muted">DJ&#39;s Mobile Mechanic</div>
             <div class="muted">Review the estimate below, choose any available parts option, and approve the services you want completed.</div>
           </div>
         </div>
