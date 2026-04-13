@@ -73,6 +73,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 .lead-actions,.quote-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .empty{padding:16px;border-radius:12px;background:#111318;border:1px dashed var(--line);color:var(--muted);margin-top:14px}
 .section-divider{height:1px;background:var(--line);margin:14px 0}
+.quote-checkbox,#select-all-quotes{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
 @media (max-width:980px){
   .wrap{padding:16px 12px 24px}
   h1{font-size:26px}
@@ -137,6 +138,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
         <table style="min-width:1100px;">
           <thead>
             <tr>
+              <th style="width:52px;">Select</th>
               <th>Status</th>
               <th>Customer</th>
               <th>Vehicle</th>
@@ -266,6 +268,17 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
         <div class="kicker">Quotes</div>
         <h2>Saved Quotes</h2>
         <div class="sub">Open, edit, convert to invoice, or copy your send text without digging through long rows.</div>
+
+      <div class="pill-row" style="margin-top:12px;">
+        <form id="bulk-delete-form" method="POST" action="/admin/delete_quotes_bulk" class="inline-form" onsubmit="return confirmBulkDelete();"></form>
+        <label class="btn btn-soft" style="gap:8px;cursor:pointer;">
+          <input type="checkbox" id="select-all-quotes" style="margin:0;">
+          <span>Select all quotes</span>
+        </label>
+        <button type="submit" class="btn btn-red" form="bulk-delete-form" id="bulk-delete-btn" disabled>Delete selected</button>
+        <span class="mini-stat"><span id="selected-count">0</span> selected</span>
+      </div>
+
       </div>
     </div>
 
@@ -274,6 +287,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
         <table>
           <thead>
             <tr>
+              <th style="width:52px;">Select</th>
               <th>Status</th>
               <th>Customer</th>
               <th>Vehicle</th>
@@ -288,6 +302,9 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
           <tbody>
           {% for row in rows %}
             <tr>
+              <td>
+                <input type="checkbox" name="quote_ids[]" value="{{ row.id }}" class="quote-checkbox" form="bulk-delete-form" aria-label="Select quote {{ row.customer_name or row.id }}">
+              </td>
               <td>
                 <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">
                   {{ row.status or 'quote' }}
@@ -369,9 +386,12 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
         {% for row in rows %}
           <div class="quote-card">
             <div class="quote-head">
-              <div>
-                <div class="quote-name">{{ row.customer_name or '-' }}</div>
-                <div class="quote-vehicle">{{ row.vehicle or '-' }}</div>
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <input type="checkbox" name="quote_ids[]" value="{{ row.id }}" class="quote-checkbox" form="bulk-delete-form" aria-label="Select quote {{ row.customer_name or row.id }}" style="margin-top:4px;">
+                <div>
+                  <div class="quote-name">{{ row.customer_name or '-' }}</div>
+                  <div class="quote-vehicle">{{ row.vehicle or '-' }}</div>
+                </div>
               </div>
               <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">{{ row.status or 'quote' }}</span>
             </div>
@@ -457,6 +477,51 @@ async function copyText(text){
     alert('Copied.');
   }
 }
+
+const quoteCheckboxes = Array.from(document.querySelectorAll('.quote-checkbox'));
+const selectAllQuotes = document.getElementById('select-all-quotes');
+const selectedCount = document.getElementById('selected-count');
+const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+
+function refreshBulkDeleteState(){
+  const checkedCount = quoteCheckboxes.filter(box => box.checked).length;
+  if(selectedCount) selectedCount.textContent = String(checkedCount);
+  if(bulkDeleteBtn) bulkDeleteBtn.disabled = checkedCount === 0;
+  if(selectAllQuotes){
+    if(quoteCheckboxes.length === 0){
+      selectAllQuotes.checked = false;
+      selectAllQuotes.indeterminate = false;
+    }else{
+      selectAllQuotes.checked = checkedCount === quoteCheckboxes.length;
+      selectAllQuotes.indeterminate = checkedCount > 0 && checkedCount < quoteCheckboxes.length;
+    }
+  }
+}
+
+function confirmBulkDelete(){
+  const checkedCount = quoteCheckboxes.filter(box => box.checked).length;
+  if(checkedCount === 0){
+    alert('Select at least one quote to delete.');
+    return false;
+  }
+  return confirm(`Delete ${checkedCount} selected quote(s)? This will also delete any linked invoices.`);
+}
+
+if(selectAllQuotes){
+  selectAllQuotes.addEventListener('change', ()=>{
+    quoteCheckboxes.forEach(box => {
+      box.checked = selectAllQuotes.checked;
+    });
+    refreshBulkDeleteState();
+  });
+}
+
+quoteCheckboxes.forEach(box=>{
+  box.addEventListener('change', refreshBulkDeleteState);
+});
+
+refreshBulkDeleteState();
+
 
 document.querySelectorAll('.copy-link-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{

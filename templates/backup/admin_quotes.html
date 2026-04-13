@@ -106,6 +106,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
       <span class="stat">Quotes: {{ rows|length if rows is defined else 0 }}</span>
       <span class="stat">Website leads: {{ request_rows|length if request_rows is defined else 0 }}</span>
       <span class="stat">Premium mobile admin</span>
+      <span class="stat">{% if email_enabled %}Email quotes ready{% else %}Email not configured{% endif %}</span>
     </div>
   </div>
 
@@ -329,6 +330,13 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                     {% if row.status not in ['approved', 'invoiced'] %}
                     <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
                     {% endif %}
+                    {% if row.customer_email %}
+                    <form method="POST" action="/admin/send_quote_email/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Email this quote and attached PDF to {{ row.customer_email }}?');">
+                      <button type="submit" class="btn btn-green">Email quote</button>
+                    </form>
+                    {% else %}
+                    <span class="small">No customer email</span>
+                    {% endif %}
                     <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy ready-to-send text</button>
                     <button type="button" class="btn copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>
                   {% else %}
@@ -400,6 +408,13 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 <a href="/quote/{{ row.quote_token }}" target="_blank" class="btn btn-soft">Open quote</a>
                 {% if row.status not in ['approved', 'invoiced'] %}
                 <a href="/edit_quote/{{ row.quote_token }}" class="btn btn-amber">Edit quote</a>
+                {% endif %}
+                {% if row.customer_email %}
+                <form method="POST" action="/admin/send_quote_email/{{ row.quote_token }}" class="inline-form" onsubmit="return confirm('Email this quote and attached PDF to {{ row.customer_email }}?');">
+                  <button type="submit" class="btn btn-green">Email quote</button>
+                </form>
+                {% else %}
+                <span class="small">No customer email</span>
                 {% endif %}
                 <button type="button" class="btn btn-blue copy-text-btn" data-copy-url="/admin/copy_quote_text/{{ row.quote_token }}">Copy send text</button>
                 <button type="button" class="btn btn-soft copy-link-btn" data-quote-link="{{ row.quote_url_external }}">Copy quote link</button>

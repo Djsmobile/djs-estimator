@@ -1865,6 +1865,48 @@ def clear_approval(token):
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/delete_quotes_bulk", methods=["POST"])
+@admin_required
+def delete_quotes_bulk():
+    raw_quote_ids = request.form.getlist("quote_ids[]")
+
+    selected_ids = []
+    for quote_id in raw_quote_ids:
+        try:
+            selected_ids.append(int(quote_id))
+        except (TypeError, ValueError):
+            continue
+
+    if not selected_ids:
+        flash("No quotes selected.")
+        return redirect(url_for("admin"))
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    placeholders = ",".join("?" for _ in selected_ids)
+    existing_rows = cur.execute(
+        f"SELECT id FROM quotes WHERE id IN ({placeholders})",
+        tuple(selected_ids),
+    ).fetchall()
+    existing_ids = [row["id"] for row in existing_rows]
+
+    if not existing_ids:
+        conn.close()
+        flash("No valid quotes were selected.")
+        return redirect(url_for("admin"))
+
+    delete_placeholders = ",".join("?" for _ in existing_ids)
+    cur.execute(f"DELETE FROM invoices WHERE quote_id IN ({delete_placeholders})", tuple(existing_ids))
+    cur.execute(f"DELETE FROM quotes WHERE id IN ({delete_placeholders})", tuple(existing_ids))
+
+    conn.commit()
+    conn.close()
+
+    flash(f"{len(existing_ids)} quote(s) deleted.")
+    return redirect(url_for("admin"))
+
+
 @app.route("/delete_quote/<int:quote_id>", methods=["POST"])
 @app.route("/admin/delete_quote/<int:quote_id>", methods=["POST"])
 @admin_required
