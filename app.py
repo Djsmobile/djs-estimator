@@ -558,6 +558,7 @@ def init_db():
     add_column_if_missing(conn, "quotes", "signed_at", "TEXT")
     add_column_if_missing(conn, "quotes", "status", "TEXT DEFAULT 'quote'")
     add_column_if_missing(conn, "quotes", "inspection_json", "TEXT")
+    add_column_if_missing(conn, "quotes", "parts_tracking_json", "TEXT")
 
     add_column_if_missing(conn, "invoices", "payment_status", "TEXT DEFAULT 'unpaid'")
     add_column_if_missing(conn, "invoices", "payment_method", "TEXT")
@@ -765,6 +766,155 @@ def sanitize_selected_tier(part, requested_tier=None, default_tier="quality"):
     if default_tier in enabled:
         return default_tier
     return enabled[0]
+
+
+PARTS_TRACKER_STATUSES = ["need_to_order", "ordered", "received", "installed"]
+
+
+def normalize_parts_tracker_status(value):
+    value = (value or "need_to_order").strip().lower().replace(" ", "_")
+    return value if value in PARTS_TRACKER_STATUSES else "need_to_order"
+
+
+def pretty_tier_name(value):
+    tier = (value or "").strip().lower()
+    if tier == "oem":
+        return "OEM"
+    if tier == "quality":
+        return "Quality"
+    if tier == "economy":
+        return "Economy"
+    return ""
+
+
+def parse_parts_tracking_json(parts_tracking_json):
+    try:
+        data = json.loads(parts_tracking_json or "[]")
+    except Exception:
+        data = []
+    return data if isinstance(data, list) else []
+
+
+def build_quote_parts_tracker(payload_json, parts_tracking_json=None):
+    try:
+        payload = json.loads(payload_json or "{}")
+    except Exception:
+        payload = {}
+
+    existing_items = parse_parts_tracking_json(parts_tracking_json)
+    existing_map = {}
+    for item in existing_items:
+        if isinstance(item, dict) and item.get("source_key"):
+            existing_map[item.get("source_key")] = item
+
+    tracker_items = []
+    jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
+    for job_index, job in enumerate(jobs):
+        if not isinstance(job, dict):
+            continue
+        job_desc = (job.get("desc") or "Service").strip() or "Service"
+        for part_index, part in enumerate(normalize_job_parts(job)):
+            part_desc = (part.get("part_desc") or "Part").strip() or "Part"
+            selected_tier = sanitize_selected_tier(part, part.get("selected_tier"), default_tier="quality")
+            source_key = f"job-{job_index}-part-{part_index}"
+            existing = existing_map.get(source_key, {})
+            tracker_items.append({
+                "source_key": source_key,
+                "source_type": "quote_part",
+                "job_desc": job_desc,
+                "part_desc": part_desc,
+                "display_name": f"{part_desc} ({pretty_tier_name(selected_tier)})" if pretty_tier_name(selected_tier) else part_desc,
+                "qty": max(safe_float(existing.get("qty", part.get("qty", 1)), part.get("qty", 1)), 0),
+                "status": normalize_parts_tracker_status(existing.get("status")),
+                "vendor": (existing.get("vendor") or "").strip(),
+                "part_number": (existing.get("part_number") or "").strip(),
+                "cost": safe_float(existing.get("cost", 0), 0),
+                "notes": (existing.get("notes") or "").strip(),
+                "selected_tier": selected_tier,
+            })
+
+    for item in existing_items:
+        if not isinstance(item, dict):
+            continue
+        if (item.get("source_type") or "manual") != "manual":
+            continue
+        tracker_items.append({
+            "source_key": (item.get("source_key") or f"manual-{secrets.token_hex(4)}").strip(),
+            "source_type": "manual",
+            "job_desc": (item.get("job_desc") or "").strip(),
+            "part_desc": (item.get("part_desc") or "").strip(),
+            "display_name": (item.get("display_name") or item.get("part_desc") or "").strip(),
+            "qty": max(safe_float(item.get("qty", 1), 1), 0),
+            "status": normalize_parts_tracker_status(item.get("status")),
+            "vendor": (item.get("vendor") or "").strip(),
+            "part_number": (item.get("part_number") or "").strip(),
+            "cost": safe_float(item.get("cost", 0), 0),
+            "notes": (item.get("notes") or "").strip(),
+            "selected_tier": (item.get("selected_tier") or "").strip(),
+        })
+
+    return tracker_items
+
+
+def build_parts_tracker_summary(parts_items):
+    summary = {key: 0 for key in PARTS_TRACKER_STATUSES}
+    for item in parts_items:
+        if isinstance(item, dict):
+            summary[normalize_parts_tracker_status(item.get("status"))] += 1
+    return summary
+
+
+def serialize_parts_tracker_from_form(form):
+    fields = {
+        "source_key": form.getlist("tracker_source_key[]"),
+        "source_type": form.getlist("tracker_source_type[]"),
+        "job_desc": form.getlist("tracker_job_desc[]"),
+        "part_desc": form.getlist("tracker_part_desc[]"),
+        "display_name": form.getlist("tracker_display_name[]"),
+        "qty": form.getlist("tracker_qty[]"),
+        "status": form.getlist("tracker_status[]"),
+        "vendor": form.getlist("tracker_vendor[]"),
+        "part_number": form.getlist("tracker_part_number[]"),
+        "cost": form.getlist("tracker_cost[]"),
+        "notes": form.getlist("tracker_notes[]"),
+        "selected_tier": form.getlist("tracker_selected_tier[]"),
+    }
+    max_len = max((len(v) for v in fields.values()), default=0)
+    items = []
+    for i in range(max_len):
+        source_type = (fields["source_type"][i].strip() if i < len(fields["source_type"]) else "quote_part") or "quote_part"
+        source_key = (fields["source_key"][i].strip() if i < len(fields["source_key"]) else "")
+        job_desc = fields["job_desc"][i].strip() if i < len(fields["job_desc"]) else ""
+        part_desc = fields["part_desc"][i].strip() if i < len(fields["part_desc"]) else ""
+        display_name = fields["display_name"][i].strip() if i < len(fields["display_name"]) else ""
+        qty = max(safe_float(fields["qty"][i] if i < len(fields["qty"]) else 1, 1), 0)
+        status = normalize_parts_tracker_status(fields["status"][i] if i < len(fields["status"]) else "need_to_order")
+        vendor = fields["vendor"][i].strip() if i < len(fields["vendor"]) else ""
+        part_number = fields["part_number"][i].strip() if i < len(fields["part_number"]) else ""
+        cost = safe_float(fields["cost"][i] if i < len(fields["cost"]) else 0, 0)
+        notes = fields["notes"][i].strip() if i < len(fields["notes"]) else ""
+        selected_tier = fields["selected_tier"][i].strip() if i < len(fields["selected_tier"]) else ""
+
+        if source_type == "manual" and not any([job_desc, part_desc, display_name, vendor, part_number, notes, qty, cost]):
+            continue
+        if not source_key:
+            source_key = f"manual-{secrets.token_hex(4)}" if source_type == "manual" else f"quote-part-{i}"
+
+        items.append({
+            "source_key": source_key,
+            "source_type": source_type,
+            "job_desc": job_desc,
+            "part_desc": part_desc,
+            "display_name": display_name or part_desc,
+            "qty": qty,
+            "status": status,
+            "vendor": vendor,
+            "part_number": part_number,
+            "cost": cost,
+            "notes": notes,
+            "selected_tier": selected_tier,
+        })
+    return json.dumps(items)
 
 
 def get_job_parts_total(job, tier="quality"):
@@ -1656,6 +1806,8 @@ def admin():
         row_dict["quote_url_external"] = build_quote_url_external(row_dict) if row_dict.get("quote_public_key") else ""
         row_dict["customer_phone_display"] = display_phone_number(row["customer_phone"])
         row_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
+        row_dict["parts_tracker_items"] = build_quote_parts_tracker(row_dict.get("payload_json"), row_dict.get("parts_tracking_json"))
+        row_dict["parts_tracker_summary"] = build_parts_tracker_summary(row_dict["parts_tracker_items"])
         rows.append(row_dict)
 
     request_rows = []
@@ -1812,6 +1964,26 @@ def send_quote_sms(token):
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/update_parts_tracker/<int:quote_id>", methods=["POST"])
+@admin_required
+def update_parts_tracker(quote_id):
+    conn = get_db()
+    cur = conn.cursor()
+    quote = cur.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
+    if not quote:
+        conn.close()
+        abort(404)
+
+    cur.execute(
+        "UPDATE quotes SET parts_tracking_json = ? WHERE id = ?",
+        (serialize_parts_tracker_from_form(request.form), quote_id),
+    )
+    conn.commit()
+    conn.close()
+    flash("Parts tracker updated.")
+    return redirect(url_for("admin"))
+
+
 @app.route("/admin/delete_invoice/<invoice_number>", methods=["POST"])
 @admin_required
 def delete_invoice(invoice_number):
@@ -1862,48 +2034,6 @@ def clear_approval(token):
     conn.commit()
     conn.close()
     flash("Approval cleared.")
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/delete_quotes_bulk", methods=["POST"])
-@admin_required
-def delete_quotes_bulk():
-    raw_quote_ids = request.form.getlist("quote_ids[]")
-
-    selected_ids = []
-    for quote_id in raw_quote_ids:
-        try:
-            selected_ids.append(int(quote_id))
-        except (TypeError, ValueError):
-            continue
-
-    if not selected_ids:
-        flash("No quotes selected.")
-        return redirect(url_for("admin"))
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    placeholders = ",".join("?" for _ in selected_ids)
-    existing_rows = cur.execute(
-        f"SELECT id FROM quotes WHERE id IN ({placeholders})",
-        tuple(selected_ids),
-    ).fetchall()
-    existing_ids = [row["id"] for row in existing_rows]
-
-    if not existing_ids:
-        conn.close()
-        flash("No valid quotes were selected.")
-        return redirect(url_for("admin"))
-
-    delete_placeholders = ",".join("?" for _ in existing_ids)
-    cur.execute(f"DELETE FROM invoices WHERE quote_id IN ({delete_placeholders})", tuple(existing_ids))
-    cur.execute(f"DELETE FROM quotes WHERE id IN ({delete_placeholders})", tuple(existing_ids))
-
-    conn.commit()
-    conn.close()
-
-    flash(f"{len(existing_ids)} quote(s) deleted.")
     return redirect(url_for("admin"))
 
 

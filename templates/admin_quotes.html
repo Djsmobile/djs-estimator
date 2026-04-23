@@ -74,7 +74,34 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 .empty{padding:16px;border-radius:12px;background:#111318;border:1px dashed var(--line);color:var(--muted);margin-top:14px}
 .section-divider{height:1px;background:var(--line);margin:14px 0}
 .quote-checkbox,#select-all-quotes{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+.parts-tracker-wrap{margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:var(--panel-3)}
+.parts-tracker-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.parts-summary{display:flex;flex-wrap:wrap;gap:8px}
+.parts-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#111318;color:var(--muted);font-size:12px;font-weight:800}
+.parts-pill.need{color:#fde68a;border-color:rgba(251,191,36,.22)}
+.parts-pill.ordered{color:#93c5fd;border-color:rgba(147,197,253,.22)}
+.parts-pill.received{color:#86efac;border-color:rgba(134,239,172,.22)}
+.parts-pill.installed{color:#f9fafb;border-color:rgba(255,255,255,.18)}
+.parts-tracker-table{width:100%;border-collapse:collapse;min-width:980px;font-size:13px}
+.parts-tracker-table th,.parts-tracker-table td{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+.parts-tracker-table th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:left}
+.parts-tracker-table input,.parts-tracker-table select,.parts-tracker-table textarea{width:100%;padding:8px 9px;border-radius:10px;border:1px solid var(--line);background:#0f1116;color:var(--text);font:inherit}
+.parts-tracker-table textarea{min-height:38px;resize:vertical}
+.parts-tracker-table .readonly-field{padding:8px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:#161a20;min-width:140px}
+.parts-type-tag{display:inline-flex;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:#111318;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.parts-mobile-list{display:none;flex-direction:column;gap:10px}
+.part-item-card{border:1px solid rgba(255,255,255,.08);border-radius:14px;background:#10141a;padding:10px}
+.part-item-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.part-item-grid .full{grid-column:1 / -1}
+.part-item-card input,.part-item-card select,.part-item-card textarea{width:100%;padding:8px 9px;border-radius:10px;border:1px solid var(--line);background:#0f1116;color:var(--text);font:inherit}
+.part-item-card textarea{min-height:38px;resize:vertical}
+.part-item-card .readonly-field{padding:8px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:#161a20}
+.hidden-inputs{display:none}
 @media (max-width:980px){
+  .parts-desktop-table{display:none}
+  .parts-mobile-list{display:flex}
+  .part-item-grid{grid-template-columns:1fr}
+}
   .wrap{padding:16px 12px 24px}
   h1{font-size:26px}
   .desktop-table{display:none}
@@ -296,6 +323,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
               <th>Created</th>
               <th>Signed</th>
               <th>Invoice</th>
+              <th>Parts Tracker</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -339,6 +367,98 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
               <td>
                 <div style="font-weight:800;">{{ row.invoice_number or '-' }}</div>
                 <div class="small">Quote link ready</div>
+              </td>
+              <td>
+                <form method="POST" action="/admin/update_parts_tracker/{{ row.id }}" class="inline-form">
+                  <div class="parts-tracker-wrap">
+                    <div class="parts-tracker-head">
+                      <div>
+                        <div style="font-weight:900;">Internal Parts List</div>
+                        <div class="small">Shop-use only. Tracks ordering and receiving without showing the customer.</div>
+                      </div>
+                      <div class="parts-summary">
+                        <span class="parts-pill need">Need: {{ row.parts_tracker_summary.need_to_order }}</span>
+                        <span class="parts-pill ordered">Ordered: {{ row.parts_tracker_summary.ordered }}</span>
+                        <span class="parts-pill received">Received: {{ row.parts_tracker_summary.received }}</span>
+                        <span class="parts-pill installed">Installed: {{ row.parts_tracker_summary.installed }}</span>
+                      </div>
+                    </div>
+                    <div class="parts-desktop-table" style="overflow:auto;">
+                      <table class="parts-tracker-table">
+                        <thead>
+                          <tr>
+                            <th>Service</th><th>Part</th><th>Qty</th><th>Status</th><th>Vendor</th><th>Part #</th><th>Cost</th><th>Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for item in row.parts_tracker_items %}
+                          <tr>
+                            <td>
+                              <div class="readonly-field">{{ item.job_desc or 'Manual' }}</div>
+                              <div class="hidden-inputs">
+                                <input type="hidden" name="tracker_source_key[]" value="{{ item.source_key }}">
+                                <input type="hidden" name="tracker_source_type[]" value="{{ item.source_type }}">
+                                <input type="hidden" name="tracker_job_desc[]" value="{{ item.job_desc }}">
+                                <input type="hidden" name="tracker_part_desc[]" value="{{ item.part_desc }}">
+                                <input type="hidden" name="tracker_display_name[]" value="{{ item.display_name or item.part_desc }}">
+                                <input type="hidden" name="tracker_selected_tier[]" value="{{ item.selected_tier or '' }}">
+                              </div>
+                            </td>
+                            <td>
+                              <div class="readonly-field">{{ item.display_name or item.part_desc }}</div>
+                              <div style="margin-top:6px;">
+                                <span class="parts-type-tag">{{ 'Manual' if item.source_type == 'manual' else 'Quote Part' }}</span>
+                              </div>
+                            </td>
+                            <td><input type="number" name="tracker_qty[]" step="0.01" min="0" value="{{ '%.2f'|format(item.qty or 0) }}"></td>
+                            <td>
+                              <select name="tracker_status[]">
+                                <option value="need_to_order" {% if item.status == 'need_to_order' %}selected{% endif %}>Need to Order</option>
+                                <option value="ordered" {% if item.status == 'ordered' %}selected{% endif %}>Ordered</option>
+                                <option value="received" {% if item.status == 'received' %}selected{% endif %}>Received</option>
+                                <option value="installed" {% if item.status == 'installed' %}selected{% endif %}>Installed</option>
+                              </select>
+                            </td>
+                            <td><input type="text" name="tracker_vendor[]" value="{{ item.vendor or '' }}"></td>
+                            <td><input type="text" name="tracker_part_number[]" value="{{ item.part_number or '' }}"></td>
+                            <td><input type="number" name="tracker_cost[]" step="0.01" min="0" value="{{ '%.2f'|format(item.cost or 0) }}"></td>
+                            <td><textarea name="tracker_notes[]">{{ item.notes or '' }}</textarea></td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="parts-mobile-list">
+                      {% for item in row.parts_tracker_items %}
+                      <div class="part-item-card">
+                        <div style="font-weight:900;">{{ item.display_name or item.part_desc }}</div>
+                        <div class="small">{{ item.job_desc or 'Manual' }}</div>
+                        <div class="hidden-inputs">
+                          <input type="hidden" name="tracker_source_key[]" value="{{ item.source_key }}">
+                          <input type="hidden" name="tracker_source_type[]" value="{{ item.source_type }}">
+                          <input type="hidden" name="tracker_job_desc[]" value="{{ item.job_desc }}">
+                          <input type="hidden" name="tracker_part_desc[]" value="{{ item.part_desc }}">
+                          <input type="hidden" name="tracker_display_name[]" value="{{ item.display_name or item.part_desc }}">
+                          <input type="hidden" name="tracker_selected_tier[]" value="{{ item.selected_tier or '' }}">
+                        </div>
+                        <div class="part-item-grid">
+                          <div><div class="small">Qty</div><input type="number" name="tracker_qty[]" step="0.01" min="0" value="{{ '%.2f'|format(item.qty or 0) }}"></div>
+                          <div><div class="small">Status</div><select name="tracker_status[]"><option value="need_to_order" {% if item.status == 'need_to_order' %}selected{% endif %}>Need to Order</option><option value="ordered" {% if item.status == 'ordered' %}selected{% endif %}>Ordered</option><option value="received" {% if item.status == 'received' %}selected{% endif %}>Received</option><option value="installed" {% if item.status == 'installed' %}selected{% endif %}>Installed</option></select></div>
+                          <div><div class="small">Vendor</div><input type="text" name="tracker_vendor[]" value="{{ item.vendor or '' }}"></div>
+                          <div><div class="small">Part #</div><input type="text" name="tracker_part_number[]" value="{{ item.part_number or '' }}"></div>
+                          <div><div class="small">Cost</div><input type="number" name="tracker_cost[]" step="0.01" min="0" value="{{ '%.2f'|format(item.cost or 0) }}"></div>
+                          <div class="full"><div class="small">Notes</div><textarea name="tracker_notes[]">{{ item.notes or '' }}</textarea></div>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <div class="lead-actions" style="margin-top:10px;">
+                      <button type="button" class="btn btn-soft add-manual-part-btn" data-target="manual-parts-{{ row.id }}">+ Add internal-only part</button>
+                      <button type="submit" class="btn btn-blue">Save parts list</button>
+                    </div>
+                    <div id="manual-parts-{{ row.id }}"></div>
+                  </div>
+                </form>
               </td>
               <td>
                 <div class="actions">
@@ -422,6 +542,52 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 <div class="value">{{ row.invoice_number or '-' }}</div>
               </div>
             </div>
+
+            <form method="POST" action="/admin/update_parts_tracker/{{ row.id }}" class="inline-form">
+              <div class="parts-tracker-wrap">
+                <div class="parts-tracker-head">
+                  <div>
+                    <div style="font-weight:900;">Internal Parts List</div>
+                    <div class="small">Need to order, ordered, received, installed.</div>
+                  </div>
+                  <div class="parts-summary">
+                    <span class="parts-pill need">Need: {{ row.parts_tracker_summary.need_to_order }}</span>
+                    <span class="parts-pill ordered">Ordered: {{ row.parts_tracker_summary.ordered }}</span>
+                    <span class="parts-pill received">Received: {{ row.parts_tracker_summary.received }}</span>
+                    <span class="parts-pill installed">Installed: {{ row.parts_tracker_summary.installed }}</span>
+                  </div>
+                </div>
+                <div class="parts-mobile-list" style="display:flex;">
+                  {% for item in row.parts_tracker_items %}
+                  <div class="part-item-card">
+                    <div style="font-weight:900;">{{ item.display_name or item.part_desc }}</div>
+                    <div class="small">{{ item.job_desc or 'Manual' }}</div>
+                    <div class="hidden-inputs">
+                      <input type="hidden" name="tracker_source_key[]" value="{{ item.source_key }}">
+                      <input type="hidden" name="tracker_source_type[]" value="{{ item.source_type }}">
+                      <input type="hidden" name="tracker_job_desc[]" value="{{ item.job_desc }}">
+                      <input type="hidden" name="tracker_part_desc[]" value="{{ item.part_desc }}">
+                      <input type="hidden" name="tracker_display_name[]" value="{{ item.display_name or item.part_desc }}">
+                      <input type="hidden" name="tracker_selected_tier[]" value="{{ item.selected_tier or '' }}">
+                    </div>
+                    <div class="part-item-grid">
+                      <div><div class="small">Qty</div><input type="number" name="tracker_qty[]" step="0.01" min="0" value="{{ '%.2f'|format(item.qty or 0) }}"></div>
+                      <div><div class="small">Status</div><select name="tracker_status[]"><option value="need_to_order" {% if item.status == 'need_to_order' %}selected{% endif %}>Need to Order</option><option value="ordered" {% if item.status == 'ordered' %}selected{% endif %}>Ordered</option><option value="received" {% if item.status == 'received' %}selected{% endif %}>Received</option><option value="installed" {% if item.status == 'installed' %}selected{% endif %}>Installed</option></select></div>
+                      <div><div class="small">Vendor</div><input type="text" name="tracker_vendor[]" value="{{ item.vendor or '' }}"></div>
+                      <div><div class="small">Part #</div><input type="text" name="tracker_part_number[]" value="{{ item.part_number or '' }}"></div>
+                      <div><div class="small">Cost</div><input type="number" name="tracker_cost[]" step="0.01" min="0" value="{{ '%.2f'|format(item.cost or 0) }}"></div>
+                      <div class="full"><div class="small">Notes</div><textarea name="tracker_notes[]">{{ item.notes or '' }}</textarea></div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="lead-actions" style="margin-top:10px;">
+                  <button type="button" class="btn btn-soft add-manual-part-btn" data-target="mobile-manual-parts-{{ row.id }}">+ Add internal-only part</button>
+                  <button type="submit" class="btn btn-blue">Save parts list</button>
+                </div>
+                <div id="mobile-manual-parts-{{ row.id }}"></div>
+              </div>
+            </form>
 
             <div class="quote-actions">
               {% if row.quote_token %}
@@ -547,6 +713,39 @@ document.querySelectorAll('.copy-text-btn').forEach(btn=>{
     }finally{
       btn.disabled=false;
       btn.textContent=oldText;
+    }
+  });
+});
+function createManualPartCardHtml(){
+  return `
+    <div class="part-item-card" style="margin-top:10px;">
+      <div style="font-weight:900;">Internal-only part</div>
+      <div class="small">Not shown to customer</div>
+      <div class="hidden-inputs">
+        <input type="hidden" name="tracker_source_key[]" value="manual-${Date.now()}-${Math.random().toString(16).slice(2,8)}">
+        <input type="hidden" name="tracker_source_type[]" value="manual">
+        <input type="hidden" name="tracker_selected_tier[]" value="">
+      </div>
+      <div class="part-item-grid" style="margin-top:10px;">
+        <div><div class="small">Service / job</div><input type="text" name="tracker_job_desc[]" value=""></div>
+        <div><div class="small">Part name</div><input type="text" name="tracker_part_desc[]" value=""></div>
+        <div class="full"><div class="small">Display name</div><input type="text" name="tracker_display_name[]" value=""></div>
+        <div><div class="small">Qty</div><input type="number" name="tracker_qty[]" step="0.01" min="0" value="1.00"></div>
+        <div><div class="small">Status</div><select name="tracker_status[]"><option value="need_to_order">Need to Order</option><option value="ordered">Ordered</option><option value="received">Received</option><option value="installed">Installed</option></select></div>
+        <div><div class="small">Vendor</div><input type="text" name="tracker_vendor[]" value=""></div>
+        <div><div class="small">Part #</div><input type="text" name="tracker_part_number[]" value=""></div>
+        <div><div class="small">Cost</div><input type="number" name="tracker_cost[]" step="0.01" min="0" value="0.00"></div>
+        <div class="full"><div class="small">Notes</div><textarea name="tracker_notes[]"></textarea></div>
+      </div>
+    </div>
+  `;
+}
+
+document.querySelectorAll('.add-manual-part-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = document.getElementById(btn.dataset.target);
+    if(target){
+      target.insertAdjacentHTML('beforeend', createManualPartCardHtml());
     }
   });
 });
