@@ -54,6 +54,19 @@ h2{font-size:24px}
 .status.contacted{background:#172554;color:#93c5fd;border-color:rgba(147,197,253,.25)}
 .status.quoted{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
 .status.closed{background:#27272a;color:#d4d4d8;border-color:rgba(255,255,255,.12)}
+.admin-status{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--line);background:#111318}
+.admin-status.active{background:#16351f;color:#86efac;border-color:rgba(134,239,172,.25)}
+.admin-status.waiting{background:#3b2a11;color:#fde68a;border-color:rgba(251,191,36,.25)}
+.admin-status.archived{background:#1f2937;color:#cbd5e1;border-color:rgba(148,163,184,.2)}
+.filter-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.filter-tab{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;border:1px solid var(--line);background:#111318;color:var(--muted);text-decoration:none;font-weight:800}
+.filter-tab.active{background:rgba(212,175,55,.12);border-color:rgba(212,175,55,.28);color:#f8e7a1}
+.filter-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--text);font-size:12px}
+.quote-meta-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.meta-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#111318;border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:12px;font-weight:800}
+.meta-chip.warning{color:#fde68a;border-color:rgba(251,191,36,.25)}
+.meta-chip.danger{color:#fecaca;border-color:rgba(248,113,113,.25)}
+.admin-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .table-wrap{overflow:auto;margin-top:14px}
 table{width:100%;border-collapse:separate;border-spacing:0 10px;font-size:14px;min-width:1200px}
 thead th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;padding:0 12px 8px;text-align:left}
@@ -142,7 +155,10 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
     </div>
 
     <div class="stats">
-      <span class="stat">Quotes: {{ rows|length if rows is defined else 0 }}</span>
+      <span class="stat">Showing: {{ rows|length if rows is defined else 0 }}</span>
+      <span class="stat">Active: {{ quote_status_counts.active if quote_status_counts is defined else 0 }}</span>
+      <span class="stat">Waiting: {{ quote_status_counts.waiting if quote_status_counts is defined else 0 }}</span>
+      <span class="stat">Archived: {{ quote_status_counts.archived if quote_status_counts is defined else 0 }}</span>
       <span class="stat">Website leads: {{ request_rows|length if request_rows is defined else 0 }}</span>
       <span class="stat">Premium mobile admin</span>
       <span class="stat">{% if email_enabled %}Email quotes ready{% else %}Email not configured{% endif %}</span>
@@ -306,6 +322,13 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
         <div class="kicker">Quotes</div>
         <h2>Saved Quotes</h2>
         <div class="sub">Open, edit, convert to invoice, or copy your send text without digging through long rows.</div>
+        <div class="filter-tabs">
+          <a class="filter-tab {% if selected_quote_view == 'active' %}active{% endif %}" href="/admin?view=active">Active <span class="filter-count">{{ quote_status_counts.active }}</span></a>
+          <a class="filter-tab {% if selected_quote_view == 'waiting' %}active{% endif %}" href="/admin?view=waiting">Waiting <span class="filter-count">{{ quote_status_counts.waiting }}</span></a>
+          <a class="filter-tab {% if selected_quote_view == 'archived' %}active{% endif %}" href="/admin?view=archived">Archived <span class="filter-count">{{ quote_status_counts.archived }}</span></a>
+          <a class="filter-tab {% if selected_quote_view == 'all' %}active{% endif %}" href="/admin?view=all">All <span class="filter-count">{{ quote_status_counts.all }}</span></a>
+        </div>
+        <div class="small" style="margin-top:8px;">Waiting quotes auto-archive after 7 days. Approved and invoiced quotes stay active.</div>
 
       <div class="pill-row" style="margin-top:12px;">
         <form id="bulk-delete-form" method="POST" action="/admin/delete_quotes_bulk" class="inline-form" onsubmit="return confirmBulkDelete();"></form>
@@ -380,7 +403,31 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 <div class="small">Quote link ready</div>
               </td>
               <td>
-                <form method="POST" action="/admin/update_parts_tracker/{{ row.id }}" class="inline-form">
+                            <div class="admin-actions">
+              {% if row.admin_status != 'active' %}
+              <form method="POST" action="/admin/quote/{{ row.id }}/admin_status" class="inline-form">
+                <input type="hidden" name="admin_status" value="active">
+                <input type="hidden" name="return_view" value="{{ selected_quote_view }}">
+                <button type="submit" class="btn btn-green">Mark active</button>
+              </form>
+              {% endif %}
+              {% if row.admin_status != 'waiting' and row.status not in ['approved', 'invoiced'] %}
+              <form method="POST" action="/admin/quote/{{ row.id }}/admin_status" class="inline-form" onsubmit="return confirm('Move this quote to waiting on customer? It will auto-archive after 7 days.');">
+                <input type="hidden" name="admin_status" value="waiting">
+                <input type="hidden" name="return_view" value="{{ selected_quote_view }}">
+                <button type="submit" class="btn btn-amber">Move to waiting</button>
+              </form>
+              {% endif %}
+              {% if row.admin_status != 'archived' %}
+              <form method="POST" action="/admin/quote/{{ row.id }}/admin_status" class="inline-form" onsubmit="return confirm('Archive this quote from your main view?');">
+                <input type="hidden" name="admin_status" value="archived">
+                <input type="hidden" name="return_view" value="{{ selected_quote_view }}">
+                <button type="submit" class="btn btn-soft">Archive</button>
+              </form>
+              {% endif %}
+            </div>
+
+            <form method="POST" action="/admin/update_parts_tracker/{{ row.id }}" class="inline-form">
                   <div class="parts-tracker-wrap">
                     <div class="parts-tracker-head">
                       <div>
@@ -515,19 +562,27 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 
       <div class="quotes-grid">
         {% for row in rows %}
-          <div class="quote-card is-open" data-quote-card>
-            <button type="button" class="quote-summary-btn" data-quote-toggle aria-expanded="true">
+          <div class="quote-card" data-quote-card>
+            <button type="button" class="quote-summary-btn" data-quote-toggle aria-expanded="false">
               <div class="quote-summary-left">
                 <input type="checkbox" name="quote_ids[]" value="{{ row.id }}" class="quote-checkbox" form="bulk-delete-form" aria-label="Select quote {{ row.customer_name or row.id }}" style="margin-top:4px;" onclick="event.stopPropagation();">
                 <div class="quote-summary-meta">
                   <div class="quote-name">{{ row.customer_name or '-' }}</div>
                   <div class="quote-vehicle">{{ row.vehicle or '-' }}</div>
                   <div class="small">Created {{ row.created_at or '-' }}{% if row.invoice_number %} • Invoice {{ row.invoice_number }}{% endif %}</div>
+                  <div class="quote-meta-badges">
+                    <span class="admin-status {{ row.admin_status }}">{{ row.admin_status.replace('_', ' ') }}</span>
+                    {% if row.age_days is not none %}<span class="meta-chip">{{ row.age_days }}d old</span>{% endif %}
+                    {% if row.admin_status == 'waiting' and row.waiting_days is not none %}
+                      <span class="meta-chip {% if row.waiting_days >= 7 %}danger{% elif row.waiting_days >= 5 %}warning{% endif %}">waiting {{ row.waiting_days }}d</span>
+                    {% endif %}
+                    {% if row.is_auto_archive_candidate and row.waiting_days < 7 %}<span class="meta-chip warning">auto-archives soon</span>{% endif %}
+                  </div>
                 </div>
               </div>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
                 <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">{{ row.status or 'quote' }}</span>
-                <span class="quote-expand-icon" aria-hidden="true">−</span>
+                <span class="quote-expand-icon" aria-hidden="true">+</span>
               </div>
             </button>
 
@@ -557,9 +612,41 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 <div class="label">Invoice</div>
                 <div class="value">{{ row.invoice_number or '-' }}</div>
               </div>
+              <div class="detail-box">
+                <div class="label">Admin bucket</div>
+                <div class="value">{{ row.admin_status.replace('_', ' ') }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Waiting timer</div>
+                <div class="value">{% if row.admin_status == 'waiting' and row.waiting_days is not none %}{{ row.waiting_days }} day(s){% else %}-{% endif %}</div>
+              </div>
             </div>
 
-            <form method="POST" action="/admin/update_parts_tracker/{{ row.id }}" class="inline-form">
+                        <div class="admin-actions">
+              {% if row.admin_status != 'active' %}
+              <form method="POST" action="/admin/quote/{{ row.id }}/admin_status" class="inline-form">
+                <input type="hidden" name="admin_status" value="active">
+                <input type="hidden" name="return_view" value="{{ selected_quote_view }}">
+                <button type="submit" class="btn btn-green">Mark active</button>
+              </form>
+              {% endif %}
+              {% if row.admin_status != 'waiting' and row.status not in ['approved', 'invoiced'] %}
+              <form method="POST" action="/admin/quote/{{ row.id }}/admin_status" class="inline-form" onsubmit="return confirm('Move this quote to waiting on customer? It will auto-archive after 7 days.');">
+                <input type="hidden" name="admin_status" value="waiting">
+                <input type="hidden" name="return_view" value="{{ selected_quote_view }}">
+                <button type="submit" class="btn btn-amber">Move to waiting</button>
+              </form>
+              {% endif %}
+              {% if row.admin_status != 'archived' %}
+              <form method="POST" action="/admin/quote/{{ row.id }}/admin_status" class="inline-form" onsubmit="return confirm('Archive this quote from your main view?');">
+                <input type="hidden" name="admin_status" value="archived">
+                <input type="hidden" name="return_view" value="{{ selected_quote_view }}">
+                <button type="submit" class="btn btn-soft">Archive</button>
+              </form>
+              {% endif %}
+            </div>
+
+<form method="POST" action="/admin/update_parts_tracker/{{ row.id }}" class="inline-form">
               <div class="parts-tracker-wrap">
                 <div class="parts-tracker-head">
                   <div>
@@ -640,7 +727,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
         {% endfor %}
       </div>
     {% else %}
-      <div class="empty">No saved quotes yet.</div>
+      <div class="empty">No quotes in this view right now.</div>
     {% endif %}
   </div>
 </div>

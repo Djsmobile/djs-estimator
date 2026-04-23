@@ -559,6 +559,9 @@ def init_db():
     add_column_if_missing(conn, "quotes", "status", "TEXT DEFAULT 'quote'")
     add_column_if_missing(conn, "quotes", "inspection_json", "TEXT")
     add_column_if_missing(conn, "quotes", "parts_tracking_json", "TEXT")
+    add_column_if_missing(conn, "quotes", "admin_status", "TEXT DEFAULT 'active'")
+    add_column_if_missing(conn, "quotes", "waiting_since", "TEXT")
+    add_column_if_missing(conn, "quotes", "archived_at", "TEXT")
 
     add_column_if_missing(conn, "invoices", "payment_status", "TEXT DEFAULT 'unpaid'")
     add_column_if_missing(conn, "invoices", "payment_method", "TEXT")
@@ -1775,10 +1778,71 @@ def logout():
     return redirect(url_for("login"))
 
 
+
+def normalize_admin_quote_status(value):
+    value = (value or 'active').strip().lower().replace(' ', '_')
+    allowed = {'active', 'waiting', 'archived'}
+    return value if value in allowed else 'active'
+
+
+def parse_iso_datetime(value):
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+
+def auto_archive_waiting_quotes(conn):
+    now = datetime.now()
+    waiting_quotes = conn.execute(
+        "SELECT id, waiting_since, signed_at, status, invoice_number FROM (SELECT quotes.id, quotes.waiting_since, quotes.signed_at, quotes.status, invoices.invoice_number FROM quotes LEFT JOIN invoices ON invoices.quote_id = quotes.id) WHERE status != 'invoiced'"
+    ).fetchall()
+    for row in waiting_quotes:
+        quote = conn.execute("SELECT id, admin_status, waiting_since, signed_at, status FROM quotes WHERE id = ?", (row['id'],)).fetchone()
+        if not quote:
+            continue
+        admin_status = normalize_admin_quote_status(quote['admin_status'] if 'admin_status' in quote.keys() else 'active')
+        if admin_status != 'waiting':
+            continue
+        if (quote['status'] or '').strip().lower() in {'approved', 'invoiced'}:
+            continue
+        if quote['signed_at']:
+            continue
+        waiting_since_dt = parse_iso_datetime(quote['waiting_since']) or parse_iso_datetime(conn.execute("SELECT created_at FROM quotes WHERE id = ?", (quote['id'],)).fetchone()['created_at'])
+        if waiting_since_dt and now - waiting_since_dt >= timedelta(days=7):
+            conn.execute(
+                "UPDATE quotes SET admin_status = 'archived', archived_at = ?, waiting_since = COALESCE(waiting_since, created_at) WHERE id = ?",
+                (now.isoformat(), quote['id'])
+            )
+    conn.commit()
+
+
+def compute_quote_age_days(created_at):
+    dt = parse_iso_datetime(created_at)
+    if not dt:
+        return None
+    return max((datetime.now() - dt).days, 0)
+
+
+def compute_quote_waiting_days(waiting_since):
+    dt = parse_iso_datetime(waiting_since)
+    if not dt:
+        return None
+    return max((datetime.now() - dt).days, 0)
+
+
 @app.route("/admin", methods=["GET"])
 @admin_required
 def admin():
+    selected_filter = normalize_admin_quote_status(request.args.get("view") or "active")
+
     conn = get_db()
+    auto_archive_waiting_quotes(conn)
     cur = conn.cursor()
     cur.execute(
         """
@@ -1800,15 +1864,28 @@ def admin():
     conn.close()
 
     rows = []
+    status_counts = {"active": 0, "waiting": 0, "archived": 0, "all": 0}
     for row in raw_rows:
         row_dict = dict(row)
+        admin_status = normalize_admin_quote_status(row_dict.get("admin_status"))
+        quote_status = (row_dict.get("status") or "quote").strip().lower()
+        if quote_status in {"approved", "invoiced"} and admin_status == "waiting":
+            admin_status = "active"
+        row_dict["admin_status"] = admin_status
+        status_counts[admin_status] += 1
+        status_counts["all"] += 1
         row_dict["quote_public_key"] = get_quote_public_key(row_dict)
         row_dict["quote_url_external"] = build_quote_url_external(row_dict) if row_dict.get("quote_public_key") else ""
         row_dict["customer_phone_display"] = display_phone_number(row["customer_phone"])
         row_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         row_dict["parts_tracker_items"] = build_quote_parts_tracker(row_dict.get("payload_json"), row_dict.get("parts_tracking_json"))
         row_dict["parts_tracker_summary"] = build_parts_tracker_summary(row_dict["parts_tracker_items"])
-        rows.append(row_dict)
+        row_dict["age_days"] = compute_quote_age_days(row_dict.get("created_at"))
+        row_dict["waiting_days"] = compute_quote_waiting_days(row_dict.get("waiting_since"))
+        row_dict["is_auto_archive_candidate"] = admin_status == "waiting" and (row_dict["waiting_days"] is not None and row_dict["waiting_days"] >= 5) and quote_status not in {"approved", "invoiced"}
+        row_dict["is_overdue_waiting"] = admin_status == "waiting" and (row_dict["waiting_days"] is not None and row_dict["waiting_days"] >= 7) and quote_status not in {"approved", "invoiced"}
+        if selected_filter in {"all", admin_status}:
+            rows.append(row_dict)
 
     request_rows = []
     for row in request_rows_raw:
@@ -1817,8 +1894,14 @@ def admin():
         request_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         request_rows.append(request_dict)
 
-    return render_template("admin_quotes.html", rows=rows, request_rows=request_rows, email_enabled=email_settings_ready())
-
+    return render_template(
+        "admin_quotes.html",
+        rows=rows,
+        request_rows=request_rows,
+        email_enabled=email_settings_ready(),
+        selected_quote_view=selected_filter,
+        quote_status_counts=status_counts,
+    )
 
 @app.route("/request-quote", methods=["GET", "POST"])
 @app.route("/request_quote", methods=["GET", "POST"])
@@ -1962,6 +2045,44 @@ def send_quote_sms(token):
         abort(404)
     flash("SMS sending is paused in this build. Use Copy Text to send the quote link manually.")
     return redirect(url_for("admin"))
+
+
+@app.route("/admin/quote/<int:quote_id>/admin_status", methods=["POST"])
+@admin_required
+def update_quote_admin_status(quote_id):
+    new_status = normalize_admin_quote_status(request.form.get("admin_status") or "active")
+    now = datetime.now().isoformat()
+    conn = get_db()
+    cur = conn.cursor()
+    quote = cur.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
+    if not quote:
+        conn.close()
+        abort(404)
+
+    updates = ["admin_status = ?"]
+    params = [new_status]
+
+    if new_status == "waiting":
+        updates.append("waiting_since = ?")
+        params.append(now)
+        updates.append("archived_at = NULL")
+    elif new_status == "archived":
+        updates.append("archived_at = ?")
+        params.append(now)
+    else:
+        updates.append("archived_at = NULL")
+
+    if new_status == "active":
+        updates.append("waiting_since = NULL")
+    elif new_status == "archived":
+        updates.append("waiting_since = COALESCE(waiting_since, created_at)")
+
+    params.append(quote_id)
+    cur.execute(f"UPDATE quotes SET {', '.join(updates)} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+    flash(f"Quote moved to {new_status.replace('_', ' ')}.")
+    return redirect(url_for("admin", view=request.args.get("view") or request.form.get("return_view") or "active"))
 
 
 @app.route("/admin/update_parts_tracker/<int:quote_id>", methods=["POST"])
