@@ -61,8 +61,20 @@ tbody td{padding:14px 12px;vertical-align:top;background:var(--panel-2);border-t
 tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:14px;border-bottom-left-radius:14px}
 tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:14px;border-bottom-right-radius:14px}
 .actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.leads-grid,.quotes-grid{display:none}
+.leads-grid{display:none}
+.quotes-grid{display:block}
 .lead-card,.quote-card{margin-top:12px;border:1px solid var(--line);border-radius:16px;background:var(--panel-2);padding:14px}
+.quote-card{padding:0;overflow:hidden}
+.quote-summary-btn{width:100%;background:none;border:0;color:inherit;padding:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;cursor:pointer;text-align:left}
+.quote-summary-btn:hover{background:rgba(255,255,255,.02)}
+.quote-summary-left{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1}
+.quote-summary-meta{min-width:0}
+.quote-card.is-open .quote-summary-btn{border-bottom:1px solid rgba(255,255,255,.06)}
+.quote-expand-icon{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:#111318;color:var(--muted);font-size:18px;font-weight:900;flex:0 0 auto}
+.quote-details{display:none;padding:14px}
+.quote-card.is-open .quote-details{display:block}
+.quote-top-line{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.quote-top-line .small{margin-top:4px}
 .lead-head,.quote-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}
 .lead-name,.quote-name{font-size:17px;font-weight:900;line-height:1.15}
 .lead-vehicle,.quote-vehicle{font-weight:800;margin-top:3px}
@@ -101,7 +113,6 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
   .parts-desktop-table{display:none}
   .parts-mobile-list{display:flex}
   .part-item-grid{grid-template-columns:1fr}
-}
   .wrap{padding:16px 12px 24px}
   h1{font-size:26px}
   .desktop-table{display:none}
@@ -310,7 +321,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
     </div>
 
     {% if rows and rows|length > 0 %}
-      <div class="desktop-table table-wrap">
+      <div class="desktop-table table-wrap quotes-desktop-table" style="display:none;">
         <table>
           <thead>
             <tr>
@@ -504,18 +515,23 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 
       <div class="quotes-grid">
         {% for row in rows %}
-          <div class="quote-card">
-            <div class="quote-head">
-              <div style="display:flex;align-items:flex-start;gap:10px;">
-                <input type="checkbox" name="quote_ids[]" value="{{ row.id }}" class="quote-checkbox" form="bulk-delete-form" aria-label="Select quote {{ row.customer_name or row.id }}" style="margin-top:4px;">
-                <div>
+          <div class="quote-card is-open" data-quote-card>
+            <button type="button" class="quote-summary-btn" data-quote-toggle aria-expanded="true">
+              <div class="quote-summary-left">
+                <input type="checkbox" name="quote_ids[]" value="{{ row.id }}" class="quote-checkbox" form="bulk-delete-form" aria-label="Select quote {{ row.customer_name or row.id }}" style="margin-top:4px;" onclick="event.stopPropagation();">
+                <div class="quote-summary-meta">
                   <div class="quote-name">{{ row.customer_name or '-' }}</div>
                   <div class="quote-vehicle">{{ row.vehicle or '-' }}</div>
+                  <div class="small">Created {{ row.created_at or '-' }}{% if row.invoice_number %} • Invoice {{ row.invoice_number }}{% endif %}</div>
                 </div>
               </div>
-              <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">{{ row.status or 'quote' }}</span>
-            </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+                <span class="status {% if row.status == 'approved' %}approved{% elif row.status == 'invoiced' %}invoiced{% else %}quote{% endif %}">{{ row.status or 'quote' }}</span>
+                <span class="quote-expand-icon" aria-hidden="true">−</span>
+              </div>
+            </button>
 
+            <div class="quote-details">
             <div class="quote-grid">
               <div class="detail-box">
                 <div class="label">Phone</div>
@@ -618,6 +634,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
               <form method="POST" action="/admin/delete_quote/{{ row.id }}" class="inline-form" onsubmit="return confirm('Delete this quote?');">
                 <button type="submit" class="btn btn-red">Delete quote</button>
               </form>
+            </div>
             </div>
           </div>
         {% endfor %}
@@ -749,6 +766,20 @@ document.querySelectorAll('.add-manual-part-btn').forEach(btn => {
     }
   });
 });
+
+
+document.querySelectorAll('[data-quote-toggle]').forEach(btn => {
+  btn.addEventListener('click', (event) => {
+    if(event.target.closest('input, label, a, form, button:not([data-quote-toggle])')) return;
+    const card = btn.closest('[data-quote-card]');
+    if(!card) return;
+    const isOpen = card.classList.toggle('is-open');
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    const icon = btn.querySelector('.quote-expand-icon');
+    if(icon) icon.textContent = isOpen ? '−' : '+';
+  });
+});
+
 </script>
 </body>
 </html>
