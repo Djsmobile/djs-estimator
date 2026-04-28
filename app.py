@@ -713,9 +713,18 @@ def normalize_job_parts(job):
                 "oem_part_number": (part.get("oem_part_number") or part.get("part_number_oem") or "").strip(),
                 "quality_part_number": (part.get("quality_part_number") or part.get("part_number_quality") or "").strip(),
                 "economy_part_number": (part.get("economy_part_number") or part.get("part_number_economy") or "").strip(),
-                "markup_oem": safe_float(part.get("markup_oem", 1.0 if oem else 1.4), 1.4),
-                "markup_quality": safe_float(part.get("markup_quality", 1.0 if quality else 1.4), 1.4),
-                "markup_economy": safe_float(part.get("markup_economy", 1.0 if economy else 1.4), 1.4),
+                "source_oem": (part.get("source_oem") or part.get("part_source_oem") or "online_oem").strip(),
+                "source_quality": (part.get("source_quality") or part.get("part_source_quality") or "online_oem").strip(),
+                "source_economy": (part.get("source_economy") or part.get("part_source_economy") or "online_oem").strip(),
+                "buffer_oem": safe_float(part.get("buffer_oem", part.get("part_buffer_oem", 25)), 25),
+                "buffer_quality": safe_float(part.get("buffer_quality", part.get("part_buffer_quality", 25)), 25),
+                "buffer_economy": safe_float(part.get("buffer_economy", part.get("part_buffer_economy", 25)), 25),
+                "flat_markup_oem": safe_float(part.get("flat_markup_oem", part.get("markup_oem", 0)), 0),
+                "flat_markup_quality": safe_float(part.get("flat_markup_quality", part.get("markup_quality", 0)), 0),
+                "flat_markup_economy": safe_float(part.get("flat_markup_economy", part.get("markup_economy", 0)), 0),
+                "markup_oem": safe_float(part.get("markup_oem", part.get("flat_markup_oem", 0)), 0),
+                "markup_quality": safe_float(part.get("markup_quality", part.get("flat_markup_quality", 0)), 0),
+                "markup_economy": safe_float(part.get("markup_economy", part.get("flat_markup_economy", 0)), 0),
                 "enabled_oem": enabled_oem,
                 "enabled_quality": enabled_quality,
                 "enabled_economy": enabled_economy,
@@ -739,9 +748,18 @@ def normalize_job_parts(job):
             "oem_part_number": "",
             "quality_part_number": "",
             "economy_part_number": "",
-            "markup_oem": 1.0,
-            "markup_quality": 1.0,
-            "markup_economy": 1.0,
+            "source_oem": "online_oem",
+            "source_quality": "online_oem",
+            "source_economy": "online_oem",
+            "buffer_oem": 25,
+            "buffer_quality": 25,
+            "buffer_economy": 25,
+            "flat_markup_oem": 0,
+            "flat_markup_quality": 0,
+            "flat_markup_economy": 0,
+            "markup_oem": 0,
+            "markup_quality": 0,
+            "markup_economy": 0,
             "enabled_oem": old_oem > 0,
             "enabled_quality": old_quality > 0,
             "enabled_economy": old_economy > 0,
@@ -1354,6 +1372,12 @@ def save_quote():
         part_number_oems = request.form.getlist(f"part_number_oem_{i}[]")
         part_number_qualities = request.form.getlist(f"part_number_quality_{i}[]")
         part_number_economies = request.form.getlist(f"part_number_economy_{i}[]")
+        part_source_oems = request.form.getlist(f"part_source_oem_{i}[]")
+        part_source_qualities = request.form.getlist(f"part_source_quality_{i}[]")
+        part_source_economies = request.form.getlist(f"part_source_economy_{i}[]")
+        part_buffer_oems = request.form.getlist(f"part_buffer_oem_{i}[]")
+        part_buffer_qualities = request.form.getlist(f"part_buffer_quality_{i}[]")
+        part_buffer_economies = request.form.getlist(f"part_buffer_economy_{i}[]")
         part_markup_oems = request.form.getlist(f"part_markup_oem_{i}[]")
         part_markup_qualities = request.form.getlist(f"part_markup_quality_{i}[]")
         part_markup_economies = request.form.getlist(f"part_markup_economy_{i}[]")
@@ -1367,9 +1391,11 @@ def save_quote():
             len(part_descs), len(part_qtys), len(part_oems), len(part_qualities), len(part_economies),
             len(part_list_oems), len(part_list_qualities), len(part_list_economies),
             len(part_number_oems), len(part_number_qualities), len(part_number_economies),
+            len(part_source_oems), len(part_source_qualities), len(part_source_economies),
+            len(part_buffer_oems), len(part_buffer_qualities), len(part_buffer_economies),
             len(part_markup_oems), len(part_markup_qualities), len(part_markup_economies),
             len(enabled_oems), len(enabled_qualities), len(enabled_economies), len(selected_tiers)
-        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_number_oems, part_number_qualities, part_number_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies, selected_tiers]) else 0
+        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_number_oems, part_number_qualities, part_number_economies, part_source_oems, part_source_qualities, part_source_economies, part_buffer_oems, part_buffer_qualities, part_buffer_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies, selected_tiers]) else 0
 
         for p in range(part_max_len):
             part_desc = part_descs[p].strip() if p < len(part_descs) else ""
@@ -1384,9 +1410,15 @@ def save_quote():
             oem_part_number = part_number_oems[p].strip() if p < len(part_number_oems) else ""
             quality_part_number = part_number_qualities[p].strip() if p < len(part_number_qualities) else ""
             economy_part_number = part_number_economies[p].strip() if p < len(part_number_economies) else ""
-            markup_oem = safe_float(part_markup_oems[p] if p < len(part_markup_oems) else (1.0 if oem else 1.4), 1.4)
-            markup_quality = safe_float(part_markup_qualities[p] if p < len(part_markup_qualities) else (1.0 if quality else 1.4), 1.4)
-            markup_economy = safe_float(part_markup_economies[p] if p < len(part_markup_economies) else (1.0 if economy else 1.4), 1.4)
+            source_oem = (part_source_oems[p].strip() if p < len(part_source_oems) else "online_oem") or "online_oem"
+            source_quality = (part_source_qualities[p].strip() if p < len(part_source_qualities) else "online_oem") or "online_oem"
+            source_economy = (part_source_economies[p].strip() if p < len(part_source_economies) else "online_oem") or "online_oem"
+            buffer_oem = safe_float(part_buffer_oems[p] if p < len(part_buffer_oems) else (0 if source_oem == "dealer_local" else 25), 25)
+            buffer_quality = safe_float(part_buffer_qualities[p] if p < len(part_buffer_qualities) else (0 if source_quality == "dealer_local" else 25), 25)
+            buffer_economy = safe_float(part_buffer_economies[p] if p < len(part_buffer_economies) else (0 if source_economy == "dealer_local" else 25), 25)
+            markup_oem = safe_float(part_markup_oems[p] if p < len(part_markup_oems) else 0, 0)
+            markup_quality = safe_float(part_markup_qualities[p] if p < len(part_markup_qualities) else 0, 0)
+            markup_economy = safe_float(part_markup_economies[p] if p < len(part_markup_economies) else 0, 0)
             enabled_oem = (enabled_oems[p].strip() == "1") if p < len(enabled_oems) else (oem > 0)
             enabled_quality = (enabled_qualities[p].strip() == "1") if p < len(enabled_qualities) else (quality > 0 or (not enabled_oem and economy <= 0))
             enabled_economy = (enabled_economies[p].strip() == "1") if p < len(enabled_economies) else (economy > 0)
@@ -1412,6 +1444,15 @@ def save_quote():
                 "oem_part_number": oem_part_number,
                 "quality_part_number": quality_part_number,
                 "economy_part_number": economy_part_number,
+                "source_oem": source_oem,
+                "source_quality": source_quality,
+                "source_economy": source_economy,
+                "buffer_oem": buffer_oem,
+                "buffer_quality": buffer_quality,
+                "buffer_economy": buffer_economy,
+                "flat_markup_oem": markup_oem,
+                "flat_markup_quality": markup_quality,
+                "flat_markup_economy": markup_economy,
                 "markup_oem": markup_oem,
                 "markup_quality": markup_quality,
                 "markup_economy": markup_economy,

@@ -145,10 +145,12 @@
     .tier-card.selected-tier .tier-name{color:#fff}
     .tier-name{font-weight:800;font-size:12px;letter-spacing:.02em}
     .tier-toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}
-    .tier-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr) minmax(0,1fr);gap:7px}
+    .tier-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .tier-fields label{font-size:11px}
+    .tier-wide{grid-column:1 / -1}
     .tier-part-number{grid-column:1 / -1}
     .tier-part-number input{font-size:13px;font-weight:800;letter-spacing:.01em}
+    .helper-note{grid-column:1 / -1;font-size:11px;color:var(--muted);line-height:1.35;margin-top:-1px}
     .save-note{font-size:12px;color:var(--muted);line-height:1.45}
     .inspection-link{display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:10px 14px;border-radius:14px;background:linear-gradient(180deg,#2457e0,#1d4ed8);color:#fff;font-weight:900;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 24px rgba(29,78,216,.2)}
 
@@ -279,7 +281,11 @@
     function defaultEnabledFor(part, tier){ if(part[`enabled_${tier}`] !== undefined) return isTruthy(part[`enabled_${tier}`]); return toNum(part[tier]) > 0 || tier === 'quality'; }
     function retailFrom(part, tier){ const retail = part[tier] ?? part[`retail_${tier}`] ?? 0; return money(retail); }
     function listFrom(part, tier){ const list = part[`list_${tier}`] ?? part[tier] ?? 0; return money(list); }
-    function markupFrom(part, tier){ const markup = part[`markup_${tier}`] ?? ((toNum(part[tier]) && toNum(part[`list_${tier}`])) ? toNum(part[tier])/Math.max(toNum(part[`list_${tier}`]),0.01) : (toNum(part[tier]) ? 1 : 1.4)); return money(markup || 1.4); }
+    function sourceFrom(part, tier){ return String(part[`source_${tier}`] || part[`part_source_${tier}`] || 'online_oem'); }
+    function bufferFrom(part, tier){ const saved = part[`buffer_${tier}`] ?? part[`part_buffer_${tier}`]; if(saved !== undefined && saved !== null && saved !== '') return money(saved); return sourceFrom(part,tier) === 'dealer_local' ? '0.00' : '25.00'; }
+    function flatMarkupDefault(cost){ cost = toNum(cost); if(cost <= 0) return 0; if(cost < 50) return 25; if(cost < 200) return 35; return Math.max(55, cost * 0.18); }
+    function markupFrom(part, tier){ const saved = part[`flat_markup_${tier}`] ?? part[`markup_flat_${tier}`]; if(saved !== undefined && saved !== null && saved !== '') return money(saved); const cost = toNum(part[`list_${tier}`] ?? part[tier] ?? 0); const buffer = toNum(bufferFrom(part,tier)); const retail = toNum(part[tier] ?? 0); if(retail > 0 || cost > 0) return money(Math.max(0, retail - (cost * (1 + buffer / 100)))); return money(flatMarkupDefault(cost)); }
+    function helperRetail(cost, source, buffer, markup){ return money((toNum(cost) * (1 + toNum(buffer) / 100)) + toNum(markup)); }
     function partNumberFrom(part, tier){ return escapeHtml(part[`${tier}_part_number`] ?? part[`part_number_${tier}`] ?? ''); }
     function getEnabledTiers(row){ return TIER_META.filter(t=>row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked).map(t=>t.key); }
     function getInitialSelectedTier(part={}){
@@ -346,10 +352,13 @@
         <input type="hidden" data-base-name="part_enabled_${tier.key}" value="0" disabled>
         <input type="hidden" data-role="selected-tier-hidden" data-base-name="part_selected_tier" value="${selectedTier}">
         <div class="tier-fields">
-          <div><label>List</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="list-${tier.key}" data-base-name="part_list_${tier.key}" value="${listFrom(part,tier.key)}"></div></div>
-          <div><label>Markup</label><input type="number" step="0.01" min="0" data-role="markup-${tier.key}" data-base-name="part_markup_${tier.key}" value="${markupFrom(part,tier.key)}"></div>
+          <div><label>Raw cost</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="list-${tier.key}" data-base-name="part_list_${tier.key}" value="${listFrom(part,tier.key)}" placeholder="Cost"></div></div>
+          <div><label>Source</label><select data-role="source-${tier.key}" data-base-name="part_source_${tier.key}"><option value="online_oem" ${sourceFrom(part,tier.key)==='online_oem'?'selected':''}>Online OEM</option><option value="dealer_local" ${sourceFrom(part,tier.key)==='dealer_local'?'selected':''}>Dealer-Local</option></select></div>
+          <div><label>Buffer %</label><input type="number" step="0.01" min="0" data-role="buffer-${tier.key}" data-base-name="part_buffer_${tier.key}" value="${bufferFrom(part,tier.key)}"></div>
+          <div><label>Markup $</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="markup-${tier.key}" data-base-name="part_markup_${tier.key}" value="${markupFrom(part,tier.key)}"></div></div>
           <div><label>Retail</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="retail-${tier.key}" data-base-name="part_${tier.key}" value="${retailFrom(part,tier.key)}"></div></div>
           <div class="tier-part-number"><label>Part # <span style="color:var(--accent);font-weight:900;">Admin only</span></label><input type="text" data-role="part-number-${tier.key}" data-base-name="part_number_${tier.key}" value="${partNumberFrom(part,tier.key)}" placeholder="Internal only"></div>
+          <div class="helper-note">Retail helper: raw cost + buffer + markup. Customer only sees retail.</div>
         </div>
       </div>`;
     }
@@ -446,8 +455,20 @@
     }
     function recalcPartRow(row){
       TIER_META.forEach(t=>{
-        const listEl=row.querySelector(`[data-role="list-${t.key}"]`); const markupEl=row.querySelector(`[data-role="markup-${t.key}"]`); const retailEl=row.querySelector(`[data-role="retail-${t.key}"]`);
-        if(listEl && markupEl && retailEl && document.activeElement !== retailEl){ retailEl.value = money(toNum(listEl.value) * toNum(markupEl.value || 0)); }
+        const listEl=row.querySelector(`[data-role="list-${t.key}"]`);
+        const sourceEl=row.querySelector(`[data-role="source-${t.key}"]`);
+        const bufferEl=row.querySelector(`[data-role="buffer-${t.key}"]`);
+        const markupEl=row.querySelector(`[data-role="markup-${t.key}"]`);
+        const retailEl=row.querySelector(`[data-role="retail-${t.key}"]`);
+        if(sourceEl && bufferEl && document.activeElement === sourceEl){
+          bufferEl.value = sourceEl.value === 'dealer_local' ? money(0) : money(25);
+        }
+        if(listEl && markupEl && retailEl && document.activeElement !== retailEl){
+          if(toNum(markupEl.value) <= 0 && document.activeElement === listEl){
+            markupEl.value = money(flatMarkupDefault(listEl.value));
+          }
+          retailEl.value = helperRetail(listEl.value, sourceEl?.value || 'online_oem', bufferEl?.value || 0, markupEl.value || 0);
+        }
       });
       updateTierToggleHidden(row);
     }
@@ -474,7 +495,7 @@
       return {desc: pieces.join(' - '), labor_hours: 0, notes, parts: []};
     }
     function addPresetToQuote(){ const presetKey=document.getElementById('preset_select').value; if(!presetKey || !JOB_PRESETS[presetKey]) return; (JOB_PRESETS[presetKey].jobs || []).forEach(job=>addJob(job)); calcAll(); }
-    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); const defaults={qty:1,oem:0,quality:0,economy:0,list_oem:0,list_quality:0,list_economy:0,markup_oem:1.4,markup_quality:1.4,markup_economy:1.4,enabled_oem:true,enabled_quality:true,enabled_economy:true}; const partIndex=0; wrap.innerHTML=partRowHtml(idx, partIndex, Object.assign(defaults, partData || {})); const newRow=wrap.firstElementChild; if(partsList.firstElementChild){ partsList.insertBefore(newRow, partsList.firstElementChild); } else { partsList.appendChild(newRow); } renumberJobs(); }
+    function addPartToJob(jobEl, partData=null){ const idx=Number(jobEl.dataset.idx || 0); const partsList=jobEl.querySelector('.parts-list'); const wrap=document.createElement('div'); const defaults={qty:1,oem:0,quality:0,economy:0,list_oem:0,list_quality:0,list_economy:0,source_oem:'online_oem',source_quality:'online_oem',source_economy:'online_oem',buffer_oem:25,buffer_quality:25,buffer_economy:25,flat_markup_oem:25,flat_markup_quality:25,flat_markup_economy:25,markup_oem:25,markup_quality:25,markup_economy:25,enabled_oem:true,enabled_quality:true,enabled_economy:true}; const partIndex=0; wrap.innerHTML=partRowHtml(idx, partIndex, Object.assign(defaults, partData || {})); const newRow=wrap.firstElementChild; if(partsList.firstElementChild){ partsList.insertBefore(newRow, partsList.firstElementChild); } else { partsList.appendChild(newRow); } renumberJobs(); }
     function deleteService(btn){ const job=btn.closest('.job'); if(job) job.remove(); if(serviceCount()===0) addBlankService(); renumberJobs(); }
     function deletePart(btn){ const row=btn.closest('.part-row'); if(row) row.remove(); calcAll(); }
     function calcJob(jobEl){
@@ -523,7 +544,7 @@
       list.appendChild(wrap.firstElementChild);
     }
 
-    function collectJobData(jobEl){ const desc=jobEl.querySelector('[name="job_desc[]"]')?.value || ''; const laborHours=toNum(jobEl.querySelector('[name="job_labor_hrs[]"]')?.value || 0); const notes=jobEl.querySelector('[name="job_notes[]"]')?.value || ''; const parts=[]; jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const part={ part_desc: row.querySelector('[name^="part_desc_"]')?.value || '', qty: toNum(row.querySelector('[name^="part_qty_"]')?.value || 0) }; TIER_META.forEach(t=>{ part[t.key]=toNum(row.querySelector(`[data-role="retail-${t.key}"]`)?.value || 0); part[`list_${t.key}`]=toNum(row.querySelector(`[data-role="list-${t.key}"]`)?.value || 0); part[`markup_${t.key}`]=toNum(row.querySelector(`[data-role="markup-${t.key}"]`)?.value || 0); part[`${t.key}_part_number`]=row.querySelector(`[data-role="part-number-${t.key}"]`)?.value || ''; part[`enabled_${t.key}`]=!!row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked; }); part.selected_tier = syncSelectedTier(row); if(part.part_desc.trim() || part.qty || part.oem || part.quality || part.economy){ parts.push(part); } }); return { desc: desc.trim(), labor_hours: laborHours, notes: notes.trim(), parts }; }
+    function collectJobData(jobEl){ const desc=jobEl.querySelector('[name="job_desc[]"]')?.value || ''; const laborHours=toNum(jobEl.querySelector('[name="job_labor_hrs[]"]')?.value || 0); const notes=jobEl.querySelector('[name="job_notes[]"]')?.value || ''; const parts=[]; jobEl.querySelectorAll('.part-row').forEach(row=>{ recalcPartRow(row); const part={ part_desc: row.querySelector('[name^="part_desc_"]')?.value || '', qty: toNum(row.querySelector('[name^="part_qty_"]')?.value || 0) }; TIER_META.forEach(t=>{ part[t.key]=toNum(row.querySelector(`[data-role="retail-${t.key}"]`)?.value || 0); part[`list_${t.key}`]=toNum(row.querySelector(`[data-role="list-${t.key}"]`)?.value || 0); part[`markup_${t.key}`]=toNum(row.querySelector(`[data-role="markup-${t.key}"]`)?.value || 0); part[`flat_markup_${t.key}`]=toNum(row.querySelector(`[data-role="markup-${t.key}"]`)?.value || 0); part[`source_${t.key}`]=row.querySelector(`[data-role="source-${t.key}"]`)?.value || 'online_oem'; part[`buffer_${t.key}`]=toNum(row.querySelector(`[data-role="buffer-${t.key}"]`)?.value || 0); part[`${t.key}_part_number`]=row.querySelector(`[data-role="part-number-${t.key}"]`)?.value || ''; part[`enabled_${t.key}`]=!!row.querySelector(`[data-role="enabled-${t.key}"]`)?.checked; }); part.selected_tier = syncSelectedTier(row); if(part.part_desc.trim() || part.qty || part.oem || part.quality || part.economy){ parts.push(part); } }); return { desc: desc.trim(), labor_hours: laborHours, notes: notes.trim(), parts }; }
     function collectAllJobs(){ return Array.from(document.querySelectorAll('#services .job')).map(j=>collectJobData(j)).filter(job=>job && (job.desc || job.notes || job.labor_hours || job.parts.length)); }
     async function savePresetRequest(name, jobs){ const response=await fetch('/save_preset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,jobs})}); const data=await response.json().catch(()=>({})); if(!response.ok || !data.ok) throw new Error(data.error || 'Preset could not be saved.'); Object.keys(JOB_PRESETS).forEach(k=>delete JOB_PRESETS[k]); Object.entries(data.presets || {}).forEach(([k,v])=>JOB_PRESETS[k]=v); populatePresets(); if(data.preset_key) document.getElementById('preset_select').value=data.preset_key; alert(data.message || 'Preset saved.'); }
     async function promptAndSavePreset(jobs, defaultName=''){ if(!jobs.length){ alert('Add a service first, then save it as a preset.'); return; } const name=window.prompt('Preset name', defaultName || 'My preset'); if(!name || !name.trim()) return; try{ await savePresetRequest(name.trim(), jobs); }catch(err){ alert(err.message || 'Preset could not be saved.'); } }
