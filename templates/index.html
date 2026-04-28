@@ -145,8 +145,10 @@
     .tier-card.selected-tier .tier-name{color:#fff}
     .tier-name{font-weight:800;font-size:12px;letter-spacing:.02em}
     .tier-toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}
-    .tier-fields{display:grid;grid-template-columns:1fr .9fr 1fr 1.15fr;gap:7px}
+    .tier-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr) minmax(0,1fr);gap:7px}
     .tier-fields label{font-size:11px}
+    .tier-part-number{grid-column:1 / -1}
+    .tier-part-number input{font-size:13px;font-weight:800;letter-spacing:.01em}
     .save-note{font-size:12px;color:var(--muted);line-height:1.45}
     .inspection-link{display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:10px 14px;border-radius:14px;background:linear-gradient(180deg,#2457e0,#1d4ed8);color:#fff;font-weight:900;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 24px rgba(29,78,216,.2)}
 
@@ -347,7 +349,7 @@
           <div><label>List</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="list-${tier.key}" data-base-name="part_list_${tier.key}" value="${listFrom(part,tier.key)}"></div></div>
           <div><label>Markup</label><input type="number" step="0.01" min="0" data-role="markup-${tier.key}" data-base-name="part_markup_${tier.key}" value="${markupFrom(part,tier.key)}"></div>
           <div><label>Retail</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="retail-${tier.key}" data-base-name="part_${tier.key}" value="${retailFrom(part,tier.key)}"></div></div>
-          <div><label>Part # <span style="color:var(--accent);font-weight:900;">Admin only</span></label><input type="text" data-role="part-number-${tier.key}" data-base-name="part_number_${tier.key}" value="${partNumberFrom(part,tier.key)}" placeholder="Internal only"></div>
+          <div class="tier-part-number"><label>Part # <span style="color:var(--accent);font-weight:900;">Admin only</span></label><input type="text" data-role="part-number-${tier.key}" data-base-name="part_number_${tier.key}" value="${partNumberFrom(part,tier.key)}" placeholder="Internal only"></div>
         </div>
       </div>`;
     }
@@ -525,7 +527,29 @@
     function collectAllJobs(){ return Array.from(document.querySelectorAll('#services .job')).map(j=>collectJobData(j)).filter(job=>job && (job.desc || job.notes || job.labor_hours || job.parts.length)); }
     async function savePresetRequest(name, jobs){ const response=await fetch('/save_preset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,jobs})}); const data=await response.json().catch(()=>({})); if(!response.ok || !data.ok) throw new Error(data.error || 'Preset could not be saved.'); Object.keys(JOB_PRESETS).forEach(k=>delete JOB_PRESETS[k]); Object.entries(data.presets || {}).forEach(([k,v])=>JOB_PRESETS[k]=v); populatePresets(); if(data.preset_key) document.getElementById('preset_select').value=data.preset_key; alert(data.message || 'Preset saved.'); }
     async function promptAndSavePreset(jobs, defaultName=''){ if(!jobs.length){ alert('Add a service first, then save it as a preset.'); return; } const name=window.prompt('Preset name', defaultName || 'My preset'); if(!name || !name.trim()) return; try{ await savePresetRequest(name.trim(), jobs); }catch(err){ alert(err.message || 'Preset could not be saved.'); } }
-    document.addEventListener('blur', e=>{ if(e.target.matches('input[type="number"]')){ const v=parseFloat(e.target.value); if(!isNaN(v)) e.target.value=v.toFixed(2); calcAll(); } }, true);
+    document.addEventListener('focus', e=>{
+      if(e.target.matches('input[type="number"]')){
+        const raw = String(e.target.value || '').trim();
+        const n = Number(raw);
+        if(raw !== '' && Number.isFinite(n) && Math.abs(n) < 0.000001){
+          e.target.value = '';
+        } else {
+          setTimeout(()=>e.target.select(), 0);
+        }
+      }
+    }, true);
+    document.addEventListener('blur', e=>{
+      if(e.target.matches('input[type="number"]')){
+        const raw = String(e.target.value || '').trim();
+        if(raw === ''){
+          e.target.value = e.target.step === '0.01' ? '0.00' : '0';
+        } else {
+          const v=parseFloat(raw);
+          if(!isNaN(v)) e.target.value=v.toFixed(e.target.step === '0.01' ? 2 : 2);
+        }
+        calcAll();
+      }
+    }, true);
     document.addEventListener('DOMContentLoaded',()=>{
       populatePresets();
       if (Array.isArray(INITIAL_EDIT_JOBS) && INITIAL_EDIT_JOBS.length) {
