@@ -710,6 +710,9 @@ def normalize_job_parts(job):
                 "list_oem": safe_float(part.get("list_oem", oem)),
                 "list_quality": safe_float(part.get("list_quality", quality)),
                 "list_economy": safe_float(part.get("list_economy", economy)),
+                "oem_part_number": (part.get("oem_part_number") or part.get("part_number_oem") or "").strip(),
+                "quality_part_number": (part.get("quality_part_number") or part.get("part_number_quality") or "").strip(),
+                "economy_part_number": (part.get("economy_part_number") or part.get("part_number_economy") or "").strip(),
                 "markup_oem": safe_float(part.get("markup_oem", 1.0 if oem else 1.4), 1.4),
                 "markup_quality": safe_float(part.get("markup_quality", 1.0 if quality else 1.4), 1.4),
                 "markup_economy": safe_float(part.get("markup_economy", 1.0 if economy else 1.4), 1.4),
@@ -733,6 +736,9 @@ def normalize_job_parts(job):
             "list_oem": old_oem,
             "list_quality": old_quality,
             "list_economy": old_economy,
+            "oem_part_number": "",
+            "quality_part_number": "",
+            "economy_part_number": "",
             "markup_oem": 1.0,
             "markup_quality": 1.0,
             "markup_economy": 1.0,
@@ -1345,6 +1351,9 @@ def save_quote():
         part_list_oems = request.form.getlist(f"part_list_oem_{i}[]")
         part_list_qualities = request.form.getlist(f"part_list_quality_{i}[]")
         part_list_economies = request.form.getlist(f"part_list_economy_{i}[]")
+        part_number_oems = request.form.getlist(f"part_number_oem_{i}[]")
+        part_number_qualities = request.form.getlist(f"part_number_quality_{i}[]")
+        part_number_economies = request.form.getlist(f"part_number_economy_{i}[]")
         part_markup_oems = request.form.getlist(f"part_markup_oem_{i}[]")
         part_markup_qualities = request.form.getlist(f"part_markup_quality_{i}[]")
         part_markup_economies = request.form.getlist(f"part_markup_economy_{i}[]")
@@ -1357,9 +1366,10 @@ def save_quote():
         part_max_len = max(
             len(part_descs), len(part_qtys), len(part_oems), len(part_qualities), len(part_economies),
             len(part_list_oems), len(part_list_qualities), len(part_list_economies),
+            len(part_number_oems), len(part_number_qualities), len(part_number_economies),
             len(part_markup_oems), len(part_markup_qualities), len(part_markup_economies),
             len(enabled_oems), len(enabled_qualities), len(enabled_economies), len(selected_tiers)
-        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies, selected_tiers]) else 0
+        ) if any([part_descs, part_qtys, part_oems, part_qualities, part_economies, part_list_oems, part_list_qualities, part_list_economies, part_number_oems, part_number_qualities, part_number_economies, part_markup_oems, part_markup_qualities, part_markup_economies, enabled_oems, enabled_qualities, enabled_economies, selected_tiers]) else 0
 
         for p in range(part_max_len):
             part_desc = part_descs[p].strip() if p < len(part_descs) else ""
@@ -1371,6 +1381,9 @@ def save_quote():
             list_oem = safe_float(part_list_oems[p] if p < len(part_list_oems) else oem, oem)
             list_quality = safe_float(part_list_qualities[p] if p < len(part_list_qualities) else quality, quality)
             list_economy = safe_float(part_list_economies[p] if p < len(part_list_economies) else economy, economy)
+            oem_part_number = part_number_oems[p].strip() if p < len(part_number_oems) else ""
+            quality_part_number = part_number_qualities[p].strip() if p < len(part_number_qualities) else ""
+            economy_part_number = part_number_economies[p].strip() if p < len(part_number_economies) else ""
             markup_oem = safe_float(part_markup_oems[p] if p < len(part_markup_oems) else (1.0 if oem else 1.4), 1.4)
             markup_quality = safe_float(part_markup_qualities[p] if p < len(part_markup_qualities) else (1.0 if quality else 1.4), 1.4)
             markup_economy = safe_float(part_markup_economies[p] if p < len(part_markup_economies) else (1.0 if economy else 1.4), 1.4)
@@ -1384,7 +1397,7 @@ def save_quote():
                 "enabled_economy": enabled_economy,
             }, selected_tier, default_tier="quality")
 
-            if not part_desc and qty == 1 and oem == 0 and quality == 0 and economy == 0 and list_oem == 0 and list_quality == 0 and list_economy == 0:
+            if not part_desc and not oem_part_number and not quality_part_number and not economy_part_number and qty == 1 and oem == 0 and quality == 0 and economy == 0 and list_oem == 0 and list_quality == 0 and list_economy == 0:
                 continue
 
             parts.append({
@@ -1396,6 +1409,9 @@ def save_quote():
                 "list_oem": list_oem,
                 "list_quality": list_quality,
                 "list_economy": list_economy,
+                "oem_part_number": oem_part_number,
+                "quality_part_number": quality_part_number,
+                "economy_part_number": economy_part_number,
                 "markup_oem": markup_oem,
                 "markup_quality": markup_quality,
                 "markup_economy": markup_economy,
