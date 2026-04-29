@@ -122,6 +122,19 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
 .part-item-card textarea{min-height:38px;resize:vertical}
 .part-item-card .readonly-field{padding:8px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:#161a20}
 .hidden-inputs{display:none}
+.profit-stat{color:#86efac;border-color:rgba(134,239,172,.25);background:#102015}
+.profit-box{margin-top:12px;padding:12px;border:1px solid rgba(212,175,55,.22);border-radius:14px;background:linear-gradient(180deg, rgba(212,175,55,.08), rgba(255,255,255,.02))}
+.profit-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}
+.profit-title{font-weight:900;color:#f8e7a1}
+.profit-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.profit-card{border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#111318;padding:10px}
+.profit-card .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
+.profit-card .value{font-size:18px;font-weight:900;color:#f9fafb}
+.profit-card.good .value{color:#86efac}
+.profit-card.warn .value{color:#fde68a}
+.profit-note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.4}
+@media (max-width:980px){.profit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.profit-grid{grid-template-columns:1fr}}
 @media (max-width:980px){
   .parts-desktop-table{display:none}
   .parts-mobile-list{display:flex}
@@ -160,6 +173,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
       <span class="stat">Waiting: {{ quote_status_counts.waiting if quote_status_counts is defined else 0 }}</span>
       <span class="stat">Archived: {{ quote_status_counts.archived if quote_status_counts is defined else 0 }}</span>
       <span class="stat">Website leads: {{ request_rows|length if request_rows is defined else 0 }}</span>
+      <span class="stat profit-stat">Visible profit: ${{ '%.2f'|format(profit_summary.total_profit if profit_summary is defined else 0) }}</span>
       <span class="stat">Premium mobile admin</span>
       <span class="stat">{% if email_enabled %}Email quotes ready{% else %}Email not configured{% endif %}</span>
     </div>
@@ -329,6 +343,24 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
           <a class="filter-tab {% if selected_quote_view == 'all' %}active{% endif %}" href="/admin?view=all">All <span class="filter-count">{{ quote_status_counts.all }}</span></a>
         </div>
         <div class="small" style="margin-top:8px;">Waiting quotes auto-archive after 7 days. Approved and invoiced quotes stay active.</div>
+        <div class="profit-box" style="margin-top:12px;">
+          <div class="profit-head">
+            <div>
+              <div class="profit-title">Profit Snapshot</div>
+              <div class="small">Admin-only numbers for the quotes currently visible in this view.</div>
+            </div>
+            {% if profit_summary is defined and profit_summary.missing_cost_count %}
+              <span class="parts-pill need">{{ profit_summary.missing_cost_count }} cost field(s) still blank</span>
+            {% endif %}
+          </div>
+          <div class="profit-grid">
+            <div class="profit-card"><div class="label">Parts Sold</div><div class="value">${{ '%.2f'|format(profit_summary.parts_sale_total if profit_summary is defined else 0) }}</div></div>
+            <div class="profit-card"><div class="label">Your Parts Cost</div><div class="value">${{ '%.2f'|format(profit_summary.parts_cost_total if profit_summary is defined else 0) }}</div></div>
+            <div class="profit-card good"><div class="label">Parts Profit</div><div class="value">${{ '%.2f'|format(profit_summary.parts_profit_total if profit_summary is defined else 0) }}</div></div>
+            <div class="profit-card good"><div class="label">Total Profit</div><div class="value">${{ '%.2f'|format(profit_summary.total_profit if profit_summary is defined else 0) }}</div></div>
+          </div>
+          <div class="profit-note">Parts cost comes from the internal Cost field you enter in the parts tracker. Customer pages still only show retail pricing.</div>
+        </div>
 
       <div class="pill-row" style="margin-top:12px;">
         <form id="bulk-delete-form" method="POST" action="/admin/delete_quotes_bulk" class="inline-form" onsubmit="return confirmBulkDelete();"></form>
@@ -577,6 +609,7 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                       <span class="meta-chip {% if row.waiting_days >= 7 %}danger{% elif row.waiting_days >= 5 %}warning{% endif %}">waiting {{ row.waiting_days }}d</span>
                     {% endif %}
                     {% if row.is_auto_archive_candidate and row.waiting_days < 7 %}<span class="meta-chip warning">auto-archives soon</span>{% endif %}
+                    {% if row.profit_summary is defined %}<span class="meta-chip" style="color:#86efac;border-color:rgba(134,239,172,.25);">profit ${{ '%.2f'|format(row.profit_summary.total_profit) }}</span>{% endif %}
                   </div>
                 </div>
               </div>
@@ -619,6 +652,22 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
               <div class="detail-box">
                 <div class="label">Waiting timer</div>
                 <div class="value">{% if row.admin_status == 'waiting' and row.waiting_days is not none %}{{ row.waiting_days }} day(s){% else %}-{% endif %}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Parts sold</div>
+                <div class="value">${{ '%.2f'|format(row.profit_summary.parts_sale_total if row.profit_summary is defined else 0) }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Your parts cost</div>
+                <div class="value">${{ '%.2f'|format(row.profit_summary.parts_cost_total if row.profit_summary is defined else 0) }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Parts profit</div>
+                <div class="value" style="color:#86efac;">${{ '%.2f'|format(row.profit_summary.parts_profit_total if row.profit_summary is defined else 0) }}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Total profit</div>
+                <div class="value" style="color:#86efac;">${{ '%.2f'|format(row.profit_summary.total_profit if row.profit_summary is defined else 0) }}</div>
               </div>
             </div>
 
@@ -691,6 +740,27 @@ tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:1
                 <div id="mobile-manual-parts-{{ row.id }}"></div>
               </div>
             </form>
+
+            <div class="profit-box">
+              <div class="profit-head">
+                <div>
+                  <div class="profit-title">Profit Summary</div>
+                  <div class="small">Internal only. Based on customer price minus your entered cost.</div>
+                </div>
+                {% if row.profit_summary.missing_cost_count %}<span class="parts-pill need">{{ row.profit_summary.missing_cost_count }} blank cost</span>{% endif %}
+              </div>
+              <div class="profit-grid">
+                <div class="profit-card"><div class="label">Parts Sold</div><div class="value">${{ '%.2f'|format(row.profit_summary.parts_sale_total) }}</div></div>
+                <div class="profit-card"><div class="label">Parts Cost</div><div class="value">${{ '%.2f'|format(row.profit_summary.parts_cost_total) }}</div></div>
+                <div class="profit-card good"><div class="label">Parts Profit</div><div class="value">${{ '%.2f'|format(row.profit_summary.parts_profit_total) }}</div></div>
+                <div class="profit-card good"><div class="label">Total Profit</div><div class="value">${{ '%.2f'|format(row.profit_summary.total_profit) }}</div></div>
+                <div class="profit-card"><div class="label">Labor Profit</div><div class="value">${{ '%.2f'|format(row.profit_summary.labor_profit_total) }}</div></div>
+                <div class="profit-card"><div class="label">Service Fee</div><div class="value">${{ '%.2f'|format(row.profit_summary.service_fee_profit) }}</div></div>
+                <div class="profit-card"><div class="label">Parts Margin</div><div class="value">{{ '%.1f'|format(row.profit_summary.parts_margin) }}%</div></div>
+                <div class="profit-card"><div class="label">Total Margin</div><div class="value">{{ '%.1f'|format(row.profit_summary.profit_margin) }}%</div></div>
+              </div>
+              <div class="profit-note">Manual/internal-only parts count as cost against the job. Tax is not counted as profit.</div>
+            </div>
 
             <div class="quote-actions">
               {% if row.quote_token %}

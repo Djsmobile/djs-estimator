@@ -1069,6 +1069,156 @@ def build_quote_totals(quote, payload, approved_map=None):
 
 
 
+def row_get(row, key, default=None):
+    try:
+        if isinstance(row, sqlite3.Row):
+            return row[key] if key in row.keys() else default
+        if isinstance(row, dict):
+            return row.get(key, default)
+    except Exception:
+        return default
+    return default
+
+
+def build_quote_profit_summary(quote_row):
+    """Admin-only profit math. Never rendered on customer quote/invoice pages."""
+    try:
+        payload = json.loads(row_get(quote_row, "payload_json", "{}") or "{}")
+    except Exception:
+        payload = {}
+
+    jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
+    _, approved_map = parse_approved_map(row_get(quote_row, "approved_json"))
+    has_approval = bool(approved_map)
+    labor_rate = safe_float(row_get(quote_row, "labor_rate"), 0)
+    service_fee = safe_float(row_get(quote_row, "service_fee"), 0)
+
+    tracker_items = build_quote_parts_tracker(
+        row_get(quote_row, "payload_json"),
+        row_get(quote_row, "parts_tracking_json"),
+    )
+    tracker_map = {
+        item.get("source_key"): item
+        for item in tracker_items
+        if isinstance(item, dict) and item.get("source_key")
+    }
+
+    parts_sale_total = 0.0
+    parts_cost_total = 0.0
+    parts_profit_total = 0.0
+    labor_profit_total = 0.0
+    manual_cost_total = 0.0
+    missing_cost_count = 0
+    profit_items = []
+
+    for job_index, job in enumerate(jobs):
+        if not isinstance(job, dict):
+            continue
+
+        if has_approval and job_index not in approved_map:
+            continue
+
+        approved_item = approved_map.get(job_index, {}) if has_approval else {}
+        default_tier = approved_item.get("tier", "quality") if isinstance(approved_item, dict) else "quality"
+        selected_parts = approved_item.get("selected_parts", []) if isinstance(approved_item, dict) else []
+        selections_map = {}
+        if isinstance(selected_parts, list):
+            for selected in selected_parts:
+                if not isinstance(selected, dict):
+                    continue
+                try:
+                    selections_map[int(selected.get("part_index"))] = (selected.get("tier") or default_tier or "quality").strip().lower()
+                except (TypeError, ValueError):
+                    continue
+
+        labor_profit_total += safe_float(job.get("labor_hours", 0), 0) * labor_rate
+
+        for part_index, part in enumerate(normalize_job_parts(job)):
+            source_key = f"job-{job_index}-part-{part_index}"
+            tracker_item = tracker_map.get(source_key, {})
+            qty = safe_float(part.get("qty", 1), 1)
+            selected_tier = sanitize_selected_tier(
+                part,
+                selections_map.get(part_index) or part.get("selected_tier") or default_tier,
+                default_tier="quality",
+            )
+            sale_total = qty * safe_float(part.get(selected_tier, 0), 0)
+            cost_total = safe_float(tracker_item.get("cost", 0), 0)
+            part_profit = sale_total - cost_total
+
+            parts_sale_total += sale_total
+            parts_cost_total += cost_total
+            parts_profit_total += part_profit
+            if sale_total > 0 and cost_total <= 0:
+                missing_cost_count += 1
+
+            profit_items.append({
+                "source_key": source_key,
+                "job_desc": (job.get("desc") or "Service").strip() or "Service",
+                "part_desc": part.get("part_desc") or "Part",
+                "selected_tier": selected_tier,
+                "qty": round(qty, 2),
+                "sale_total": round(sale_total, 2),
+                "cost_total": round(cost_total, 2),
+                "profit": round(part_profit, 2),
+            })
+
+    for item in tracker_items:
+        if not isinstance(item, dict):
+            continue
+        if (item.get("source_type") or "quote_part") == "manual":
+            cost_total = safe_float(item.get("cost", 0), 0)
+            manual_cost_total += cost_total
+            if cost_total:
+                profit_items.append({
+                    "source_key": item.get("source_key") or "manual",
+                    "job_desc": item.get("job_desc") or "Manual/Internal",
+                    "part_desc": item.get("display_name") or item.get("part_desc") or "Internal-only part",
+                    "selected_tier": "manual",
+                    "qty": safe_float(item.get("qty", 1), 1),
+                    "sale_total": 0.0,
+                    "cost_total": round(cost_total, 2),
+                    "profit": round(-cost_total, 2),
+                })
+
+    parts_cost_total += manual_cost_total
+    parts_profit_total -= manual_cost_total
+    total_profit = parts_profit_total + labor_profit_total + service_fee
+    profit_margin = (total_profit / (parts_sale_total + labor_profit_total + service_fee) * 100.0) if (parts_sale_total + labor_profit_total + service_fee) > 0 else 0.0
+    parts_margin = (parts_profit_total / parts_sale_total * 100.0) if parts_sale_total > 0 else 0.0
+
+    return {
+        "parts_sale_total": round(parts_sale_total, 2),
+        "parts_cost_total": round(parts_cost_total, 2),
+        "parts_profit_total": round(parts_profit_total, 2),
+        "labor_profit_total": round(labor_profit_total, 2),
+        "service_fee_profit": round(service_fee, 2),
+        "total_profit": round(total_profit, 2),
+        "profit_margin": round(profit_margin, 1),
+        "parts_margin": round(parts_margin, 1),
+        "manual_cost_total": round(manual_cost_total, 2),
+        "missing_cost_count": missing_cost_count,
+        "items": profit_items,
+    }
+
+
+def empty_profit_summary():
+    return {
+        "parts_sale_total": 0.0,
+        "parts_cost_total": 0.0,
+        "parts_profit_total": 0.0,
+        "labor_profit_total": 0.0,
+        "service_fee_profit": 0.0,
+        "total_profit": 0.0,
+        "profit_margin": 0.0,
+        "parts_margin": 0.0,
+        "manual_cost_total": 0.0,
+        "missing_cost_count": 0,
+        "items": [],
+    }
+
+
+
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"png", "jpg", "jpeg", "webp", "gif", "heic", "heif"}
@@ -1937,12 +2087,31 @@ def admin():
         row_dict["customer_phone_e164"] = normalize_phone_number(row["customer_phone"])
         row_dict["parts_tracker_items"] = build_quote_parts_tracker(row_dict.get("payload_json"), row_dict.get("parts_tracking_json"))
         row_dict["parts_tracker_summary"] = build_parts_tracker_summary(row_dict["parts_tracker_items"])
+        row_dict["profit_summary"] = build_quote_profit_summary(row_dict)
         row_dict["age_days"] = compute_quote_age_days(row_dict.get("created_at"))
         row_dict["waiting_days"] = compute_quote_waiting_days(row_dict.get("waiting_since"))
         row_dict["is_auto_archive_candidate"] = admin_status == "waiting" and (row_dict["waiting_days"] is not None and row_dict["waiting_days"] >= 5) and quote_status not in {"approved", "invoiced"}
         row_dict["is_overdue_waiting"] = admin_status == "waiting" and (row_dict["waiting_days"] is not None and row_dict["waiting_days"] >= 7) and quote_status not in {"approved", "invoiced"}
         if selected_filter in {"all", admin_status}:
             rows.append(row_dict)
+
+    profit_summary = empty_profit_summary()
+    for row_dict in rows:
+        row_profit = row_dict.get("profit_summary") or empty_profit_summary()
+        profit_summary["parts_sale_total"] += safe_float(row_profit.get("parts_sale_total"), 0)
+        profit_summary["parts_cost_total"] += safe_float(row_profit.get("parts_cost_total"), 0)
+        profit_summary["parts_profit_total"] += safe_float(row_profit.get("parts_profit_total"), 0)
+        profit_summary["labor_profit_total"] += safe_float(row_profit.get("labor_profit_total"), 0)
+        profit_summary["service_fee_profit"] += safe_float(row_profit.get("service_fee_profit"), 0)
+        profit_summary["total_profit"] += safe_float(row_profit.get("total_profit"), 0)
+        profit_summary["manual_cost_total"] += safe_float(row_profit.get("manual_cost_total"), 0)
+        profit_summary["missing_cost_count"] += safe_int(row_profit.get("missing_cost_count"), 0)
+
+    gross_sales_for_margin = profit_summary["parts_sale_total"] + profit_summary["labor_profit_total"] + profit_summary["service_fee_profit"]
+    profit_summary["profit_margin"] = round((profit_summary["total_profit"] / gross_sales_for_margin * 100.0), 1) if gross_sales_for_margin > 0 else 0.0
+    profit_summary["parts_margin"] = round((profit_summary["parts_profit_total"] / profit_summary["parts_sale_total"] * 100.0), 1) if profit_summary["parts_sale_total"] > 0 else 0.0
+    for key in ("parts_sale_total", "parts_cost_total", "parts_profit_total", "labor_profit_total", "service_fee_profit", "total_profit", "manual_cost_total"):
+        profit_summary[key] = round(profit_summary[key], 2)
 
     request_rows = []
     for row in request_rows_raw:
@@ -1958,6 +2127,7 @@ def admin():
         email_enabled=email_settings_ready(),
         selected_quote_view=selected_filter,
         quote_status_counts=status_counts,
+        profit_summary=profit_summary,
     )
 
 @app.route("/request-quote", methods=["GET", "POST"])
