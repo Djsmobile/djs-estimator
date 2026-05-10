@@ -282,7 +282,25 @@
     function retailFrom(part, tier){ const retail = part[tier] ?? part[`retail_${tier}`] ?? 0; return money(retail); }
     function listFrom(part, tier){ const list = part[`list_${tier}`] ?? part[tier] ?? 0; return money(list); }
     function sourceFrom(part, tier){ return String(part[`source_${tier}`] || part[`part_source_${tier}`] || 'online_oem'); }
-    function bufferFrom(part, tier){ const saved = part[`buffer_${tier}`] ?? part[`part_buffer_${tier}`]; if(saved !== undefined && saved !== null && saved !== '') return money(saved); return sourceFrom(part,tier) === 'dealer_local' ? '0.00' : '25.00'; }
+    function defaultBufferForSource(source){
+      const key = String(source || '').trim().toLowerCase();
+      if(key === 'dealer_local') return 0;
+      if(key === 'oreilly') return 10;
+      if(key === 'autozone') return 10;
+      if(key === 'napa') return 10;
+      if(key === 'amazon') return 25;
+      if(key === 'rockauto') return 20;
+      if(key === 'worldpac') return 15;
+      if(key === 'lkq') return 15;
+      if(key === 'dealer_online') return 20;
+      if(key === 'customer_supplied') return 0;
+      return 25;
+    }
+    function bufferFrom(part, tier){
+      const saved = part[`buffer_${tier}`] ?? part[`part_buffer_${tier}`];
+      if(saved !== undefined && saved !== null && saved !== '') return money(saved);
+      return money(defaultBufferForSource(sourceFrom(part,tier)));
+    }
     function flatMarkupDefault(cost){ cost = toNum(cost); if(cost <= 0) return 0; if(cost < 50) return 25; if(cost < 200) return 35; return Math.max(55, cost * 0.18); }
     function markupFrom(part, tier){ const saved = part[`flat_markup_${tier}`] ?? part[`markup_flat_${tier}`]; if(saved !== undefined && saved !== null && saved !== '') return money(saved); const cost = toNum(part[`list_${tier}`] ?? part[tier] ?? 0); const buffer = toNum(bufferFrom(part,tier)); const retail = toNum(part[tier] ?? 0); if(retail > 0 || cost > 0) return money(Math.max(0, retail - (cost * (1 + buffer / 100)))); return money(flatMarkupDefault(cost)); }
     function helperRetail(cost, source, buffer, markup){ return money((toNum(cost) * (1 + toNum(buffer) / 100)) + toNum(markup)); }
@@ -353,7 +371,19 @@
         <input type="hidden" data-role="selected-tier-hidden" data-base-name="part_selected_tier" value="${selectedTier}">
         <div class="tier-fields">
           <div><label>Raw cost</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="list-${tier.key}" data-base-name="part_list_${tier.key}" value="${listFrom(part,tier.key)}" placeholder="Cost"></div></div>
-          <div><label>Source</label><select data-role="source-${tier.key}" data-base-name="part_source_${tier.key}"><option value="online_oem" ${sourceFrom(part,tier.key)==='online_oem'?'selected':''}>Online OEM</option><option value="dealer_local" ${sourceFrom(part,tier.key)==='dealer_local'?'selected':''}>Dealer-Local</option></select></div>
+          <div><label>Source</label><select data-role="source-${tier.key}" data-base-name="part_source_${tier.key}">
+            <option value="online_oem" ${sourceFrom(part,tier.key)==='online_oem'?'selected':''}>Online OEM</option>
+            <option value="dealer_local" ${sourceFrom(part,tier.key)==='dealer_local'?'selected':''}>Dealer-Local</option>
+            <option value="oreilly" ${sourceFrom(part,tier.key)==='oreilly'?'selected':''}>O'Reilly</option>
+            <option value="autozone" ${sourceFrom(part,tier.key)==='autozone'?'selected':''}>AutoZone</option>
+            <option value="napa" ${sourceFrom(part,tier.key)==='napa'?'selected':''}>NAPA</option>
+            <option value="amazon" ${sourceFrom(part,tier.key)==='amazon'?'selected':''}>Amazon</option>
+            <option value="rockauto" ${sourceFrom(part,tier.key)==='rockauto'?'selected':''}>RockAuto</option>
+            <option value="worldpac" ${sourceFrom(part,tier.key)==='worldpac'?'selected':''}>WorldPac</option>
+            <option value="lkq" ${sourceFrom(part,tier.key)==='lkq'?'selected':''}>LKQ</option>
+            <option value="dealer_online" ${sourceFrom(part,tier.key)==='dealer_online'?'selected':''}>Dealer-Online</option>
+            <option value="customer_supplied" ${sourceFrom(part,tier.key)==='customer_supplied'?'selected':''}>Customer Supplied</option>
+          </select></div>
           <div><label>Buffer %</label><input type="number" step="0.01" min="0" data-role="buffer-${tier.key}" data-base-name="part_buffer_${tier.key}" value="${bufferFrom(part,tier.key)}"></div>
           <div><label>Markup $</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="markup-${tier.key}" data-base-name="part_markup_${tier.key}" value="${markupFrom(part,tier.key)}"></div></div>
           <div><label>Retail</label><div class="money-input"><span>$</span><input type="number" step="0.01" min="0" data-role="retail-${tier.key}" data-base-name="part_${tier.key}" value="${retailFrom(part,tier.key)}"></div></div>
@@ -461,7 +491,7 @@
         const markupEl=row.querySelector(`[data-role="markup-${t.key}"]`);
         const retailEl=row.querySelector(`[data-role="retail-${t.key}"]`);
         if(sourceEl && bufferEl && document.activeElement === sourceEl){
-          bufferEl.value = sourceEl.value === 'dealer_local' ? money(0) : money(25);
+          bufferEl.value = money(defaultBufferForSource(sourceEl.value));
         }
         if(listEl && markupEl && retailEl && document.activeElement !== retailEl){
           if(toNum(markupEl.value) <= 0 && document.activeElement === listEl){
