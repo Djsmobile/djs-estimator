@@ -546,6 +546,40 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS fleet_vehicles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        unit_number TEXT,
+        vin TEXT,
+        plate TEXT,
+        driver TEXT,
+        mileage INTEGER DEFAULT 0,
+        notes TEXT,
+        status TEXT DEFAULT 'active',
+        created_at TEXT,
+        updated_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS fleet_services (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER,
+        service_date TEXT,
+        mileage INTEGER DEFAULT 0,
+        complaint TEXT,
+        correction TEXT,
+        recommendations TEXT,
+        total_cost REAL DEFAULT 0,
+        next_service TEXT,
+        next_due_mileage INTEGER DEFAULT 0,
+        created_at TEXT,
+        updated_at TEXT,
+        FOREIGN KEY (vehicle_id) REFERENCES fleet_vehicles(id)
+    )
+    """)
+
+
     conn.commit()
 
     add_column_if_missing(conn, "quotes", "quote_token", "TEXT")
@@ -578,6 +612,28 @@ def init_db():
     add_column_if_missing(conn, "request_quotes", "preferred_schedule", "TEXT")
     add_column_if_missing(conn, "request_quotes", "status", "TEXT DEFAULT 'new'")
     add_column_if_missing(conn, "request_quotes", "source", "TEXT DEFAULT 'website'")
+
+    add_column_if_missing(conn, "fleet_vehicles", "unit_number", "TEXT")
+    add_column_if_missing(conn, "fleet_vehicles", "vin", "TEXT")
+    add_column_if_missing(conn, "fleet_vehicles", "plate", "TEXT")
+    add_column_if_missing(conn, "fleet_vehicles", "driver", "TEXT")
+    add_column_if_missing(conn, "fleet_vehicles", "mileage", "INTEGER DEFAULT 0")
+    add_column_if_missing(conn, "fleet_vehicles", "notes", "TEXT")
+    add_column_if_missing(conn, "fleet_vehicles", "status", "TEXT DEFAULT 'active'")
+    add_column_if_missing(conn, "fleet_vehicles", "created_at", "TEXT")
+    add_column_if_missing(conn, "fleet_vehicles", "updated_at", "TEXT")
+
+    add_column_if_missing(conn, "fleet_services", "vehicle_id", "INTEGER")
+    add_column_if_missing(conn, "fleet_services", "service_date", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "mileage", "INTEGER DEFAULT 0")
+    add_column_if_missing(conn, "fleet_services", "complaint", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "correction", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "recommendations", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "total_cost", "REAL DEFAULT 0")
+    add_column_if_missing(conn, "fleet_services", "next_service", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "next_due_mileage", "INTEGER DEFAULT 0")
+    add_column_if_missing(conn, "fleet_services", "created_at", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "updated_at", "TEXT")
 
     conn.commit()
     conn.close()
@@ -2402,6 +2458,312 @@ def delete_quote(quote_id):
     conn.close()
     flash("Quote deleted.")
     return redirect(url_for("admin"))
+
+
+FLEET_STARTER_VEHICLES = [
+    {"unit_number": "Van 1", "vin": "1FTBR1C87RKB72744", "plate": "EF81W55", "driver": "Garrett"},
+    {"unit_number": "Van 2", "vin": "1FTYE1C85RKA00816", "plate": "EF81X78", "driver": "Anthony"},
+    {"unit_number": "Van 3", "vin": "1FTBR1C82RK79083", "plate": "EF81X20", "driver": "Craig"},
+    {"unit_number": "Van 4", "vin": "1FTYE1C85RKA00816", "plate": "", "driver": "Greg"},
+    {"unit_number": "1", "vin": "1GBRSBEN8H1140244", "plate": "74571K2", "driver": "Commercial"},
+    {"unit_number": "3", "vin": "1GCHSBEA9J1226172", "plate": "59736M2", "driver": "Anthony"},
+    {"unit_number": "4", "vin": "1GCHSBE39G1248909", "plate": "48909", "driver": "Kyle"},
+    {"unit_number": "Transit 1", "vin": "NM0LS7E74J1346096", "plate": "59352L2", "driver": "Andrew"},
+    {"unit_number": "Transit 2", "vin": "NM0LS7E73E1172446", "plate": "26272U1", "driver": "Carl"},
+    {"unit_number": "Transit 3", "vin": "NM0LS7F70H1312441", "plate": "07645U3", "driver": "Josh"},
+    {"unit_number": "Transit 4", "vin": "NM0LS6F76J1375222", "plate": "76866L2", "driver": "David"},
+    {"unit_number": "Transit 5", "vin": "NM0LS7E28L1460576", "plate": "33076A3", "driver": ""},
+]
+
+
+def clean_fleet_text(value):
+    return (value or "").strip()
+
+
+def get_fleet_vehicle_or_404(conn, vehicle_id):
+    vehicle = conn.execute("SELECT * FROM fleet_vehicles WHERE id = ?", (vehicle_id,)).fetchone()
+    if not vehicle:
+        conn.close()
+        abort(404)
+    return vehicle
+
+
+@app.route("/admin/fleet", methods=["GET"])
+@admin_required
+def fleet_dashboard():
+    q = clean_fleet_text(request.args.get("q"))
+    status_filter = clean_fleet_text(request.args.get("status")) or "active"
+    params = []
+    where = []
+
+    if status_filter != "all":
+        where.append("LOWER(COALESCE(fv.status, 'active')) = ?")
+        params.append(status_filter.lower())
+
+    if q:
+        where.append("""
+            (
+                LOWER(COALESCE(fv.unit_number, '')) LIKE ? OR
+                LOWER(COALESCE(fv.vin, '')) LIKE ? OR
+                LOWER(COALESCE(fv.plate, '')) LIKE ? OR
+                LOWER(COALESCE(fv.driver, '')) LIKE ? OR
+                LOWER(COALESCE(fv.notes, '')) LIKE ?
+            )
+        """)
+        like = f"%{q.lower()}%"
+        params.extend([like, like, like, like, like])
+
+    where_sql = "WHERE " + " AND ".join(where) if where else ""
+
+    conn = get_db()
+    vehicles = conn.execute(f"""
+        SELECT
+            fv.*,
+            COUNT(fs.id) AS service_count,
+            MAX(fs.service_date) AS last_service_date,
+            MAX(CASE WHEN fs.next_due_mileage IS NOT NULL THEN fs.next_due_mileage ELSE 0 END) AS highest_next_due_mileage,
+            COALESCE(SUM(fs.total_cost), 0) AS lifetime_total
+        FROM fleet_vehicles fv
+        LEFT JOIN fleet_services fs ON fs.vehicle_id = fv.id
+        {where_sql}
+        GROUP BY fv.id
+        ORDER BY
+            CASE LOWER(COALESCE(fv.status, 'active'))
+                WHEN 'down' THEN 0
+                WHEN 'needs repair' THEN 1
+                WHEN 'active' THEN 2
+                ELSE 3
+            END,
+            LOWER(COALESCE(fv.unit_number, '')) ASC
+    """, params).fetchall()
+
+    stats = conn.execute("""
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN LOWER(COALESCE(status, 'active')) = 'active' THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN LOWER(COALESCE(status, 'active')) = 'down' THEN 1 ELSE 0 END) AS down,
+            SUM(CASE WHEN LOWER(COALESCE(status, 'active')) = 'needs repair' THEN 1 ELSE 0 END) AS needs_repair,
+            SUM(CASE WHEN LOWER(COALESCE(status, 'active')) = 'inactive' THEN 1 ELSE 0 END) AS inactive
+        FROM fleet_vehicles
+    """).fetchone()
+
+    recent_services = conn.execute("""
+        SELECT fs.*, fv.unit_number, fv.plate, fv.driver
+        FROM fleet_services fs
+        JOIN fleet_vehicles fv ON fv.id = fs.vehicle_id
+        ORDER BY COALESCE(fs.service_date, fs.created_at) DESC, fs.id DESC
+        LIMIT 10
+    """).fetchall()
+
+    conn.close()
+    return render_template(
+        "fleet_dashboard.html",
+        vehicles=vehicles,
+        stats=stats,
+        recent_services=recent_services,
+        q=q,
+        status_filter=status_filter,
+    )
+
+
+@app.route("/admin/fleet/import-starter", methods=["POST"])
+@admin_required
+def fleet_import_starter():
+    conn = get_db()
+    inserted = 0
+    skipped = 0
+    now = datetime.now().isoformat()
+    for item in FLEET_STARTER_VEHICLES:
+        unit = clean_fleet_text(item.get("unit_number"))
+        vin = clean_fleet_text(item.get("vin")).upper()
+        plate = clean_fleet_text(item.get("plate")).upper()
+        existing = None
+        if vin and plate:
+            existing = conn.execute(
+                "SELECT id FROM fleet_vehicles WHERE UPPER(COALESCE(vin, '')) = ? AND UPPER(COALESCE(plate, '')) = ?",
+                (vin, plate),
+            ).fetchone()
+        if not existing and unit:
+            existing = conn.execute(
+                "SELECT id FROM fleet_vehicles WHERE LOWER(COALESCE(unit_number, '')) = ? AND UPPER(COALESCE(vin, '')) = ?",
+                (unit.lower(), vin),
+            ).fetchone()
+        if existing:
+            skipped += 1
+            continue
+        conn.execute(
+            """
+            INSERT INTO fleet_vehicles (unit_number, vin, plate, driver, mileage, notes, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (unit, vin, plate, clean_fleet_text(item.get("driver")), 0, "Imported from starter fleet list.", "active", now, now),
+        )
+        inserted += 1
+    conn.commit()
+    conn.close()
+    flash(f"Starter fleet import complete. Added {inserted}; skipped {skipped} existing.")
+    return redirect(url_for("fleet_dashboard"))
+
+
+@app.route("/admin/fleet/add", methods=["GET", "POST"])
+@admin_required
+def fleet_add_vehicle():
+    if request.method == "POST":
+        unit_number = clean_fleet_text(request.form.get("unit_number"))
+        vin = clean_fleet_text(request.form.get("vin")).upper()
+        plate = clean_fleet_text(request.form.get("plate")).upper()
+        driver = clean_fleet_text(request.form.get("driver"))
+        status = clean_fleet_text(request.form.get("status")) or "active"
+        mileage = safe_int(request.form.get("mileage"), 0)
+        notes = clean_fleet_text(request.form.get("notes"))
+
+        if not unit_number and not vin and not plate:
+            flash("Add at least a unit number, VIN, or plate.")
+            return redirect(url_for("fleet_add_vehicle"))
+
+        now = datetime.now().isoformat()
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO fleet_vehicles (unit_number, vin, plate, driver, mileage, notes, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (unit_number, vin, plate, driver, mileage, notes, status, now, now),
+        )
+        vehicle_id = cur.lastrowid
+        conn.commit()
+        conn.close()
+        flash("Fleet vehicle added.")
+        return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+
+    return render_template("fleet_vehicle_form.html", vehicle=None, mode="add")
+
+
+@app.route("/admin/fleet/<int:vehicle_id>", methods=["GET"])
+@admin_required
+def fleet_vehicle_detail(vehicle_id):
+    conn = get_db()
+    vehicle = get_fleet_vehicle_or_404(conn, vehicle_id)
+    services = conn.execute(
+        """
+        SELECT *
+        FROM fleet_services
+        WHERE vehicle_id = ?
+        ORDER BY COALESCE(service_date, created_at) DESC, id DESC
+        """,
+        (vehicle_id,),
+    ).fetchall()
+    totals = conn.execute(
+        """
+        SELECT COUNT(*) AS service_count, COALESCE(SUM(total_cost), 0) AS total_spent, MAX(service_date) AS last_service_date
+        FROM fleet_services
+        WHERE vehicle_id = ?
+        """,
+        (vehicle_id,),
+    ).fetchone()
+    conn.close()
+    today = datetime.now().strftime("%Y-%m-%d")
+    return render_template("fleet_vehicle_detail.html", vehicle=vehicle, services=services, totals=totals, today=today)
+
+
+@app.route("/admin/fleet/<int:vehicle_id>/edit", methods=["GET", "POST"])
+@admin_required
+def fleet_edit_vehicle(vehicle_id):
+    conn = get_db()
+    vehicle = get_fleet_vehicle_or_404(conn, vehicle_id)
+    if request.method == "POST":
+        now = datetime.now().isoformat()
+        conn.execute(
+            """
+            UPDATE fleet_vehicles
+            SET unit_number = ?, vin = ?, plate = ?, driver = ?, mileage = ?, notes = ?, status = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                clean_fleet_text(request.form.get("unit_number")),
+                clean_fleet_text(request.form.get("vin")).upper(),
+                clean_fleet_text(request.form.get("plate")).upper(),
+                clean_fleet_text(request.form.get("driver")),
+                safe_int(request.form.get("mileage"), 0),
+                clean_fleet_text(request.form.get("notes")),
+                clean_fleet_text(request.form.get("status")) or "active",
+                now,
+                vehicle_id,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        flash("Fleet vehicle updated.")
+        return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+    conn.close()
+    return render_template("fleet_vehicle_form.html", vehicle=vehicle, mode="edit")
+
+
+@app.route("/admin/fleet/<int:vehicle_id>/delete", methods=["POST"])
+@admin_required
+def fleet_delete_vehicle(vehicle_id):
+    conn = get_db()
+    get_fleet_vehicle_or_404(conn, vehicle_id)
+    conn.execute("DELETE FROM fleet_services WHERE vehicle_id = ?", (vehicle_id,))
+    conn.execute("DELETE FROM fleet_vehicles WHERE id = ?", (vehicle_id,))
+    conn.commit()
+    conn.close()
+    flash("Fleet vehicle and service history deleted.")
+    return redirect(url_for("fleet_dashboard"))
+
+
+@app.route("/admin/fleet/<int:vehicle_id>/add-service", methods=["POST"])
+@admin_required
+def fleet_add_service(vehicle_id):
+    conn = get_db()
+    get_fleet_vehicle_or_404(conn, vehicle_id)
+    service_date = clean_fleet_text(request.form.get("service_date")) or datetime.now().strftime("%Y-%m-%d")
+    mileage = safe_int(request.form.get("mileage"), 0)
+    now = datetime.now().isoformat()
+    conn.execute(
+        """
+        INSERT INTO fleet_services (
+            vehicle_id, service_date, mileage, complaint, correction, recommendations,
+            total_cost, next_service, next_due_mileage, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            vehicle_id,
+            service_date,
+            mileage,
+            clean_fleet_text(request.form.get("complaint")),
+            clean_fleet_text(request.form.get("correction")),
+            clean_fleet_text(request.form.get("recommendations")),
+            safe_float(request.form.get("total_cost"), 0),
+            clean_fleet_text(request.form.get("next_service")),
+            safe_int(request.form.get("next_due_mileage"), 0),
+            now,
+            now,
+        ),
+    )
+    if mileage > 0:
+        conn.execute("UPDATE fleet_vehicles SET mileage = MAX(COALESCE(mileage, 0), ?), updated_at = ? WHERE id = ?", (mileage, now, vehicle_id))
+    conn.commit()
+    conn.close()
+    flash("Service record added.")
+    return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+
+
+@app.route("/admin/fleet/service/<int:service_id>/delete", methods=["POST"])
+@admin_required
+def fleet_delete_service(service_id):
+    conn = get_db()
+    service = conn.execute("SELECT * FROM fleet_services WHERE id = ?", (service_id,)).fetchone()
+    if not service:
+        conn.close()
+        abort(404)
+    vehicle_id = service["vehicle_id"]
+    conn.execute("DELETE FROM fleet_services WHERE id = ?", (service_id,))
+    conn.commit()
+    conn.close()
+    flash("Service record deleted.")
+    return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
 
 
 if __name__ == "__main__":
