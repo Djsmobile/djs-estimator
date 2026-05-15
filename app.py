@@ -579,6 +579,43 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS fleet_reference_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER,
+        item_type TEXT DEFAULT 'part',
+        category TEXT,
+        description TEXT,
+        part_number TEXT,
+        brand TEXT,
+        source TEXT,
+        fluid_spec TEXT,
+        quantity REAL DEFAULT 0,
+        unit TEXT,
+        notes TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        FOREIGN KEY (vehicle_id) REFERENCES fleet_vehicles(id)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS fleet_service_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        template_name TEXT NOT NULL,
+        complaint TEXT,
+        correction TEXT,
+        recommendations TEXT,
+        total_cost REAL DEFAULT 0,
+        next_service TEXT,
+        interval_miles INTEGER DEFAULT 0,
+        is_system INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0,
+        created_at TEXT,
+        updated_at TEXT
+    )
+    """)
+
 
     conn.commit()
 
@@ -634,6 +671,65 @@ def init_db():
     add_column_if_missing(conn, "fleet_services", "next_due_mileage", "INTEGER DEFAULT 0")
     add_column_if_missing(conn, "fleet_services", "created_at", "TEXT")
     add_column_if_missing(conn, "fleet_services", "updated_at", "TEXT")
+    add_column_if_missing(conn, "fleet_services", "template_name", "TEXT")
+
+
+    add_column_if_missing(conn, "fleet_reference_items", "vehicle_id", "INTEGER")
+    add_column_if_missing(conn, "fleet_reference_items", "item_type", "TEXT DEFAULT 'part'")
+    add_column_if_missing(conn, "fleet_reference_items", "category", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "description", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "part_number", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "brand", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "source", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "fluid_spec", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "quantity", "REAL DEFAULT 0")
+    add_column_if_missing(conn, "fleet_reference_items", "unit", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "notes", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "created_at", "TEXT")
+    add_column_if_missing(conn, "fleet_reference_items", "updated_at", "TEXT")
+
+    add_column_if_missing(conn, "fleet_service_templates", "template_name", "TEXT")
+    add_column_if_missing(conn, "fleet_service_templates", "complaint", "TEXT")
+    add_column_if_missing(conn, "fleet_service_templates", "correction", "TEXT")
+    add_column_if_missing(conn, "fleet_service_templates", "recommendations", "TEXT")
+    add_column_if_missing(conn, "fleet_service_templates", "total_cost", "REAL DEFAULT 0")
+    add_column_if_missing(conn, "fleet_service_templates", "next_service", "TEXT")
+    add_column_if_missing(conn, "fleet_service_templates", "interval_miles", "INTEGER DEFAULT 0")
+    add_column_if_missing(conn, "fleet_service_templates", "is_system", "INTEGER DEFAULT 0")
+    add_column_if_missing(conn, "fleet_service_templates", "sort_order", "INTEGER DEFAULT 0")
+    add_column_if_missing(conn, "fleet_service_templates", "created_at", "TEXT")
+    add_column_if_missing(conn, "fleet_service_templates", "updated_at", "TEXT")
+
+    default_templates = [
+        ("Oil Service", "Maintenance service", "Performed engine oil and filter service.", "Next oil service due by mileage/date.", 165.00, "Oil service", 5000, 1),
+        ("Oil Service + Tire Rotation", "Maintenance service", "Performed engine oil and filter service and tire rotation.", "Next oil service due by mileage/date. Recheck tire condition at next service.", 210.00, "Oil service / tire rotation", 5000, 2),
+        ("Tire Rotation", "Maintenance service", "Performed tire rotation and set tire pressures.", "Recheck tire condition at next service.", 75.00, "Tire rotation", 5000, 3),
+        ("Brake Fluid Exchange", "Maintenance service", "Performed brake fluid exchange.", "Brake fluid exchange due again by interval or condition.", 180.00, "Brake fluid exchange", 30000, 4),
+        ("Transmission Drain & Fill", "Maintenance service", "Performed transmission fluid drain and fill service.", "Transmission service due again by interval or condition.", 250.00, "Transmission service", 30000, 5),
+        ("Coolant Exchange", "Maintenance service", "Performed coolant exchange service.", "Coolant service due again by interval or condition.", 220.00, "Coolant exchange", 60000, 6),
+        ("Differential Service", "Maintenance service", "Performed differential fluid service.", "Differential service due again by interval or condition.", 180.00, "Differential service", 30000, 7),
+        ("Engine Air Filter", "Maintenance service", "Replaced engine air filter.", "Inspect engine air filter at next service.", 75.00, "Engine air filter inspection", 15000, 8),
+        ("Cabin Air Filter", "Maintenance service", "Replaced cabin air filter.", "Inspect cabin air filter at next service.", 65.00, "Cabin air filter inspection", 15000, 9),
+        ("Wiper Blades", "Maintenance service", "Replaced wiper blades.", "Recheck wiper operation during next inspection.", 55.00, "Wiper inspection", 12000, 10),
+        ("Battery Test / Service", "Maintenance service", "Performed battery/charging system test and battery terminal service.", "Monitor battery condition at future services.", 60.00, "Battery test", 12000, 11),
+        ("Fleet Inspection", "Fleet inspection", "Performed fleet safety/maintenance inspection.", "See inspection notes and recommendations.", 95.00, "Fleet inspection", 5000, 12),
+    ]
+    now = datetime.now().isoformat()
+    for name, complaint, correction, recommendations, total_cost, next_service, interval_miles, sort_order in default_templates:
+        existing_template = conn.execute(
+            "SELECT id FROM fleet_service_templates WHERE LOWER(template_name) = LOWER(?) AND is_system = 1",
+            (name,),
+        ).fetchone()
+        if not existing_template:
+            conn.execute(
+                """
+                INSERT INTO fleet_service_templates (
+                    template_name, complaint, correction, recommendations, total_cost,
+                    next_service, interval_miles, is_system, sort_order, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                """,
+                (name, complaint, correction, recommendations, total_cost, next_service, interval_miles, sort_order, now, now),
+            )
 
     conn.commit()
     conn.close()
@@ -2654,6 +2750,19 @@ def fleet_vehicle_detail(vehicle_id):
         """,
         (vehicle_id,),
     ).fetchall()
+    reference_items = conn.execute(
+        """
+        SELECT *
+        FROM fleet_reference_items
+        WHERE vehicle_id = ?
+        ORDER BY
+            CASE LOWER(COALESCE(item_type, 'part')) WHEN 'fluid' THEN 0 ELSE 1 END,
+            LOWER(COALESCE(category, '')) ASC,
+            LOWER(COALESCE(description, '')) ASC,
+            id DESC
+        """,
+        (vehicle_id,),
+    ).fetchall()
     totals = conn.execute(
         """
         SELECT COUNT(*) AS service_count, COALESCE(SUM(total_cost), 0) AS total_spent, MAX(service_date) AS last_service_date
@@ -2662,9 +2771,24 @@ def fleet_vehicle_detail(vehicle_id):
         """,
         (vehicle_id,),
     ).fetchone()
+    service_templates = conn.execute(
+        """
+        SELECT *
+        FROM fleet_service_templates
+        ORDER BY is_system DESC, sort_order ASC, LOWER(template_name) ASC
+        """
+    ).fetchall()
     conn.close()
     today = datetime.now().strftime("%Y-%m-%d")
-    return render_template("fleet_vehicle_detail.html", vehicle=vehicle, services=services, totals=totals, today=today)
+    return render_template(
+        "fleet_vehicle_detail.html",
+        vehicle=vehicle,
+        services=services,
+        reference_items=reference_items,
+        totals=totals,
+        today=today,
+        service_templates=service_templates,
+    )
 
 
 @app.route("/admin/fleet/<int:vehicle_id>/edit", methods=["GET", "POST"])
@@ -2705,6 +2829,7 @@ def fleet_edit_vehicle(vehicle_id):
 def fleet_delete_vehicle(vehicle_id):
     conn = get_db()
     get_fleet_vehicle_or_404(conn, vehicle_id)
+    conn.execute("DELETE FROM fleet_reference_items WHERE vehicle_id = ?", (vehicle_id,))
     conn.execute("DELETE FROM fleet_services WHERE vehicle_id = ?", (vehicle_id,))
     conn.execute("DELETE FROM fleet_vehicles WHERE id = ?", (vehicle_id,))
     conn.commit()
@@ -2724,14 +2849,15 @@ def fleet_add_service(vehicle_id):
     conn.execute(
         """
         INSERT INTO fleet_services (
-            vehicle_id, service_date, mileage, complaint, correction, recommendations,
+            vehicle_id, service_date, mileage, template_name, complaint, correction, recommendations,
             total_cost, next_service, next_due_mileage, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             vehicle_id,
             service_date,
             mileage,
+            clean_fleet_text(request.form.get("template_name")),
             clean_fleet_text(request.form.get("complaint")),
             clean_fleet_text(request.form.get("correction")),
             clean_fleet_text(request.form.get("recommendations")),
@@ -2748,6 +2874,125 @@ def fleet_add_service(vehicle_id):
     conn.close()
     flash("Service record added.")
     return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+
+
+@app.route("/admin/fleet/<int:vehicle_id>/add-reference", methods=["POST"])
+@admin_required
+def fleet_add_reference_item(vehicle_id):
+    conn = get_db()
+    get_fleet_vehicle_or_404(conn, vehicle_id)
+    item_type = clean_fleet_text(request.form.get("item_type")).lower() or "part"
+    if item_type not in {"part", "fluid"}:
+        item_type = "part"
+    category = clean_fleet_text(request.form.get("category"))
+    description = clean_fleet_text(request.form.get("description"))
+    part_number = clean_fleet_text(request.form.get("part_number")).upper()
+    fluid_spec = clean_fleet_text(request.form.get("fluid_spec"))
+    quantity = safe_float(request.form.get("quantity"), 0)
+
+    if not any([category, description, part_number, fluid_spec, quantity]):
+        conn.close()
+        flash("Add at least a category, description, part number, fluid spec, or quantity.")
+        return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+
+    now = datetime.now().isoformat()
+    conn.execute(
+        """
+        INSERT INTO fleet_reference_items (
+            vehicle_id, item_type, category, description, part_number, brand, source,
+            fluid_spec, quantity, unit, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            vehicle_id,
+            item_type,
+            category,
+            description,
+            part_number,
+            clean_fleet_text(request.form.get("brand")),
+            clean_fleet_text(request.form.get("source")),
+            fluid_spec,
+            quantity,
+            clean_fleet_text(request.form.get("unit")),
+            clean_fleet_text(request.form.get("notes")),
+            now,
+            now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    flash("Vehicle-specific part/fluid reference saved.")
+    return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+
+
+@app.route("/admin/fleet/reference/<int:item_id>/delete", methods=["POST"])
+@admin_required
+def fleet_delete_reference_item(item_id):
+    conn = get_db()
+    item = conn.execute("SELECT * FROM fleet_reference_items WHERE id = ?", (item_id,)).fetchone()
+    if not item:
+        conn.close()
+        abort(404)
+    vehicle_id = item["vehicle_id"]
+    conn.execute("DELETE FROM fleet_reference_items WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    flash("Vehicle-specific part/fluid reference deleted.")
+    return redirect(url_for("fleet_vehicle_detail", vehicle_id=vehicle_id))
+
+
+@app.route("/admin/fleet/templates/add", methods=["POST"])
+@admin_required
+def fleet_add_service_template():
+    template_name = clean_fleet_text(request.form.get("template_name"))
+    if not template_name:
+        flash("Template name is required.")
+        return redirect(request.referrer or url_for("fleet_dashboard"))
+
+    now = datetime.now().isoformat()
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO fleet_service_templates (
+            template_name, complaint, correction, recommendations, total_cost,
+            next_service, interval_miles, is_system, sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 999, ?, ?)
+        """,
+        (
+            template_name,
+            clean_fleet_text(request.form.get("complaint")),
+            clean_fleet_text(request.form.get("correction")),
+            clean_fleet_text(request.form.get("recommendations")),
+            safe_float(request.form.get("total_cost"), 0),
+            clean_fleet_text(request.form.get("next_service")),
+            safe_int(request.form.get("interval_miles"), 0),
+            now,
+            now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    flash("Quick service template saved.")
+    return redirect(request.referrer or url_for("fleet_dashboard"))
+
+
+@app.route("/admin/fleet/templates/<int:template_id>/delete", methods=["POST"])
+@admin_required
+def fleet_delete_service_template(template_id):
+    conn = get_db()
+    template = conn.execute("SELECT * FROM fleet_service_templates WHERE id = ?", (template_id,)).fetchone()
+    if not template:
+        conn.close()
+        abort(404)
+    if safe_int(template["is_system"], 0) == 1:
+        conn.close()
+        flash("Built-in templates stay available so the quick buttons do not disappear.")
+        return redirect(request.referrer or url_for("fleet_dashboard"))
+    conn.execute("DELETE FROM fleet_service_templates WHERE id = ?", (template_id,))
+    conn.commit()
+    conn.close()
+    flash("Quick service template deleted.")
+    return redirect(request.referrer or url_for("fleet_dashboard"))
 
 
 @app.route("/admin/fleet/service/<int:service_id>/delete", methods=["POST"])
