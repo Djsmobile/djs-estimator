@@ -720,6 +720,8 @@ def init_db():
         ("Fleet Inspection", "Fleet inspection", "Performed fleet safety/maintenance inspection.", "See inspection notes and recommendations.", 0.00, "Fleet inspection", 5000, 21),
     ]
 
+    now = datetime.now().isoformat()
+
     for name, complaint, correction, recommendations, total_cost, next_service, interval_miles, sort_order in default_templates:
         existing_template = conn.execute(
             "SELECT id FROM fleet_service_templates WHERE LOWER(template_name) = LOWER(?) AND is_system = 1",
