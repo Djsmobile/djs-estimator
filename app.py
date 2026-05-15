@@ -701,26 +701,41 @@ def init_db():
     add_column_if_missing(conn, "fleet_service_templates", "updated_at", "TEXT")
 
     default_templates = [
-        ("Oil Service", "Maintenance service", "Performed engine oil and filter service.", "Next oil service due by mileage/date.", 165.00, "Oil service", 5000, 1),
-        ("Oil Service + Tire Rotation", "Maintenance service", "Performed engine oil and filter service and tire rotation.", "Next oil service due by mileage/date. Recheck tire condition at next service.", 210.00, "Oil service / tire rotation", 5000, 2),
-        ("Tire Rotation", "Maintenance service", "Performed tire rotation and set tire pressures.", "Recheck tire condition at next service.", 75.00, "Tire rotation", 5000, 3),
-        ("Brake Fluid Exchange", "Maintenance service", "Performed brake fluid exchange.", "Brake fluid exchange due again by interval or condition.", 180.00, "Brake fluid exchange", 30000, 4),
-        ("Transmission Drain & Fill", "Maintenance service", "Performed transmission fluid drain and fill service.", "Transmission service due again by interval or condition.", 250.00, "Transmission service", 30000, 5),
-        ("Coolant Exchange", "Maintenance service", "Performed coolant exchange service.", "Coolant service due again by interval or condition.", 220.00, "Coolant exchange", 60000, 6),
-        ("Differential Service", "Maintenance service", "Performed differential fluid service.", "Differential service due again by interval or condition.", 180.00, "Differential service", 30000, 7),
-        ("Engine Air Filter", "Maintenance service", "Replaced engine air filter.", "Inspect engine air filter at next service.", 75.00, "Engine air filter inspection", 15000, 8),
-        ("Cabin Air Filter", "Maintenance service", "Replaced cabin air filter.", "Inspect cabin air filter at next service.", 65.00, "Cabin air filter inspection", 15000, 9),
-        ("Wiper Blades", "Maintenance service", "Replaced wiper blades.", "Recheck wiper operation during next inspection.", 55.00, "Wiper inspection", 12000, 10),
-        ("Battery Test / Service", "Maintenance service", "Performed battery/charging system test and battery terminal service.", "Monitor battery condition at future services.", 60.00, "Battery test", 12000, 11),
-        ("Fleet Inspection", "Fleet inspection", "Performed fleet safety/maintenance inspection.", "See inspection notes and recommendations.", 95.00, "Fleet inspection", 5000, 12),
+        ("Transit 250 PM + Rotation", "Fleet maintenance service", "Performed full synthetic engine oil and filter service, tire rotation, fluid level check, tire pressure adjustment, maintenance reminder reset, and quick visual inspection.", "Next PM service due by mileage/date. Monitor brakes, tires, leaks, and safety items at each service.", 185.00, "Transit 250 PM service", 5000, 1),
+        ("Transit Connect PM + Rotation", "Fleet maintenance service", "Performed full synthetic engine oil and filter service, tire rotation, fluid level check, tire pressure adjustment, maintenance reminder reset, and quick visual inspection.", "Next PM service due by mileage/date. Monitor brakes, tires, leaks, and safety items at each service.", 125.00, "Transit Connect PM service", 5000, 2),
+        ("Mobile Onsite Service Fee - Local", "Mobile onsite service", "Mobile onsite service fee for a single vehicle serviced away from the main fleet location.", "Fee applies to individual employee-home visits or standalone mobile service calls within the local service area.", 25.00, "Mobile onsite service", 0, 3),
+        ("Mobile Onsite Service Fee - Extended", "Mobile onsite service", "Extended-distance mobile onsite service fee for a single vehicle serviced outside the local area.", "Fee applies when travel time/distance is higher than a normal local fleet stop.", 50.00, "Mobile onsite service", 0, 4),
+        ("Fleet Yard / Multi-Vehicle Visit", "Fleet onsite service", "No separate mobile service fee applied when multiple vehicles are serviced at the same fleet location during the same visit.", "Best pricing applies when vehicles are grouped together to reduce downtime and travel time.", 0.00, "Fleet visit", 0, 5),
+        ("Oil Service", "Maintenance service", "Performed engine oil and filter service.", "Next oil service due by mileage/date.", 0.00, "Oil service", 5000, 10),
+        ("Oil Service + Tire Rotation", "Maintenance service", "Performed engine oil and filter service and tire rotation.", "Next oil service due by mileage/date. Recheck tire condition at next service.", 0.00, "Oil service / tire rotation", 5000, 11),
+        ("Tire Rotation", "Maintenance service", "Performed tire rotation and set tire pressures.", "Recheck tire condition at next service.", 0.00, "Tire rotation", 5000, 12),
+        ("Brake Fluid Exchange", "Maintenance service", "Performed brake fluid exchange.", "Brake fluid exchange due again by interval or condition.", 0.00, "Brake fluid exchange", 30000, 13),
+        ("Transmission Drain & Fill", "Maintenance service", "Performed transmission fluid drain and fill service.", "Transmission service due again by interval or condition.", 0.00, "Transmission service", 30000, 14),
+        ("Coolant Exchange", "Maintenance service", "Performed coolant exchange service.", "Coolant service due again by interval or condition.", 0.00, "Coolant exchange", 60000, 15),
+        ("Differential Service", "Maintenance service", "Performed differential fluid service.", "Differential service due again by interval or condition.", 0.00, "Differential service", 30000, 16),
+        ("Engine Air Filter", "Maintenance service", "Replaced engine air filter.", "Inspect engine air filter at next service.", 0.00, "Engine air filter inspection", 15000, 17),
+        ("Cabin Air Filter", "Maintenance service", "Replaced cabin air filter.", "Inspect cabin air filter at next service.", 0.00, "Cabin air filter inspection", 15000, 18),
+        ("Wiper Blades", "Maintenance service", "Replaced wiper blades.", "Recheck wiper operation during next inspection.", 0.00, "Wiper inspection", 12000, 19),
+        ("Battery Test / Service", "Maintenance service", "Performed battery/charging system test and battery terminal service.", "Monitor battery condition at future services.", 0.00, "Battery test", 12000, 20),
+        ("Fleet Inspection", "Fleet inspection", "Performed fleet safety/maintenance inspection.", "See inspection notes and recommendations.", 0.00, "Fleet inspection", 5000, 21),
     ]
-    now = datetime.now().isoformat()
+
     for name, complaint, correction, recommendations, total_cost, next_service, interval_miles, sort_order in default_templates:
         existing_template = conn.execute(
             "SELECT id FROM fleet_service_templates WHERE LOWER(template_name) = LOWER(?) AND is_system = 1",
             (name,),
         ).fetchone()
-        if not existing_template:
+        if existing_template:
+            conn.execute(
+                """
+                UPDATE fleet_service_templates
+                SET complaint = ?, correction = ?, recommendations = ?, total_cost = ?,
+                    next_service = ?, interval_miles = ?, sort_order = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (complaint, correction, recommendations, total_cost, next_service, interval_miles, sort_order, now, existing_template["id"]),
+            )
+        else:
             conn.execute(
                 """
                 INSERT INTO fleet_service_templates (

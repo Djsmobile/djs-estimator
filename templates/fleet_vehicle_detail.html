@@ -110,7 +110,7 @@
       <div>
         <div class="kicker">Quick Add</div>
         <h2>Maintenance Templates</h2>
-        <div class="sub">Tap a common service to auto-fill the repair record with your price and next due mileage. You can edit anything before saving.</div>
+        <div class="sub">Tap a common service to auto-fill the repair record. Transit PMs and mobile service fees keep fixed prices; the other templates leave price blank so you can set it each time.</div>
       </div>
     </div>
 
@@ -124,13 +124,13 @@
             data-complaint="{{ template.complaint|e }}"
             data-correction="{{ template.correction|e }}"
             data-recommendations="{{ template.recommendations|e }}"
-            data-total-cost="{{ '%.2f'|format(template.total_cost or 0) }}"
+            data-total-cost="{% if template.total_cost and template.total_cost > 0 %}{{ '%.2f'|format(template.total_cost) }}{% else %}{% endif %}"
             data-next-service="{{ template.next_service|e }}"
             data-interval-miles="{{ template.interval_miles or 0 }}"
             onclick="applyServiceTemplate(this)"
           >
             <span class="quick-template-name">{{ template.template_name }}</span>
-            <span class="quick-template-price">${{ '%.2f'|format(template.total_cost or 0) }}</span>
+            <span class="quick-template-price">{% if template.total_cost and template.total_cost > 0 %}${{ '%.2f'|format(template.total_cost) }}{% else %}Price editable{% endif %}</span>
             <span class="quick-template-note">{% if template.interval_miles %}+{{ template.interval_miles }} mi interval{% else %}No mileage interval{% endif %}</span>
           </button>
         {% endfor %}
@@ -150,7 +150,7 @@
       <form method="POST" action="/admin/fleet/templates/add" style="margin-top:12px">
         <div class="form-grid">
           <div><label>Template Name</label><input name="template_name" placeholder="Example: Fleet oil service"></div>
-          <div><label>Price</label><input name="total_cost" type="number" step="0.01" min="0" placeholder="0.00"></div>
+          <div><label>Default Price</label><input name="total_cost" type="number" step="0.01" min="0" placeholder="Leave blank if price changes"></div>
           <div class="full"><label>Concern / Complaint</label><textarea name="complaint" placeholder="Maintenance service"></textarea></div>
           <div class="full"><label>Correction / Repair Performed</label><textarea name="correction" placeholder="Performed service..."></textarea></div>
           <div class="full"><label>Recommendations</label><textarea name="recommendations" placeholder="Next service due by mileage/date..."></textarea></div>
